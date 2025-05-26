@@ -1,0 +1,168 @@
+# MessageFormat 2.0 Go Implementation Rules
+
+## Core Principles
+
+### API Compatibility
+- Maintain complete API compatibility with TypeScript implementation
+- Preserve all method signatures and interfaces
+- Use identical error handling strategies and fallback mechanisms
+- Implement identical option processing and validation logic
+
+### Implementation Fidelity
+- Strictly follow MessageFormat 2.0 specification
+- Use Go idioms without adding extra functionality
+- Ensure cross-language compatibility
+- No features beyond TypeScript implementation
+
+## Comment Standards
+
+### Mandatory Format
+```go
+// FunctionName describes what this function does in Go context
+// TypeScript original code:
+// export function functionName(param: Type): ReturnType {
+//   // implementation
+// }
+func FunctionName(param Type) ReturnType {
+    // implementation
+}
+```
+
+### Language Requirements
+- **ALL COMMENTS MUST BE IN ENGLISH ONLY**
+- Include complete TypeScript original code unmodified
+- Primary description starts with Go type/function name
+- Follow the mandatory comment format above
+
+## Type Mappings
+
+| TypeScript | Go |
+|------------|-----|
+| `string` | `string` |
+| `number` | `int64` / `float64` |
+| `boolean` | `bool` |
+| `Array<T>` | `[]T` |
+| `Record<K,V>` | `map[K]V` |
+| `object` | `map[string]interface{}` or `struct` |
+| `undefined/null` | `nil` |
+| `unknown` | `interface{}` |
+
+## Package Structure
+
+### Organization
+- Root package: `github.com/kaptinlin/messageformat-go`
+- Public packages: `pkg/datamodel`, `pkg/errors`, `pkg/functions`, `pkg/messagevalue`, `pkg/parts`
+- Internal packages: `internal/bidi`, `internal/cst`, `internal/resolve`, `internal/selector`
+
+### Naming Conventions
+- Use lowercase package names
+- One primary type per file
+- Test files with `_test.go` suffix
+
+## Function Patterns
+
+### Constructors
+```go
+// Use New prefix for constructors
+func NewMessageFormat(locales []string, source string) *MessageFormat
+```
+
+### Methods
+```go
+// Pointer receivers for mutable types
+func (mf *MessageFormat) Format(values map[string]interface{}) (string, error)
+
+// Value receivers for immutable types
+func (s Syntax) Start() int
+```
+
+### Variadic Functions
+```go
+// Match TypeScript spread operator
+func MessageFunction(
+    ctx MessageFunctionContext,
+    options map[string]interface{},
+    input ...interface{}, // TypeScript: ...input: unknown[]
+) MessageValue
+```
+
+## Error Handling
+
+### Conventions
+- Return errors as last return value
+- Use custom error types matching TypeScript hierarchy
+- Collect multiple errors in slices when needed
+- Use error wrapping with `fmt.Errorf("message: %w", err)`
+
+### Error Types
+```go
+type MessageError struct {
+    Type    string
+    Start   int
+    End     int
+    Message string
+}
+```
+
+## Testing Requirements
+
+### Framework
+- **MUST** use `github.com/stretchr/testify` for all testing
+- Use `testify/assert` for assertions
+- Use `testify/require` for critical checks
+
+### Test Structure
+```go
+func TestFunction(t *testing.T) {
+    // Table-driven tests preferred
+    tests := []struct {
+        name     string
+        input    string
+        expected string
+        hasError bool
+    }{
+        {"case1", "input1", "output1", false},
+        {"error_case", "invalid", "", true},
+    }
+    
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result, err := Function(tt.input)
+            if tt.hasError {
+                require.Error(t, err)
+            } else {
+                require.NoError(t, err)
+                assert.Equal(t, tt.expected, result)
+            }
+        })
+    }
+}
+```
+
+### Coverage Requirements
+- Maintain test coverage > 80%
+- Convert TypeScript test cases to Go table-driven tests
+- Include benchmark tests for performance validation
+
+## Forbidden Practices
+
+- Adding functionality not in TypeScript implementation
+- Changing API signatures without TypeScript correspondence
+- Using any language other than English in comments
+- Skipping TypeScript original code in comments
+- Breaking Go idioms unnecessarily
+- Implementing features beyond specification requirements
+
+## Quality Standards
+
+### Code Quality
+- Follow Go best practices and conventions
+- Use meaningful variable and function names
+- Implement proper error handling
+- Ensure thread safety where applicable
+
+### Documentation
+- Include comprehensive package documentation
+- Provide usage examples
+- Document all public APIs
+- Maintain TypeScript compatibility notes 
