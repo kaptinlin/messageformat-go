@@ -102,11 +102,13 @@ func TestNumberValueSelectKeys(t *testing.T) {
 		keys     []string
 		expected []string
 	}{
-		{"zero", 0, []string{"zero", "one", "other"}, []string{"zero"}},
+		{"zero exact match", 0, []string{"0", "one", "other"}, []string{"0"}},
 		{"one", 1, []string{"zero", "one", "other"}, []string{"one"}},
-		{"two", 2, []string{"zero", "one", "two", "other"}, []string{"two"}},
-		{"few", 5, []string{"zero", "one", "few", "other"}, []string{"few"}},
-		{"many", 10, []string{"zero", "one", "many", "other"}, []string{"many"}},
+		{"two exact match", 2, []string{"2", "one", "other"}, []string{"2"}},
+		{"other fallback for 0", 0, []string{"one", "other"}, []string{"other"}},
+		{"other fallback for 2", 2, []string{"one", "other"}, []string{"other"}},
+		{"other fallback for 5", 5, []string{"one", "other"}, []string{"other"}},
+		{"other fallback for 10", 10, []string{"one", "other"}, []string{"other"}},
 		{"other fallback", 42, []string{"other"}, []string{"other"}},
 		{"no match", 42, []string{"zero", "one"}, []string{}},
 	}

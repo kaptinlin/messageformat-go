@@ -4,6 +4,7 @@ package cst
 
 import (
 	"unicode"
+	"unicode/utf8"
 )
 
 // bidiChars represents bidirectional text control characters
@@ -59,26 +60,26 @@ func Whitespaces(src string, start int) WhitespaceResult {
 	hasWS := false
 	pos := start
 
-	// Convert string to runes for proper Unicode handling
-	runes := []rune(src)
-	if pos >= len(runes) {
-		return WhitespaceResult{HasWS: hasWS, End: pos}
-	}
+	// Use byte-based iteration to maintain correct byte positions
+	for pos < len(src) {
+		r, size := utf8.DecodeRuneInString(src[pos:])
+		if r == utf8.RuneError {
+			break
+		}
 
-	// Skip initial bidi characters
-	for pos < len(runes) && bidiChars[runes[pos]] {
-		pos++
-	}
+		if bidiChars[r] {
+			pos += size
+			continue
+		}
 
-	// Skip whitespace characters
-	for pos < len(runes) && whitespaceChars[runes[pos]] {
-		hasWS = true
-		pos++
-	}
+		if whitespaceChars[r] {
+			hasWS = true
+			pos += size
+			continue
+		}
 
-	// Skip any remaining bidi or whitespace characters
-	for pos < len(runes) && (bidiChars[runes[pos]] || whitespaceChars[runes[pos]]) {
-		pos++
+		// If it's neither bidi nor whitespace, we're done
+		break
 	}
 
 	return WhitespaceResult{HasWS: hasWS, End: pos}

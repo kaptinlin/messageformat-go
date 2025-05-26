@@ -113,9 +113,54 @@ func (nv *NumberValue) ValueOf() (interface{}, error) {
 }
 
 // SelectKeys implements plural selection logic
-// TypeScript original code: plural selection implementation
+// TypeScript original code:
+// selectKey: canSelect
+//
+//	? keys => {
+//	    const str = String(value);
+//	    if (keys.has(str)) return str;
+//	    if (options.select === 'exact') return null;
+//	    const pluralOpt = options.select
+//	      ? { ...options, select: undefined, type: options.select }
+//	      : options;
+//	    // Intl.PluralRules needs a number, not bigint
+//	    cat ??= new Intl.PluralRules(locales, pluralOpt).select(
+//	      Number(value)
+//	    );
+//	    return keys.has(cat) ? cat : null;
+//	  }
+//	: undefined,
 func (nv *NumberValue) SelectKeys(keys []string) ([]string, error) {
-	// Convert value to float64 for comparison
+	// Convert value to string for exact matching
+	var valueStr string
+	switch v := nv.value.(type) {
+	case int:
+		valueStr = strconv.Itoa(v)
+	case int64:
+		valueStr = strconv.FormatInt(v, 10)
+	case float64:
+		valueStr = strconv.FormatFloat(v, 'g', -1, 64)
+	case float32:
+		valueStr = strconv.FormatFloat(float64(v), 'g', -1, 32)
+	default:
+		valueStr = fmt.Sprintf("%v", v)
+	}
+
+	// First, check for exact match (matches TypeScript: if (keys.has(str)) return str;)
+	for _, key := range keys {
+		if key == valueStr {
+			return []string{key}, nil
+		}
+	}
+
+	// Check if select option is set to 'exact' only
+	if selectOpt, hasSelect := nv.options["select"]; hasSelect {
+		if selectStr, ok := selectOpt.(string); ok && selectStr == "exact" {
+			return []string{}, nil
+		}
+	}
+
+	// Convert value to float64 for plural rule comparison
 	var num float64
 	switch v := nv.value.(type) {
 	case int:
@@ -130,32 +175,51 @@ func (nv *NumberValue) SelectKeys(keys []string) ([]string, error) {
 		return []string{}, nil
 	}
 
-	// Simplified plural selection logic
-	// In a full implementation, this would use CLDR plural rules
+	// Apply plural rules based on locale and select option
+	// This is a simplified implementation - a full implementation would use CLDR plural rules
+	// For English (default), the rules are:
+	// - "one" for 1
+	// - "other" for everything else
+
+	// Check select option type (cardinal, ordinal, or default to cardinal)
+	selectType := "cardinal"
+	if selectOpt, hasSelect := nv.options["select"]; hasSelect {
+		if selectStr, ok := selectOpt.(string); ok && (selectStr == "ordinal" || selectStr == "cardinal") {
+			selectType = selectStr
+		}
+	}
+
+	var pluralCategory string
+	if selectType == "ordinal" {
+		// Ordinal rules for English: 1st, 2nd, 3rd, 4th, etc.
+		// This is simplified - real implementation would use CLDR
+		switch int(num) % 100 {
+		case 11, 12, 13:
+			pluralCategory = "other"
+		default:
+			switch int(num) % 10 {
+			case 1:
+				pluralCategory = "one"
+			case 2:
+				pluralCategory = "two"
+			case 3:
+				pluralCategory = "few"
+			default:
+				pluralCategory = "other"
+			}
+		}
+	} else {
+		// Cardinal rules for English: simplified implementation
+		if num == 1 {
+			pluralCategory = "one"
+		} else {
+			pluralCategory = "other"
+		}
+	}
+
+	// Check if the calculated plural category is in the available keys
 	for _, key := range keys {
-		switch key {
-		case "zero":
-			if num == 0 {
-				return []string{key}, nil
-			}
-		case "one":
-			if num == 1 {
-				return []string{key}, nil
-			}
-		case "two":
-			if num == 2 {
-				return []string{key}, nil
-			}
-		case "few":
-			if num >= 3 && num <= 6 {
-				return []string{key}, nil
-			}
-		case "many":
-			if num > 6 {
-				return []string{key}, nil
-			}
-		case "other":
-			// "other" is the fallback case
+		if key == pluralCategory {
 			return []string{key}, nil
 		}
 	}

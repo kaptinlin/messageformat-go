@@ -15,6 +15,7 @@ var bidiCharsRegex = regexp.MustCompile("^[\u061C\u200E\u200F\u2066-\u2069]+")
 // nameCharsRegex matches valid name characters
 // TypeScript original code:
 // const nameChars = /^[-.+0-9A-Z_a-z\u{a1}-\u{61b}\u{61d}-\u{167f}\u{1681}-\u{1fff}\u{200b}-\u{200d}\u{2010}-\u{2027}\u{2030}-\u{205e}\u{2060}-\u{2065}\u{206a}-\u{2fff}\u{3001}-\u{d7ff}\u{e000}-\u{fdcf}\u{fdf0}-\u{fffd}\u{10000}-\u{1fffd}\u{20000}-\u{2fffd}\u{30000}-\u{3fffd}\u{40000}-\u{4fffd}\u{50000}-\u{5fffd}\u{60000}-\u{6fffd}\u{70000}-\u{7fffd}\u{80000}-\u{8fffd}\u{90000}-\u{9fffd}\u{a0000}-\u{afffd}\u{b0000}-\u{bfffd}\u{c0000}-\u{cfffd}\u{d0000}-\u{dfffd}\u{e0000}-\u{efffd}\u{f0000}-\u{ffffd}\u{100000}-\u{10fffd}]+/u;
+// Note: Go regex doesn't support Unicode code points > \uFFFF in character classes, so we use the BMP range
 var nameCharsRegex = regexp.MustCompile("^[-.+0-9A-Z_a-z\u00A1-\u061B\u061D-\u167F\u1681-\u1FFF\u200B-\u200D\u2010-\u2027\u2030-\u205E\u2060-\u2065\u206A-\u2FFF\u3001-\uD7FF\uE000-\uFDCF\uFDF0-\uFFFD]+")
 
 // notNameStartRegex matches characters that cannot start a name
@@ -116,18 +117,33 @@ func IsValidUnquotedLiteral(str string) bool {
 //	source: string,
 //	start: number
 //
-// ): string => source.slice(start).match(nameChars)?.[0] ?? ”;
+// ): string => source.slice(start).match(nameChars)?.[0] ?? "";
 func ParseUnquotedLiteralValue(source string, start int) string {
 	if start >= len(source) {
 		return ""
 	}
 
+	// First try the regex for BMP characters
 	match := nameCharsRegex.FindString(source[start:])
-	if match == "" {
-		return ""
+	if match != "" {
+		return match
 	}
 
-	return match
+	// If regex doesn't match, manually check character by character for non-BMP characters
+	var result strings.Builder
+	for i, r := range source[start:] {
+		if isValidNameChar(r) {
+			result.WriteRune(r)
+		} else {
+			break
+		}
+		// If we've processed some characters, return what we have
+		if i > 0 && result.Len() > 0 {
+			return result.String()
+		}
+	}
+
+	return result.String()
 }
 
 // isNameChar checks if a rune is a valid name character
@@ -232,5 +248,16 @@ func IsNameStartChar(r rune) bool {
 	if r == '-' || r == '.' || (r >= '0' && r <= '9') {
 		return false
 	}
+	return isNameChar(r)
+}
+
+// For characters outside BMP, we'll use a fallback function
+func isValidNameChar(r rune) bool {
+	// First check if it matches the basic regex pattern
+	if r <= 0xFFFF {
+		return nameCharsRegex.MatchString(string(r))
+	}
+
+	// For characters outside BMP, use the isNameChar function
 	return isNameChar(r)
 }

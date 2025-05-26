@@ -140,7 +140,9 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 
 		var selectKeyFunc func(map[string]bool) *string
 		// matches TypeScript: if (typeof selector.selectKey === 'function')
-		if keys, err := mv.SelectKeys(nil); err == nil && len(keys) > 0 {
+		// Check if the MessageValue supports selection by testing with a dummy key
+		testKeys := []string{"test"}
+		if _, err := mv.SelectKeys(testKeys); err == nil {
 			// matches TypeScript: selectKey = selector.selectKey.bind(selector);
 			selectKeyFunc = func(availableKeys map[string]bool) *string {
 				// Convert map to slice for selection
@@ -153,13 +155,14 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 					return nil
 				}
 
-				// Simple selection: return first available key that matches
-				for _, key := range keys {
-					if availableKeys[key] {
-						return &key
-					}
+				// Call the MessageValue's SelectKeys method
+				selectedKeys, err := mv.SelectKeys(keySlice)
+				if err != nil || len(selectedKeys) == 0 {
+					return nil
 				}
-				return nil
+
+				// Return the first selected key
+				return &selectedKeys[0]
 			}
 		} else {
 			// matches TypeScript: context.onError(new MessageSelectionError('bad-selector')); selectKey = () => null;

@@ -65,10 +65,11 @@ result, err := mf.Format(map[string]interface{}{
 ### Select Messages (Pluralization)
 ```go
 mf, err := messageformat.New("en", `
-.match {$count :number}
-when 0 {No items}
-when 1 {One item}
-when * {{$count} items}
+.input {$count :number}
+.match $count
+0   {{No items}}
+one {{One item}}
+*   {{{$count} items}}
 `)
 
 result, err := mf.Format(map[string]interface{}{
