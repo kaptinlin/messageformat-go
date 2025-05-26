@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
+	"github.com/kaptinlin/messageformat-go/pkg/logger"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
@@ -67,8 +68,10 @@ func ResolveExpression(ctx *Context, expr *datamodel.Expression) messagevalue.Me
 		// matches TypeScript: @ts-expect-error - should never happen
 		// matches TypeScript: throw new Error(`Unsupported expression: ${arg?.type}`);
 		if node, ok := v.(datamodel.Node); ok {
+			logger.Error("unsupported expression type", "type", node.Type())
 			panic(fmt.Sprintf("Unsupported expression: %s", node.Type()))
 		} else {
+			logger.Error("unsupported expression value", "type", fmt.Sprintf("%T", v))
 			panic(fmt.Sprintf("Unsupported expression: %T", v))
 		}
 	}

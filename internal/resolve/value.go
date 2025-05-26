@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
+	"github.com/kaptinlin/messageformat-go/pkg/logger"
 )
 
 // resolveValue resolves a literal or variable reference to its value
@@ -39,6 +40,7 @@ func resolveValue(ctx *Context, value datamodel.Node) interface{} {
 		return lookupVariableRef(ctx, v)
 	default:
 		// Should never happen - matches TypeScript @ts-expect-error
+		logger.Error("unsupported value type", "type", v.Type())
 		panic(fmt.Sprintf("Unsupported value: %s", v.Type()))
 	}
 }

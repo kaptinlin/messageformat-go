@@ -6,6 +6,7 @@ import (
 	"github.com/kaptinlin/messageformat-go/internal/resolve"
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
+	"github.com/kaptinlin/messageformat-go/pkg/logger"
 )
 
 // SelectPattern selects the appropriate pattern from a message
@@ -102,6 +103,7 @@ func SelectPattern(context *resolve.Context, message datamodel.Message) datamode
 
 	default:
 		// matches TypeScript: default: context.onError(new MessageSelectionError('bad-selector')); return [];
+		logger.Error("unsupported message type for pattern selection", "type", message.Type())
 		if context.OnError != nil {
 			context.OnError(errors.NewSelectionError(
 				errors.ErrorTypeBadSelector,

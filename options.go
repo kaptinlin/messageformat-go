@@ -2,6 +2,8 @@
 package messageformat
 
 import (
+	"log/slog"
+
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 )
 
@@ -76,6 +78,13 @@ func WithFunctions(funcs map[string]functions.MessageFunction) Option {
 func WithErrorHandler(handler func(error)) FormatOption {
 	return func(opts *FormatOptions) {
 		opts.OnError = handler
+	}
+}
+
+// WithLogger sets a custom logger for this MessageFormat instance
+func WithLogger(logger *slog.Logger) Option {
+	return func(opts *MessageFormatOptions) {
+		opts.Logger = logger
 	}
 }
 

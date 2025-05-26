@@ -3,7 +3,7 @@ package messageformat
 
 import (
 	"fmt"
-	"os"
+	"log/slog"
 	"strings"
 
 	"github.com/kaptinlin/messageformat-go/internal/cst"
@@ -13,6 +13,7 @@ import (
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
+	"github.com/kaptinlin/messageformat-go/pkg/logger"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
@@ -45,6 +46,9 @@ type MessageFormatOptions struct {
 
 	// Locale matching algorithm for multiple locales.
 	LocaleMatcher *string `json:"localeMatcher,omitempty"` // "best fit" | "lookup"
+
+	// Logger for this MessageFormat instance. If nil, uses global logger.
+	Logger *slog.Logger `json:"-"`
 }
 
 // MessageFormat represents a compiled MessageFormat 2.0 message
@@ -65,9 +69,10 @@ type MessageFormat struct {
 	message       datamodel.Message
 	locales       []string
 	functions     map[string]functions.MessageFunction
-	bidiIsolation bool   // true for "default", false for "none"
-	dir           string // "ltr" | "rtl" | "auto"
-	localeMatcher string // "best fit" | "lookup"
+	bidiIsolation bool         // true for "default", false for "none"
+	dir           string       // "ltr" | "rtl" | "auto"
+	localeMatcher string       // "best fit" | "lookup"
+	logger        *slog.Logger // instance-specific logger
 }
 
 // New creates a new MessageFormat from locales, source, and options
@@ -219,14 +224,25 @@ func New(
 		}
 	}
 
-	return &MessageFormat{
+	// Set up logger - use instance logger if provided, otherwise use global logger
+	var instanceLogger *slog.Logger
+	if opts.Logger != nil {
+		instanceLogger = opts.Logger
+	} else {
+		instanceLogger = logger.GetLogger()
+	}
+
+	mf := &MessageFormat{
 		message:       message,
 		locales:       localeList,
 		functions:     functionMap,
 		bidiIsolation: bidiIsolation,
 		dir:           dir,
 		localeMatcher: localeMatcher,
-	}, nil
+		logger:        instanceLogger,
+	}
+
+	return mf, nil
 }
 
 // Format formats the message with the given values and optional error handler
@@ -257,6 +273,7 @@ func (mf *MessageFormat) Format(
 ) (string, error) {
 	parts, err := mf.FormatToParts(values, options...)
 	if err != nil {
+		mf.logger.Error("failed to format message", "error", err)
 		return "", err
 	}
 
@@ -311,14 +328,14 @@ func (mf *MessageFormat) FormatToParts(
 		// Default error handler that emits warnings (matches TypeScript behavior)
 		// TypeScript: process.emitWarning(error) or console.warn(error)
 		onError = func(err error) {
-			// Default: emit warning to stderr (matches TypeScript behavior)
-			fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+			// Default: emit warning using logger (matches TypeScript behavior)
+			mf.logger.Warn("MessageFormat error", "error", err)
 		}
 	} else if len(options) == 1 {
 		// Check if it's nil (traditional way of passing no error handler)
 		if options[0] == nil {
 			onError = func(err error) {
-				fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+				mf.logger.Warn("MessageFormat error", "error", err)
 			}
 		} else if errorFunc, ok := options[0].(func(error)); ok {
 			// Traditional error callback
@@ -330,7 +347,7 @@ func (mf *MessageFormat) FormatToParts(
 				onError = formatOpts.OnError
 			} else {
 				onError = func(err error) {
-					fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+					mf.logger.Warn("MessageFormat error", "error", err)
 				}
 			}
 		} else {
@@ -351,7 +368,7 @@ func (mf *MessageFormat) FormatToParts(
 			onError = formatOpts.OnError
 		} else {
 			onError = func(err error) {
-				fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+				mf.logger.Warn("MessageFormat error", "error", err)
 			}
 		}
 	}

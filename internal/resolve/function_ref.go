@@ -8,6 +8,7 @@ import (
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
+	"github.com/kaptinlin/messageformat-go/pkg/logger"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
@@ -94,6 +95,7 @@ func ResolveFunctionRef(
 	rf, exists := ctx.Functions[functionRef.Name()]
 	// matches TypeScript: if (!rf) { throw new MessageError('unknown-function', `Unknown function :${name}`); }
 	if !exists {
+		logger.Error("unknown function", "function", functionRef.Name(), "source", source)
 		panic(errors.NewResolutionError(
 			errors.ErrorTypeUnknownFunction,
 			fmt.Sprintf("Unknown function :%s", functionRef.Name()),
@@ -117,6 +119,7 @@ func ResolveFunctionRef(
 
 	// matches TypeScript: if (res === null || ...) { throw new MessageError('bad-function-result', ...); }
 	if res == nil {
+		logger.Error("function returned nil result", "function", functionRef.Name(), "source", source)
 		panic(errors.NewResolutionError(
 			errors.ErrorTypeBadFunctionResult,
 			fmt.Sprintf("Function :%s did not return a MessageValue", functionRef.Name()),
