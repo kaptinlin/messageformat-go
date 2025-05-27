@@ -178,13 +178,44 @@ git submodule update --init --recursive
 ### Running Tests
 ```bash
 # Run all tests including official test suite
-go test ./...
+make test
 
-# Run with coverage
-go test -cover ./...
+# Run unit tests only (excluding official test suite)
+make test-unit
 
 # Run official test suite only
-go test ./tests/
+make test-official
+
+# Run tests with coverage report
+make test-coverage
+
+# Run tests with verbose output
+make test-verbose
+
+# Or use go commands directly
+go test ./...                    # All tests
+go test ./pkg/... ./internal/... # Unit tests only
+go test ./tests/                 # Official test suite only
+```
+
+### Development Commands
+```bash
+# Show all available commands
+make help
+
+# Initialize git submodules (required for official tests)
+make submodules
+
+# Format code and run all checks
+make verify
+
+
+
+# Run examples
+make examples
+
+# Run benchmarks
+make bench
 ```
 
 📋 **For detailed testing instructions, see [TESTING.md](TESTING.md)**
