@@ -11,7 +11,7 @@ import (
 // export type Message = SimpleMessage | ComplexMessage | SelectMessage;
 type Message interface {
 	Type() string
-	Errors() []*errors.MessageError
+	Errors() []*errors.MessageSyntaxError
 }
 
 // SimpleMessage represents a simple message without declarations
@@ -25,7 +25,7 @@ type Message interface {
 //	}
 type SimpleMessage struct {
 	pattern Pattern
-	errors  []*errors.MessageError
+	errors  []*errors.MessageSyntaxError
 }
 
 // Type returns the message type
@@ -34,7 +34,7 @@ func (m *SimpleMessage) Type() string { return "simple" }
 
 // Errors returns syntax errors
 // TypeScript original code: errors: MessageSyntaxError[]
-func (m *SimpleMessage) Errors() []*errors.MessageError { return m.errors }
+func (m *SimpleMessage) Errors() []*errors.MessageSyntaxError { return m.errors }
 
 // Pattern returns the message pattern
 // TypeScript original code: pattern: Pattern
@@ -56,7 +56,7 @@ func (m *SimpleMessage) Declarations() []Declaration { return nil }
 type ComplexMessage struct {
 	declarations []Declaration
 	pattern      Pattern
-	errors       []*errors.MessageError
+	errors       []*errors.MessageSyntaxError
 }
 
 // Type returns the message type
@@ -65,7 +65,7 @@ func (m *ComplexMessage) Type() string { return "complex" }
 
 // Errors returns syntax errors
 // TypeScript original code: errors: MessageSyntaxError[]
-func (m *ComplexMessage) Errors() []*errors.MessageError { return m.errors }
+func (m *ComplexMessage) Errors() []*errors.MessageSyntaxError { return m.errors }
 
 // Pattern returns the message pattern
 // TypeScript original code: pattern: Pattern
@@ -91,7 +91,7 @@ type SelectMessage struct {
 	match        Syntax
 	selectors    []VariableRef
 	variants     []Variant
-	errors       []*errors.MessageError
+	errors       []*errors.MessageSyntaxError
 }
 
 // Type returns the message type
@@ -100,7 +100,7 @@ func (m *SelectMessage) Type() string { return "select" }
 
 // Errors returns syntax errors
 // TypeScript original code: errors: MessageSyntaxError[]
-func (m *SelectMessage) Errors() []*errors.MessageError { return m.errors }
+func (m *SelectMessage) Errors() []*errors.MessageSyntaxError { return m.errors }
 
 // Declarations returns the message declarations
 // TypeScript original code: declarations: Declaration[]
@@ -605,7 +605,7 @@ func (s *Syntax) Value() string { return s.value }
 // Constructor functions for creating CST nodes
 
 // NewSimpleMessage creates a new simple message
-func NewSimpleMessage(pattern Pattern, errors []*errors.MessageError) *SimpleMessage {
+func NewSimpleMessage(pattern Pattern, errors []*errors.MessageSyntaxError) *SimpleMessage {
 	return &SimpleMessage{
 		pattern: pattern,
 		errors:  errors,
@@ -613,7 +613,7 @@ func NewSimpleMessage(pattern Pattern, errors []*errors.MessageError) *SimpleMes
 }
 
 // NewComplexMessage creates a new complex message
-func NewComplexMessage(declarations []Declaration, pattern Pattern, errors []*errors.MessageError) *ComplexMessage {
+func NewComplexMessage(declarations []Declaration, pattern Pattern, errors []*errors.MessageSyntaxError) *ComplexMessage {
 	return &ComplexMessage{
 		declarations: declarations,
 		pattern:      pattern,
@@ -622,7 +622,7 @@ func NewComplexMessage(declarations []Declaration, pattern Pattern, errors []*er
 }
 
 // NewSelectMessage creates a new select message
-func NewSelectMessage(declarations []Declaration, match Syntax, selectors []VariableRef, variants []Variant, errors []*errors.MessageError) *SelectMessage {
+func NewSelectMessage(declarations []Declaration, match Syntax, selectors []VariableRef, variants []Variant, errors []*errors.MessageSyntaxError) *SelectMessage {
 	return &SelectMessage{
 		declarations: declarations,
 		match:        match,

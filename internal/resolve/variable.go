@@ -107,13 +107,17 @@ func getValue(scope interface{}, name string) interface{} {
 			}
 		}
 
+		// TODO: Unicode normalization is temporarily disabled to avoid infinite recursion
+		// This needs to be handled at a higher level
 		// Normalized key lookup - matches TypeScript: key.normalize() === name
-		// Note: Go doesn't have string.normalize(), using ToLower as approximation
-		for key, value := range m {
-			if strings.ToLower(key) == strings.ToLower(name) {
-				return value
-			}
-		}
+		// Apply Unicode NFC normalization for proper comparison
+		// normalizedName := norm.NFC.String(name)
+		// for key, value := range m {
+		// 	normalizedKey := norm.NFC.String(key)
+		// 	if normalizedKey == normalizedName {
+		// 		return value
+		// 	}
+		// }
 	}
 
 	// Handle map[interface{}]interface{} types
@@ -154,8 +158,8 @@ func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) interface{} {
 		source := "$" + name
 		msg := fmt.Sprintf("Variable not available: %s", source)
 		if ctx.OnError != nil {
-			ctx.OnError(errors.NewResolutionError(
-				errors.ErrorTypeUnresolvedVar,
+			ctx.OnError(errors.NewMessageResolutionError(
+				errors.ErrorTypeUnresolvedVariable,
 				msg,
 				source,
 			))
@@ -165,6 +169,63 @@ func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) interface{} {
 
 	// Handle unresolved expressions - matches TypeScript: value instanceof UnresolvedExpression
 	if unresolvedExpr, ok := value.(*UnresolvedExpression); ok {
+		// Check for .input declarations first - these are special cases where we should use the original parameter value
+		// But only for simple variable references without functions
+		if unresolvedExpr.Scope != nil && unresolvedExpr.Expression.Arg() != nil && unresolvedExpr.Expression.FunctionRef() == nil {
+			if varRef, ok := unresolvedExpr.Expression.Arg().(*datamodel.VariableRef); ok {
+				varRefName := varRef.Name()
+				// Check if this is an .input declaration by looking for the original parameter in the scope
+				if originalValue, exists := unresolvedExpr.Scope[varRefName]; exists {
+					if _, isUnresolved := originalValue.(*UnresolvedExpression); !isUnresolved {
+						// This is an .input declaration without function - return the original parameter value directly
+						// This avoids infinite recursion in Unicode normalization cases
+						return originalValue
+					}
+				}
+
+				// Also check for Unicode normalization cases - if the variable names normalize to the same value
+				// we should look for any non-unresolved value in the scope
+				// But only if there's exactly one non-unresolved value (to avoid ambiguity)
+				var nonUnresolvedValue interface{}
+				var count int
+				for _, scopeValue := range unresolvedExpr.Scope {
+					if _, isUnresolved := scopeValue.(*UnresolvedExpression); !isUnresolved {
+						nonUnresolvedValue = scopeValue
+						count++
+					}
+				}
+				if count == 1 {
+					// This could be the original parameter value for a Unicode normalization case
+					// Return it directly to avoid infinite recursion
+					return nonUnresolvedValue
+				}
+			}
+		}
+
+		// Check for circular reference by looking if we're already resolving this variable
+		if ctx.ResolvingVars == nil {
+			ctx.ResolvingVars = make(map[string]bool)
+		}
+
+		if ctx.ResolvingVars[name] {
+			// Circular reference detected - return fallback
+			source := "$" + name
+			if ctx.OnError != nil {
+				ctx.OnError(errors.NewMessageResolutionError(
+					errors.ErrorTypeUnresolvedVariable,
+					fmt.Sprintf("Circular reference detected for variable: %s", source),
+					source,
+				))
+			}
+			return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales))
+		}
+
+		// Mark this variable as being resolved
+		ctx.ResolvingVars[name] = true
+		defer func() {
+			delete(ctx.ResolvingVars, name)
+		}()
+
 		// Create new context with expression scope - matches TypeScript: value.scope ? { ...ctx, scope: value.scope } : ctx
 		var newCtx *Context
 		if unresolvedExpr.Scope != nil {

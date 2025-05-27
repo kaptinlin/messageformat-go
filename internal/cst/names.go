@@ -5,6 +5,8 @@ package cst
 import (
 	"regexp"
 	"strings"
+
+	"golang.org/x/text/unicode/norm"
 )
 
 // bidiCharsRegex matches bidirectional control characters
@@ -89,8 +91,9 @@ func ParseNameValue(source string, start int) *NameValue {
 		}
 	}
 
-	// Normalize the name (Unicode normalization)
-	normalizedName := strings.ToValidUTF8(name, "")
+	// Normalize the name (Unicode NFC normalization)
+	// TypeScript: name.normalize() - applies NFC normalization
+	normalizedName := norm.NFC.String(name)
 
 	return &NameValue{
 		Value: normalizedName,
@@ -106,8 +109,18 @@ func ParseNameValue(source string, start int) *NameValue {
 //	  return !!match && match[0].length === str.length;
 //	}
 func IsValidUnquotedLiteral(str string) bool {
-	match := nameCharsRegex.FindString(str)
-	return match != "" && len(match) == len(str)
+	if str == "" {
+		return false
+	}
+
+	// Check each character to handle both BMP and non-BMP characters
+	for _, r := range str {
+		if !isValidNameChar(r) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // ParseUnquotedLiteralValue parses an unquoted literal value
@@ -123,23 +136,13 @@ func ParseUnquotedLiteralValue(source string, start int) string {
 		return ""
 	}
 
-	// First try the regex for BMP characters
-	match := nameCharsRegex.FindString(source[start:])
-	if match != "" {
-		return match
-	}
-
-	// If regex doesn't match, manually check character by character for non-BMP characters
+	// Check character by character to handle both BMP and non-BMP characters
 	var result strings.Builder
-	for i, r := range source[start:] {
+	for _, r := range source[start:] {
 		if isValidNameChar(r) {
 			result.WriteRune(r)
 		} else {
 			break
-		}
-		// If we've processed some characters, return what we have
-		if i > 0 && result.Len() > 0 {
-			return result.String()
 		}
 	}
 

@@ -68,9 +68,15 @@ func parseExpression(ctx *ParseContext, start int) *Expression {
 	if pos < len(source) {
 		ch := source[pos]
 		if ch == '$' {
-			arg = ParseVariable(ctx, pos)
+			variable := ParseVariable(ctx, pos)
+			if variable != nil {
+				arg = variable
+			}
 		} else {
-			arg = ParseLiteral(ctx, pos, false)
+			literal := ParseLiteral(ctx, pos, false)
+			if literal != nil {
+				arg = literal
+			}
 		}
 	}
 
@@ -85,7 +91,7 @@ func parseExpression(ctx *ParseContext, start int) *Expression {
 
 	var functionRef Node
 	var markup *Markup
-	var junkError *errors.MessageError
+	var junkError *errors.MessageSyntaxError
 
 	if pos < len(source) {
 		switch source[pos] {
@@ -109,12 +115,7 @@ func parseExpression(ctx *ParseContext, start int) *Expression {
 			if arg == nil {
 				end := pos + 1
 				functionRef = NewJunk(pos, end, string(source[pos]))
-				junkError = &errors.MessageError{
-					Type:    errors.ErrorTypeParseError,
-					Message: "parse error",
-					Start:   start,
-					End:     end,
-				}
+				junkError = errors.NewMessageSyntaxError(errors.ErrorTypeParseError, start, &end, nil)
 				ctx.errors = append(ctx.errors, junkError)
 			}
 		}
@@ -353,8 +354,9 @@ func parseOption(ctx *ParseContext, start int) *Option {
 		}
 	}
 
+	// Ensure value is never nil to avoid nil pointer dereference
 	if value == nil {
-		// Create a dummy literal to avoid nil
+		// Create a dummy literal to avoid nil - ensure proper initialization
 		value = NewLiteral(pos, pos, false, nil, "", nil)
 	}
 
@@ -406,7 +408,9 @@ func parseAttribute(ctx *ParseContext, start int) *Attribute {
 			pos = value.End()
 		}
 	} else {
-		pos = ws.End
+		// Fix: Don't include trailing whitespace in attribute end position
+		// This matches the TypeScript original behavior
+		pos = id.End
 	}
 
 	open := NewSyntax(start, start+1, "@")

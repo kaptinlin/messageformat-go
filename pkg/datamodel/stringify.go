@@ -1,3 +1,5 @@
+// Package datamodel provides message data model stringification for MessageFormat 2.0
+// TypeScript original code: data-model/stringify.ts module
 package datamodel
 
 import (
@@ -71,6 +73,19 @@ func StringifyMessage(msg Message) string {
 	return res.String()
 }
 
+// stringifyDeclaration converts a declaration to its string representation
+// TypeScript original code:
+//
+//	function stringifyDeclaration(decl: Declaration) {
+//	  switch (decl.type) {
+//	    case 'input':
+//	      return `.input ${stringifyExpression(decl.value)}\n`;
+//	    case 'local':
+//	      return `.local $${decl.name} = ${stringifyExpression(decl.value)}\n`;
+//	  }
+//	  // @ts-expect-error Guard against non-TS users with bad data
+//	  throw new Error(`Unsupported ${decl.type} declaration`);
+//	}
 func stringifyDeclaration(decl Declaration) string {
 	switch decl.Type() {
 	case "input":
@@ -94,6 +109,32 @@ func stringifyDeclaration(decl Declaration) string {
 	}
 }
 
+// stringifyExpression converts an expression to its string representation
+// TypeScript original code:
+//
+//	function stringifyExpression({ arg, attributes, functionRef }: Expression) {
+//	  let res: string;
+//	  switch (arg?.type) {
+//	    case 'literal':
+//	      res = stringifyLiteral(arg);
+//	      break;
+//	    case 'variable':
+//	      res = stringifyVariableRef(arg);
+//	      break;
+//	    default:
+//	      res = '';
+//	  }
+//	  if (functionRef) {
+//	    if (res) res += ' ';
+//	    res += stringifyFunctionRef(functionRef);
+//	  }
+//	  if (attributes) {
+//	    for (const [name, value] of attributes) {
+//	      res += ' ' + stringifyAttribute(name, value);
+//	    }
+//	  }
+//	  return `{${res}}`;
+//	}
 func stringifyExpression(expr *Expression) string {
 	var parts []string
 
@@ -122,6 +163,18 @@ func stringifyExpression(expr *Expression) string {
 	return fmt.Sprintf("{%s}", strings.Join(parts, " "))
 }
 
+// stringifyFunctionRef converts a function reference to its string representation
+// TypeScript original code:
+//
+//	function stringifyFunctionRef({ name, options }: FunctionRef) {
+//	  let res = `:${name}`;
+//	  if (options) {
+//	    for (const [key, value] of options) {
+//	      res += ' ' + stringifyOption(key, value);
+//	    }
+//	  }
+//	  return res;
+//	}
 func stringifyFunctionRef(fr *FunctionRef) string {
 	result := ":" + fr.Name()
 
@@ -134,6 +187,25 @@ func stringifyFunctionRef(fr *FunctionRef) string {
 	return result
 }
 
+// stringifyMarkup converts a markup element to its string representation
+// TypeScript original code:
+//
+//	function stringifyMarkup({ kind, name, options, attributes }: Markup) {
+//	  let res = kind === 'close' ? '{/' : '{#';
+//	  res += name;
+//	  if (options) {
+//	    for (const [name, value] of options) {
+//	      res += ' ' + stringifyOption(name, value);
+//	    }
+//	  }
+//	  if (attributes) {
+//	    for (const [name, value] of attributes) {
+//	      res += ' ' + stringifyAttribute(name, value);
+//	    }
+//	  }
+//	  res += kind === 'standalone' ? ' /}' : '}';
+//	  return res;
+//	}
 func stringifyMarkup(markup *Markup) string {
 	var result strings.Builder
 
@@ -170,6 +242,14 @@ func stringifyMarkup(markup *Markup) string {
 	return result.String()
 }
 
+// stringifyLiteral converts a literal to its string representation
+// TypeScript original code:
+//
+//	function stringifyLiteral({ value }: Literal) {
+//	  if (isValidUnquotedLiteral(value)) return value;
+//	  const esc = value.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
+//	  return `|${esc}|`;
+//	}
 func stringifyLiteral(lit *Literal) string {
 	value := lit.Value()
 
@@ -185,10 +265,25 @@ func stringifyLiteral(lit *Literal) string {
 	return fmt.Sprintf("|%s|", escaped)
 }
 
+// stringifyVariableRef converts a variable reference to its string representation
+// TypeScript original code:
+//
+//	function stringifyVariableRef(ref: VariableRef) {
+//	  return '$' + ref.name;
+//	}
 func stringifyVariableRef(vr *VariableRef) string {
 	return "$" + vr.Name()
 }
 
+// stringifyOption converts an option to its string representation
+// TypeScript original code:
+//
+//	function stringifyOption(name: string, value: Literal | VariableRef) {
+//	  const valueStr = isVariableRef(value)
+//	    ? stringifyVariableRef(value)
+//	    : stringifyLiteral(value);
+//	  return `${name}=${valueStr}`;
+//	}
 func stringifyOption(name string, value interface{}) string {
 	var valueStr string
 
@@ -203,6 +298,12 @@ func stringifyOption(name string, value interface{}) string {
 	return fmt.Sprintf("%s=%s", name, valueStr)
 }
 
+// stringifyAttribute converts an attribute to its string representation
+// TypeScript original code:
+//
+//	function stringifyAttribute(name: string, value: true | Literal) {
+//	  return value === true ? `@${name}` : `@${name}=${stringifyLiteral(value)}`;
+//	}
 func stringifyAttribute(name string, value interface{}) string {
 	if value == true {
 		return "@" + name
@@ -213,6 +314,21 @@ func stringifyAttribute(name string, value interface{}) string {
 	}
 }
 
+// stringifyPattern converts a pattern to its string representation
+// TypeScript original code:
+//
+//	function stringifyPattern(pattern: Pattern, quoted: boolean) {
+//	  let res = '';
+//	  if (!quoted && typeof pattern[0] === 'string' && /^\s*\./.test(pattern[0])) {
+//	    quoted = true;
+//	  }
+//	  for (const el of pattern) {
+//	    if (typeof el === 'string') res += el.replace(/[\\{}]/g, '\\$&');
+//	    else if (el.type === 'markup') res += stringifyMarkup(el);
+//	    else res += stringifyExpression(el);
+//	  }
+//	  return quoted ? `{{${res}}}` : res;
+//	}
 func stringifyPattern(pattern Pattern, quoted bool) string {
 	var result strings.Builder
 

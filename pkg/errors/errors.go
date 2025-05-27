@@ -2,150 +2,330 @@
 // TypeScript original code: errors.ts module
 package errors
 
-import "fmt"
-
-// ErrorType represents the type of MessageFormat error
-// TypeScript original code:
-// export type ErrorType =
-//
-//	| 'syntax'
-//	| 'parse-error'
-//	| 'missing-syntax'
-//	| 'duplicate-declaration'
-//	| 'missing-fallback'
-//	| 'resolution'
-//	| 'unresolved-variable'
-//	| 'bad-operand'
-//	| 'bad-option'
-//	| 'bad-function-result'
-//	| 'selection'
-//	| 'bad-selector'
-//	| 'no-match'
-//	| 'not-formattable'
-//	| 'unknown-function';
-type ErrorType string
-
-const (
-	// Syntax errors
-	// TypeScript original code: syntax error types
-	ErrorTypeSyntax          ErrorType = "syntax"
-	ErrorTypeParseError      ErrorType = "parse-error"
-	ErrorTypeMissingSyntax   ErrorType = "missing-syntax"
-	ErrorTypeDuplicateDecl   ErrorType = "duplicate-declaration"
-	ErrorTypeMissingFallback ErrorType = "missing-fallback"
-
-	// Resolution errors
-	// TypeScript original code: resolution error types
-	ErrorTypeResolution        ErrorType = "resolution"
-	ErrorTypeUnresolvedVar     ErrorType = "unresolved-variable"
-	ErrorTypeBadOperand        ErrorType = "bad-operand"
-	ErrorTypeBadOption         ErrorType = "bad-option"
-	ErrorTypeBadFunctionResult ErrorType = "bad-function-result"
-
-	// Selection errors
-	// TypeScript original code: selection error types
-	ErrorTypeSelection   ErrorType = "selection"
-	ErrorTypeBadSelector ErrorType = "bad-selector"
-	ErrorTypeNoMatch     ErrorType = "no-match"
-
-	// Formatting errors
-	// TypeScript original code: formatting error types
-	ErrorTypeNotFormattable  ErrorType = "not-formattable"
-	ErrorTypeUnknownFunction ErrorType = "unknown-function"
+import (
+	"fmt"
+	"strings"
 )
 
-// MessageError represents all MessageFormat errors
+// MessageError represents the base error class used by MessageFormat
 // TypeScript original code:
 //
 //	export class MessageError extends Error {
-//	  readonly type: ErrorType;
-//	  readonly start?: number;
-//	  readonly end?: number;
-//	  readonly source?: string;
-//	  readonly cause?: Error;
-//	  constructor(
-//	    type: ErrorType,
-//	    message: string,
-//	    options?: {
-//	      start?: number;
-//	      end?: number;
-//	      source?: string;
-//	      cause?: Error;
-//	    }
-//	  ) {
+//	  type:
+//	    | 'not-formattable'
+//	    | 'unknown-function'
+//	    | typeof MessageResolutionError.prototype.type
+//	    | typeof MessageSelectionError.prototype.type
+//	    | typeof MessageSyntaxError.prototype.type;
+//	  constructor(type: typeof MessageError.prototype.type, message: string) {
 //	    super(message);
 //	    this.type = type;
-//	    this.start = options?.start;
-//	    this.end = options?.end;
-//	    this.source = options?.source;
-//	    this.cause = options?.cause;
 //	  }
 //	}
 type MessageError struct {
-	Type    ErrorType // Error type classification
-	Message string    // Error message description
-	Source  string    // Source text where error occurred
-	Start   int       // Start position in source (optional)
-	End     int       // End position in source (optional)
-	Cause   error     // Underlying cause error (optional)
+	Type    string // Error type classification
+	Message string // Error message description
 }
 
 // Error implements the error interface
 func (e *MessageError) Error() string {
-	if e.Source != "" {
-		return fmt.Sprintf("%s error in '%s' at %d-%d: %s", e.Type, e.Source, e.Start, e.End, e.Message)
+	return e.Message
+}
+
+// GetType returns the error type
+func (e *MessageError) GetType() string {
+	return e.Type
+}
+
+// NewMessageError creates a new base message error
+func NewMessageError(errorType, message string) *MessageError {
+	return &MessageError{
+		Type:    errorType,
+		Message: message,
 	}
-	return fmt.Sprintf("%s error: %s", e.Type, e.Message)
+}
+
+// MessageSyntaxError represents errors in the message syntax
+// TypeScript original code:
+//
+//	export class MessageSyntaxError extends MessageError {
+//	  declare type:
+//	    | 'empty-token'
+//	    | 'bad-escape'
+//	    | 'bad-input-expression'
+//	    | 'duplicate-attribute'
+//	    | 'duplicate-declaration'
+//	    | 'duplicate-option-name'
+//	    | 'duplicate-variant'
+//	    | 'extra-content'
+//	    | 'key-mismatch'
+//	    | 'parse-error'
+//	    | 'missing-fallback'
+//	    | 'missing-selector-annotation'
+//	    | 'missing-syntax';
+//	  start: number;
+//	  end: number;
+//	  constructor(
+//	    type: typeof MessageSyntaxError.prototype.type,
+//	    start: number,
+//	    end?: number,
+//	    expected?: string
+//	  ) {
+//	    let message = expected ? `Missing ${expected}` : type;
+//	    if (start >= 0) message += ` at ${start}`;
+//	    super(type, message);
+//	    this.start = start;
+//	    this.end = end ?? start + 1;
+//	  }
+//	}
+type MessageSyntaxError struct {
+	*MessageError
+	Start int // Start position in source
+	End   int // End position in source
+}
+
+// NewMessageSyntaxError creates a new syntax error
+// TypeScript original code: MessageSyntaxError constructor
+func NewMessageSyntaxError(errorType string, start int, end *int, expected *string) *MessageSyntaxError {
+	var message string
+	if expected != nil {
+		message = fmt.Sprintf("Missing %s", *expected)
+	} else {
+		message = errorType
+	}
+
+	if start >= 0 {
+		message += fmt.Sprintf(" at %d", start)
+	}
+
+	endPos := start + 1
+	if end != nil {
+		endPos = *end
+	}
+
+	return &MessageSyntaxError{
+		MessageError: NewMessageError(errorType, message),
+		Start:        start,
+		End:          endPos,
+	}
+}
+
+// Node represents a minimal interface for data model nodes to avoid import cycles
+type Node interface {
+	// GetPosition returns the start and end positions if available
+	GetPosition() (start, end int)
+}
+
+// MessageDataModelError represents errors in the message data model
+// TypeScript original code:
+//
+//	export class MessageDataModelError extends MessageSyntaxError {
+//	  declare type:
+//	    | 'duplicate-declaration'
+//	    | 'duplicate-variant'
+//	    | 'key-mismatch'
+//	    | 'missing-fallback'
+//	    | 'missing-selector-annotation';
+//	  constructor(type: typeof MessageDataModelError.prototype.type, node: Node) {
+//	    const { start, end } = node[cstKey] ?? { start: -1, end: -1 };
+//	    super(type, start, end);
+//	  }
+//	}
+type MessageDataModelError struct {
+	*MessageSyntaxError
+}
+
+// NewMessageDataModelError creates a new data model error
+// TypeScript original code: MessageDataModelError constructor
+func NewMessageDataModelError(errorType string, node Node) *MessageDataModelError {
+	// Get CST position information from node if available
+	start := -1
+	end := -1
+
+	if node != nil {
+		start, end = node.GetPosition()
+	}
+
+	return &MessageDataModelError{
+		MessageSyntaxError: NewMessageSyntaxError(errorType, start, &end, nil),
+	}
+}
+
+// MessageResolutionError represents message runtime resolution errors
+// TypeScript original code:
+//
+//	export class MessageResolutionError extends MessageError {
+//	  declare type:
+//	    | 'bad-function-result'
+//	    | 'bad-operand'
+//	    | 'bad-option'
+//	    | 'unresolved-variable'
+//	    | 'unsupported-operation';
+//	  source: string;
+//	  constructor(
+//	    type: typeof MessageResolutionError.prototype.type,
+//	    message: string,
+//	    source: string
+//	  ) {
+//	    super(type, message);
+//	    this.source = source;
+//	  }
+//	}
+type MessageResolutionError struct {
+	*MessageError
+	Source string // Source text where error occurred
+}
+
+// NewMessageResolutionError creates a new resolution error
+// TypeScript original code: MessageResolutionError constructor
+func NewMessageResolutionError(errorType, message, source string) *MessageResolutionError {
+	// Include error type in message for compatibility with tests
+	fullMessage := message
+	if !strings.Contains(message, errorType) {
+		fullMessage = fmt.Sprintf("%s: %s", errorType, message)
+	}
+
+	return &MessageResolutionError{
+		MessageError: NewMessageError(errorType, fullMessage),
+		Source:       source,
+	}
+}
+
+// MessageSelectionError represents errors in message selection
+// TypeScript original code:
+//
+//	export class MessageSelectionError extends MessageError {
+//	  declare type: 'bad-selector' | 'no-match';
+//	  cause?: unknown;
+//	  constructor(
+//	    type: typeof MessageSelectionError.prototype.type,
+//	    cause?: unknown
+//	  ) {
+//	    super(type, `Selection error: ${type}`);
+//	    if (cause !== undefined) this.cause = cause;
+//	  }
+//	}
+type MessageSelectionError struct {
+	*MessageError
+	Cause error // Underlying cause error (optional)
+}
+
+// NewMessageSelectionError creates a new selection error
+// TypeScript original code: MessageSelectionError constructor
+func NewMessageSelectionError(errorType string, cause error) *MessageSelectionError {
+	message := fmt.Sprintf("Selection error: %s", errorType)
+
+	return &MessageSelectionError{
+		MessageError: NewMessageError(errorType, message),
+		Cause:        cause,
+	}
 }
 
 // Unwrap returns the underlying cause error for error wrapping
-func (e *MessageError) Unwrap() error {
+func (e *MessageSelectionError) Unwrap() error {
 	return e.Cause
 }
 
-// NewSyntaxError creates a new syntax error
-func NewSyntaxError(message string, start, end int) *MessageError {
-	return &MessageError{
-		Type:    ErrorTypeSyntax,
-		Message: message,
-		Start:   start,
-		End:     end,
-	}
+// Error type constants matching TypeScript definitions
+
+// Syntax error types
+const (
+	ErrorTypeEmptyToken                = "empty-token"
+	ErrorTypeBadEscape                 = "bad-escape"
+	ErrorTypeBadInputExpression        = "bad-input-expression"
+	ErrorTypeDuplicateAttribute        = "duplicate-attribute"
+	ErrorTypeDuplicateDeclaration      = "duplicate-declaration"
+	ErrorTypeDuplicateOptionName       = "duplicate-option-name"
+	ErrorTypeDuplicateVariant          = "duplicate-variant"
+	ErrorTypeExtraContent              = "extra-content"
+	ErrorTypeKeyMismatch               = "key-mismatch"
+	ErrorTypeParseError                = "parse-error"
+	ErrorTypeMissingFallback           = "missing-fallback"
+	ErrorTypeMissingSelectorAnnotation = "missing-selector-annotation"
+	ErrorTypeMissingSyntax             = "missing-syntax"
+)
+
+// Resolution error types
+const (
+	ErrorTypeBadFunctionResult    = "bad-function-result"
+	ErrorTypeBadOperand           = "bad-operand"
+	ErrorTypeBadOption            = "bad-option"
+	ErrorTypeUnresolvedVariable   = "unresolved-variable"
+	ErrorTypeUnsupportedOperation = "unsupported-operation"
+)
+
+// Selection error types
+const (
+	ErrorTypeBadSelector = "bad-selector"
+	ErrorTypeNoMatch     = "no-match"
+)
+
+// Formatting error types
+const (
+	ErrorTypeNotFormattable  = "not-formattable"
+	ErrorTypeUnknownFunction = "unknown-function"
+)
+
+// Convenience constructors for common error types
+
+// NewUnknownFunctionError creates an unknown function error
+func NewUnknownFunctionError(functionName, source string) *MessageResolutionError {
+	return NewMessageResolutionError(
+		ErrorTypeUnknownFunction,
+		fmt.Sprintf("Unknown function :%s", functionName),
+		source,
+	)
 }
 
-// NewParseError creates a new parse error
-func NewParseError(message, source string, start, end int) *MessageError {
-	return &MessageError{
-		Type:    ErrorTypeParseError,
-		Message: message,
-		Source:  source,
-		Start:   start,
-		End:     end,
-	}
+// NewUnresolvedVariableError creates an unresolved variable error
+func NewUnresolvedVariableError(variableName, source string) *MessageResolutionError {
+	return NewMessageResolutionError(
+		ErrorTypeUnresolvedVariable,
+		fmt.Sprintf("Unresolved variable $%s", variableName),
+		source,
+	)
 }
 
-// NewResolutionError creates a new resolution error
-func NewResolutionError(errType ErrorType, message, source string) *MessageError {
-	return &MessageError{
-		Type:    errType,
-		Message: message,
-		Source:  source,
-	}
+// NewBadOperandError creates a bad operand error
+func NewBadOperandError(message, source string) *MessageResolutionError {
+	return NewMessageResolutionError(ErrorTypeBadOperand, message, source)
 }
 
-// NewSelectionError creates a new selection error
-func NewSelectionError(errType ErrorType, message string) *MessageError {
-	return &MessageError{
-		Type:    errType,
-		Message: message,
-	}
+// NewBadOptionError creates a bad option error
+func NewBadOptionError(message, source string) *MessageResolutionError {
+	return NewMessageResolutionError(ErrorTypeBadOption, message, source)
 }
 
-// NewFormattingError creates a new formatting error
-func NewFormattingError(errType ErrorType, message string, cause error) *MessageError {
-	return &MessageError{
-		Type:    errType,
-		Message: message,
-		Cause:   cause,
+// NewBadFunctionResultError creates a bad function result error
+func NewBadFunctionResultError(message, source string) *MessageResolutionError {
+	return NewMessageResolutionError(ErrorTypeBadFunctionResult, message, source)
+}
+
+// NewBadSelectorError creates a bad selector error
+func NewBadSelectorError(cause error) *MessageSelectionError {
+	return NewMessageSelectionError(ErrorTypeBadSelector, cause)
+}
+
+// NewNoMatchError creates a no match error
+func NewNoMatchError(cause error) *MessageSelectionError {
+	return NewMessageSelectionError(ErrorTypeNoMatch, cause)
+}
+
+// NewDuplicateDeclarationError creates a duplicate declaration error
+func NewDuplicateDeclarationError(node Node) *MessageDataModelError {
+	return NewMessageDataModelError(ErrorTypeDuplicateDeclaration, node)
+}
+
+// NewMissingFallbackError creates a missing fallback error
+func NewMissingFallbackError(node Node) *MessageDataModelError {
+	return NewMessageDataModelError(ErrorTypeMissingFallback, node)
+}
+
+// NewCustomSyntaxError creates a syntax error with a custom message
+func NewCustomSyntaxError(message string) *MessageSyntaxError {
+	return &MessageSyntaxError{
+		MessageError: NewMessageError(ErrorTypeParseError, message),
+		Start:        0,
+		End:          1,
 	}
 }

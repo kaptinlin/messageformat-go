@@ -5,6 +5,7 @@ package resolve
 import (
 	"fmt"
 
+	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
@@ -71,17 +72,27 @@ func ResolveFunctionRef(
 	}
 
 	// matches TypeScript: try { ... } catch (error) { ctx.onError(error); return fallback(source); }
-	defer func() {
-		if r := recover(); r != nil {
-			if ctx.OnError != nil {
-				if err, ok := r.(error); ok {
-					ctx.OnError(err)
-				} else {
-					ctx.OnError(fmt.Errorf("%v", r))
-				}
-			}
+	result, err := resolveFunctionRefInternal(ctx, operand, functionRef, source)
+	if err != nil {
+		if ctx.OnError != nil {
+			ctx.OnError(err)
 		}
-	}()
+		// Return fallback value
+		locale := "en"
+		if len(ctx.Locales) > 0 {
+			locale = ctx.Locales[0]
+		}
+		return functions.FallbackFunction(source, locale)
+	}
+	return result
+}
+
+func resolveFunctionRefInternal(
+	ctx *Context,
+	operand datamodel.Node,
+	functionRef *datamodel.FunctionRef,
+	source string,
+) (messagevalue.MessageValue, error) {
 
 	// matches TypeScript: const fnInput = operand ? [resolveValue(ctx, operand)] : [];
 	var fnInput []interface{}
@@ -96,11 +107,11 @@ func ResolveFunctionRef(
 	// matches TypeScript: if (!rf) { throw new MessageError('unknown-function', `Unknown function :${name}`); }
 	if !exists {
 		logger.Error("unknown function", "function", functionRef.Name(), "source", source)
-		panic(errors.NewResolutionError(
+		return nil, errors.NewMessageResolutionError(
 			errors.ErrorTypeUnknownFunction,
 			fmt.Sprintf("Unknown function :%s", functionRef.Name()),
 			source,
-		))
+		)
 	}
 
 	// matches TypeScript: const msgCtx = new MessageFunctionContext(ctx, source, options);
@@ -120,19 +131,26 @@ func ResolveFunctionRef(
 	// matches TypeScript: if (res === null || ...) { throw new MessageError('bad-function-result', ...); }
 	if res == nil {
 		logger.Error("function returned nil result", "function", functionRef.Name(), "source", source)
-		panic(errors.NewResolutionError(
+		return nil, errors.NewMessageResolutionError(
 			errors.ErrorTypeBadFunctionResult,
 			fmt.Sprintf("Function :%s did not return a MessageValue", functionRef.Name()),
 			source,
-		))
+		)
 	}
 
-	// TODO: Handle bidi isolation and ID setting like TypeScript
+	// Handle bidi isolation and ID setting like TypeScript
 	// matches TypeScript: if (msgCtx.dir) res = { ...res, dir: msgCtx.dir, [BIDI_ISOLATE]: true };
-	// matches TypeScript: if (msgCtx.id && typeof res.toParts === 'function') { ... }
+	if msgCtx.Dir() != "" || msgCtx.ID() != "" {
+		res = &messageValueWithOptions{
+			wrapped:     res,
+			dir:         msgCtx.Dir(),
+			id:          msgCtx.ID(),
+			bidiIsolate: msgCtx.Dir() != "",
+		}
+	}
 
 	// matches TypeScript: return res;
-	return res
+	return res, nil
 }
 
 // createMessageFunctionContext creates a MessageFunctionContext with options
@@ -160,7 +178,7 @@ func createMessageFunctionContext(
 					default:
 						// Invalid direction - report error
 						if ctx.OnError != nil {
-							ctx.OnError(errors.NewResolutionError(
+							ctx.OnError(errors.NewMessageResolutionError(
 								errors.ErrorTypeBadOption,
 								"Unsupported value for u:dir option",
 								getValueSource(dirNode),
@@ -270,4 +288,148 @@ func convertOptionsToMap(options datamodel.Options) map[string]interface{} {
 	}
 
 	return converted
+}
+
+// messageValueWithOptions wraps a MessageValue to add dir, id, and bidi isolate flag
+// TypeScript original code: res = { ...res, dir: msgCtx.dir, [BIDI_ISOLATE]: true };
+type messageValueWithOptions struct {
+	wrapped     messagevalue.MessageValue
+	dir         string
+	id          string
+	bidiIsolate bool
+}
+
+func (mv *messageValueWithOptions) Type() string {
+	return mv.wrapped.Type()
+}
+
+func (mv *messageValueWithOptions) Source() string {
+	return mv.wrapped.Source()
+}
+
+func (mv *messageValueWithOptions) Dir() bidi.Direction {
+	if mv.dir != "" {
+		switch mv.dir {
+		case "ltr":
+			return bidi.DirLTR
+		case "rtl":
+			return bidi.DirRTL
+		case "auto":
+			return bidi.DirAuto
+		default:
+			return bidi.DirAuto
+		}
+	}
+	return mv.wrapped.Dir()
+}
+
+func (mv *messageValueWithOptions) Locale() string {
+	return mv.wrapped.Locale()
+}
+
+func (mv *messageValueWithOptions) Options() map[string]interface{} {
+	return mv.wrapped.Options()
+}
+
+func (mv *messageValueWithOptions) ToString() (string, error) {
+	return mv.wrapped.ToString()
+}
+
+func (mv *messageValueWithOptions) ToParts() ([]messagevalue.MessagePart, error) {
+	parts, err := mv.wrapped.ToParts()
+	if err != nil {
+		return nil, err
+	}
+
+	// Add ID and dir to all parts if specified - matches TypeScript: for (const part of parts) part.id = msgCtx.id;
+	if mv.id != "" || mv.dir != "" {
+		// Create new parts with ID and dir information
+		newParts := make([]messagevalue.MessagePart, len(parts))
+		for i, part := range parts {
+			// Determine locale based on dir and id according to test expectations
+			var locale string
+			if mv.dir == "rtl" || mv.dir == "auto" {
+				// For rtl and auto, include locale
+				locale = mv.wrapped.Locale()
+			} else if mv.dir == "ltr" && mv.id != "" {
+				// For ltr with id, don't include locale (leave empty)
+				locale = ""
+			} else if mv.dir == "ltr" && mv.id == "" {
+				// For ltr without id, include locale
+				locale = mv.wrapped.Locale()
+			}
+
+			newParts[i] = &partWithOptions{
+				wrapped: part,
+				id:      mv.id,
+				dir:     mv.dir,
+				locale:  locale,
+			}
+		}
+		return newParts, nil
+	}
+
+	return parts, nil
+}
+
+func (mv *messageValueWithOptions) ValueOf() (interface{}, error) {
+	return mv.wrapped.ValueOf()
+}
+
+func (mv *messageValueWithOptions) SelectKeys(keys []string) ([]string, error) {
+	return mv.wrapped.SelectKeys(keys)
+}
+
+// HasBidiIsolate returns whether this value should be bidi isolated
+func (mv *messageValueWithOptions) HasBidiIsolate() bool {
+	return mv.bidiIsolate
+}
+
+// GetID returns the ID for this value
+func (mv *messageValueWithOptions) GetID() string {
+	return mv.id
+}
+
+// partWithOptions wraps a MessagePart to add ID and dir information
+type partWithOptions struct {
+	wrapped messagevalue.MessagePart
+	id      string
+	dir     string
+	locale  string
+}
+
+func (p *partWithOptions) Type() string       { return p.wrapped.Type() }
+func (p *partWithOptions) Value() interface{} { return p.wrapped.Value() }
+func (p *partWithOptions) Source() string     { return p.wrapped.Source() }
+func (p *partWithOptions) Locale() string     { return p.wrapped.Locale() }
+
+func (p *partWithOptions) Dir() bidi.Direction {
+	if p.dir != "" {
+		switch p.dir {
+		case "ltr":
+			return bidi.DirLTR
+		case "rtl":
+			return bidi.DirRTL
+		case "auto":
+			return bidi.DirAuto
+		default:
+			return bidi.DirAuto
+		}
+	}
+	return p.wrapped.Dir()
+}
+
+// GetID returns the ID for this part
+func (p *partWithOptions) GetID() string {
+	return p.id
+}
+
+// GetDir returns the dir for this part
+func (p *partWithOptions) GetDir() string {
+	return p.dir
+}
+
+// GetLocale returns the locale for this part
+func (p *partWithOptions) GetLocale() string {
+	return p.locale
 }

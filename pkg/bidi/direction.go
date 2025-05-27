@@ -13,9 +13,9 @@ import (
 type Direction string
 
 const (
-	DirectionLTR  Direction = "ltr"  // Left-to-right text direction
-	DirectionRTL  Direction = "rtl"  // Right-to-left text direction
-	DirectionAuto Direction = "auto" // Automatic direction detection
+	DirLTR  Direction = "ltr"  // Left-to-right text direction
+	DirRTL  Direction = "rtl"  // Right-to-left text direction
+	DirAuto Direction = "auto" // Automatic direction detection
 )
 
 // Unicode bidirectional control characters
@@ -47,13 +47,13 @@ const (
 func GetDirection(text string) Direction {
 	for _, r := range text {
 		if isRTLChar(r) {
-			return DirectionRTL
+			return DirRTL
 		}
 		if isLTRChar(r) {
-			return DirectionLTR
+			return DirLTR
 		}
 	}
-	return DirectionAuto
+	return DirAuto
 }
 
 // GetLocaleDirection determines text direction from locale
@@ -68,7 +68,7 @@ func GetLocaleDirection(locale string) Direction {
 	// Extract language code from locale (e.g., "en-US" -> "en")
 	parts := strings.Split(locale, "-")
 	if len(parts) == 0 {
-		return DirectionLTR
+		return DirLTR
 	}
 
 	lang := strings.ToLower(parts[0])
@@ -83,10 +83,10 @@ func GetLocaleDirection(locale string) Direction {
 	}
 
 	if rtlLanguages[lang] {
-		return DirectionRTL
+		return DirRTL
 	}
 
-	return DirectionLTR
+	return DirLTR
 }
 
 // WrapWithIsolation wraps text with appropriate isolation characters
@@ -106,11 +106,11 @@ func GetLocaleDirection(locale string) Direction {
 //	}
 func WrapWithIsolation(text string, dir Direction) string {
 	switch dir {
-	case DirectionLTR:
+	case DirLTR:
 		return string(LRI) + text + string(PDI)
-	case DirectionRTL:
+	case DirRTL:
 		return string(RLI) + text + string(PDI)
-	case DirectionAuto:
+	case DirAuto:
 		return string(FSI) + text + string(PDI)
 	default:
 		return text

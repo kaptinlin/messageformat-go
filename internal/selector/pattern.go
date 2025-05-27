@@ -105,9 +105,9 @@ func SelectPattern(context *resolve.Context, message datamodel.Message) datamode
 		// matches TypeScript: default: context.onError(new MessageSelectionError('bad-selector')); return [];
 		logger.Error("unsupported message type for pattern selection", "type", message.Type())
 		if context.OnError != nil {
-			context.OnError(errors.NewSelectionError(
+			context.OnError(errors.NewMessageSelectionError(
 				errors.ErrorTypeBadSelector,
-				"unsupported message type",
+				nil,
 			))
 		}
 		return datamodel.NewPattern(nil)
@@ -169,9 +169,9 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 		} else {
 			// matches TypeScript: context.onError(new MessageSelectionError('bad-selector')); selectKey = () => null;
 			if context.OnError != nil {
-				context.OnError(errors.NewSelectionError(
+				context.OnError(errors.NewMessageSelectionError(
 					errors.ErrorTypeBadSelector,
-					"selector does not support selection",
+					nil,
 				))
 			}
 			selectKeyFunc = func(map[string]bool) *string { return nil }
@@ -218,9 +218,9 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 				if r := recover(); r != nil {
 					// matches TypeScript: context.onError(new MessageSelectionError('bad-selector', error));
 					if context.OnError != nil {
-						context.OnError(errors.NewSelectionError(
+						context.OnError(errors.NewMessageSelectionError(
 							errors.ErrorTypeBadSelector,
-							"error in selector function",
+							nil,
 						))
 					}
 					// matches TypeScript: sc.selectKey = () => null; sc.best = null;
@@ -299,9 +299,9 @@ loopEnd:
 
 	// matches TypeScript: if (!res) { context.onError(new MessageSelectionError('no-match')); return []; }
 	if context.OnError != nil {
-		context.OnError(errors.NewSelectionError(
+		context.OnError(errors.NewMessageSelectionError(
 			errors.ErrorTypeNoMatch,
-			"no matching variant found",
+			nil,
 		))
 	}
 

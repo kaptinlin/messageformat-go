@@ -43,7 +43,8 @@ func FromCST(msg cst.Message) (Message, error) {
 	if len(msg.Errors()) > 0 {
 		// Return the first error
 		firstError := msg.Errors()[0]
-		return nil, errors.NewSyntaxError(firstError.Message, firstError.Start, firstError.End)
+		end := firstError.End
+		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, firstError.Start, &end, nil)
 	}
 
 	// Convert declarations
@@ -115,7 +116,8 @@ func FromCST(msg cst.Message) (Message, error) {
 		return NewPatternMessage(declarations, *convertedPattern, ""), nil
 
 	default:
-		return nil, errors.NewSyntaxError("unknown message type", 0, 0)
+		end := 1
+		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
 	}
 }
 
@@ -132,12 +134,14 @@ func asDeclaration(decl cst.Declaration) (Declaration, error) {
 		// Type assert to Expression
 		expression, ok := expr.(*Expression)
 		if !ok {
-			return nil, errors.NewSyntaxError("input declaration value must be expression", d.Start(), d.End())
+			end := d.End()
+			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, d.Start(), &end, nil)
 		}
 
 		// Validate that the expression has a variable argument
 		if expression.Arg() == nil {
-			return nil, errors.NewSyntaxError("input declaration must have variable argument", d.Start(), d.End())
+			end := d.End()
+			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, d.Start(), &end, nil)
 		}
 
 		// Get the variable name from the argument
@@ -145,7 +149,8 @@ func asDeclaration(decl cst.Declaration) (Declaration, error) {
 		if varRef, ok := expression.Arg().(*VariableRef); ok {
 			varName = varRef.Name()
 		} else {
-			return nil, errors.NewSyntaxError("input declaration argument must be variable", d.Start(), d.End())
+			end := d.End()
+			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, d.Start(), &end, nil)
 		}
 
 		return NewInputDeclaration(varName, ConvertExpressionToVariableRefExpression(expression)), nil
@@ -166,13 +171,15 @@ func asDeclaration(decl cst.Declaration) (Declaration, error) {
 		// Type assert to Expression
 		expression, ok := expr.(*Expression)
 		if !ok {
-			return nil, errors.NewSyntaxError("local declaration value must be expression", d.Start(), d.End())
+			end := d.End()
+			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, d.Start(), &end, nil)
 		}
 
 		return NewLocalDeclaration(target.Name(), expression), nil
 
 	default:
-		return nil, errors.NewSyntaxError("unknown declaration type", decl.Start(), decl.End())
+		end := decl.End()
+		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, decl.Start(), &end, nil)
 	}
 }
 
@@ -192,7 +199,8 @@ func asPattern(pattern cst.Pattern) (*Pattern, error) {
 			}
 			elements[i] = converted
 		default:
-			return nil, errors.NewSyntaxError("unknown pattern element type", elem.Start(), elem.End())
+			end := elem.End()
+			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, elem.Start(), &end, nil)
 		}
 	}
 
@@ -229,7 +237,8 @@ func asExpression(exp cst.Node, allowMarkup bool) (PatternElement, error) {
 				}
 				functionRef = converted
 			} else {
-				return nil, errors.NewSyntaxError("invalid function reference", e.Start(), e.End())
+				end := e.End()
+				return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, e.Start(), &end, nil)
 			}
 		}
 
@@ -254,10 +263,12 @@ func asExpression(exp cst.Node, allowMarkup bool) (PatternElement, error) {
 		return NewExpression(arg, functionRef, ConvertMapToAttributes(attributes)), nil
 
 	case *cst.Junk:
-		return nil, errors.NewSyntaxError("junk in expression", e.Start(), e.End())
+		end := e.End()
+		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, e.Start(), &end, nil)
 
 	default:
-		return nil, errors.NewSyntaxError("unknown expression type", exp.Start(), exp.End())
+		end := exp.End()
+		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, exp.Start(), &end, nil)
 	}
 }
 
@@ -265,7 +276,8 @@ func asExpression(exp cst.Node, allowMarkup bool) (PatternElement, error) {
 func asMarkup(exp *cst.Expression) (*Markup, error) {
 	markup := exp.Markup()
 	if markup == nil {
-		return nil, errors.NewSyntaxError("no markup in expression", exp.Start(), exp.End())
+		end := exp.End()
+		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, exp.Start(), &end, nil)
 	}
 
 	name := asName(markup.Name())
@@ -358,7 +370,8 @@ func asVariant(variant cst.Variant) (*Variant, error) {
 			}
 			keys[i] = literal
 		default:
-			return nil, errors.NewSyntaxError("unknown key type", key.Start(), key.End())
+			end := key.End()
+			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, key.Start(), &end, nil)
 		}
 	}
 
@@ -379,7 +392,8 @@ func asValue(value cst.Node) (interface{}, error) {
 	case *cst.VariableRef:
 		return asVariableRef(v)
 	default:
-		return nil, errors.NewSyntaxError("unknown value type", value.Start(), value.End())
+		end := value.End()
+		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, value.Start(), &end, nil)
 	}
 }
 
@@ -394,7 +408,8 @@ func asVariableRef(varRef cst.Node) (*VariableRef, error) {
 	case *cst.VariableRef:
 		return NewVariableRef(v.Name()), nil
 	default:
-		return nil, errors.NewSyntaxError("expected variable reference", varRef.Start(), varRef.End())
+		end := varRef.End()
+		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, varRef.Start(), &end, nil)
 	}
 }
 

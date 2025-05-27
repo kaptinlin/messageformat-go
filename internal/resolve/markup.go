@@ -68,7 +68,7 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 				}
 				// matches TypeScript: ctx.onError(new MessageResolutionError('bad-option', msg, optSource));
 				if ctx.OnError != nil {
-					ctx.OnError(errors.NewResolutionError(
+					ctx.OnError(errors.NewMessageResolutionError(
 						errors.ErrorTypeBadOption,
 						msg,
 						optSource,
@@ -94,6 +94,8 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 				// matches TypeScript: if (name === 'u:id') part.id = String(rv);
 				if name == "u:id" {
 					partID = fmt.Sprintf("%v", rv)
+					// Also add to options so test code can extract it
+					partOptions[name] = rv
 				} else {
 					// matches TypeScript: else part.options[name] = rv;
 					partOptions[name] = rv

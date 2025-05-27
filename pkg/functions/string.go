@@ -60,13 +60,13 @@ func StringFunction(
 	ctxDir := ctx.Dir()
 	switch ctxDir {
 	case "ltr":
-		dir = bidi.DirectionLTR
+		dir = bidi.DirLTR
 	case "rtl":
-		dir = bidi.DirectionRTL
+		dir = bidi.DirRTL
 	case "auto":
-		dir = bidi.DirectionAuto
+		dir = bidi.DirAuto
 	default:
-		dir = bidi.DirectionAuto
+		dir = bidi.DirAuto
 	}
 
 	return messagevalue.NewStringValueWithDir(stringValue, locale, ctx.Source(), dir)

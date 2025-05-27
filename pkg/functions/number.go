@@ -5,19 +5,21 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"strconv"
 
+	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
-// NumericInput represents parsed numeric input
+// NumericInput represents parsed numeric input with value and options
+// TypeScript original code:
+// { value: number | bigint; options: unknown }
 type NumericInput struct {
 	Value   interface{}
 	Options map[string]interface{}
 }
 
-// readNumericOperand parses numeric operand
+// readNumericOperand parses numeric operand and extracts value and options
 // TypeScript original code:
 // export function readNumericOperand(
 //
@@ -49,24 +51,48 @@ type NumericInput struct {
 func readNumericOperand(value interface{}, source string) (*NumericInput, error) {
 	var options map[string]interface{}
 
-	// Check if value has valueOf method and options
-	if obj, ok := value.(map[string]interface{}); ok {
-		if valueOf, hasValueOf := obj["valueOf"]; hasValueOf {
-			if optionsVal, hasOptions := obj["options"]; hasOptions {
-				if optMap, ok := optionsVal.(map[string]interface{}); ok {
-					options = optMap
+	// Handle object types with valueOf method and options - matches TypeScript logic
+	// TypeScript: if (typeof value === 'object') { const valueOf = value?.valueOf; ... }
+	if value != nil {
+		// Check if it's a MessageValue with valueOf method
+		if mv, ok := value.(messagevalue.MessageValue); ok {
+			// Get the underlying value from MessageValue
+			rawValue, err := mv.ValueOf()
+			if err != nil {
+				return nil, errors.NewMessageResolutionError(
+					errors.ErrorTypeBadOperand,
+					"Input is not numeric",
+					source,
+				)
+			}
+			value = rawValue
+
+			// If it's a NumberValue, extract its options
+			if nv, ok := mv.(*messagevalue.NumberValue); ok {
+				if nvOptions := nv.Options(); nvOptions != nil {
+					options = nvOptions
 				}
 			}
-			value = valueOf
+		} else if obj, ok := value.(map[string]interface{}); ok {
+			// Check if value has valueOf method and options
+			if valueOf, hasValueOf := obj["valueOf"]; hasValueOf {
+				if optionsVal, hasOptions := obj["options"]; hasOptions {
+					if optMap, ok := optionsVal.(map[string]interface{}); ok {
+						options = optMap
+					}
+				}
+				value = valueOf
+			}
 		}
 	}
 
-	// Parse string values as JSON numbers
+	// Parse string values as JSON numbers - matches TypeScript logic
+	// TypeScript: if (typeof value === 'string') { try { value = JSON.parse(value); } catch { } }
 	if str, ok := value.(string); ok {
 		if parsed, err := parseJSONNumber(str); err == nil {
 			value = parsed
 		} else {
-			return nil, errors.NewResolutionError(
+			return nil, errors.NewMessageResolutionError(
 				errors.ErrorTypeBadOperand,
 				"Input is not numeric",
 				source,
@@ -74,14 +100,15 @@ func readNumericOperand(value interface{}, source string) (*NumericInput, error)
 		}
 	}
 
-	// Validate numeric type
+	// Validate numeric type - matches TypeScript logic
+	// TypeScript: if (typeof value !== 'bigint' && typeof value !== 'number') { throw ... }
 	switch value.(type) {
 	case int, int8, int16, int32, int64:
 	case uint, uint8, uint16, uint32, uint64:
 	case float32, float64:
 	case *big.Int, *big.Float:
 	default:
-		return nil, errors.NewResolutionError(
+		return nil, errors.NewMessageResolutionError(
 			errors.ErrorTypeBadOperand,
 			"Input is not numeric",
 			source,
@@ -94,7 +121,7 @@ func readNumericOperand(value interface{}, source string) (*NumericInput, error)
 	}, nil
 }
 
-// NumberFunction implements the :number function
+// NumberFunction implements the :number function for decimal number formatting
 // TypeScript original code:
 // export function number(
 //
@@ -109,7 +136,31 @@ func readNumericOperand(value interface{}, source string) (*NumericInput, error)
 //	    localeMatcher: ctx.localeMatcher,
 //	    style: 'decimal'
 //	  } as const);
-//	  // ... option processing ...
+//	  for (const [name, optval] of Object.entries(exprOpt)) {
+//	    if (optval === undefined) continue;
+//	    try {
+//	      switch (name) {
+//	        case 'minimumIntegerDigits':
+//	        case 'minimumFractionDigits':
+//	        case 'maximumFractionDigits':
+//	        case 'minimumSignificantDigits':
+//	        case 'maximumSignificantDigits':
+//	        case 'roundingIncrement':
+//	          options[name] = asPositiveInteger(optval);
+//	          break;
+//	        case 'roundingMode':
+//	        case 'roundingPriority':
+//	        case 'select':
+//	        case 'signDisplay':
+//	        case 'trailingZeroDisplay':
+//	        case 'useGrouping':
+//	          options[name] = asString(optval);
+//	      }
+//	    } catch {
+//	      const msg = `Value ${optval} is not valid for :number option ${name}`;
+//	      ctx.onError(new MessageResolutionError('bad-option', msg, ctx.source));
+//	    }
+//	  }
 //	  return getMessageNumber(ctx, value, options, true);
 //	}
 func NumberFunction(
@@ -117,20 +168,50 @@ func NumberFunction(
 	options map[string]interface{},
 	operand interface{},
 ) messagevalue.MessageValue {
-	// Read numeric operand
+	// Read numeric operand - matches TypeScript: const input = readNumericOperand(operand, ctx.source);
 	numInput, err := readNumericOperand(operand, ctx.Source())
 	if err != nil {
 		ctx.OnError(err)
 		return messagevalue.NewFallbackValue(ctx.Source(), getFirstLocale(ctx.Locales()))
 	}
 
-	// Merge options from operand and expression
-	mergedOptions := mergeNumberOptions(numInput.Options, options, ctx.LocaleMatcher())
+	// Start with operand options and set defaults - matches TypeScript Object.assign
+	mergedOptions := mergeNumberOptions(numInput.Options, nil, ctx.LocaleMatcher())
+	mergedOptions["style"] = "decimal"
+
+	// Process expression options - matches TypeScript for loop
+	for name, optval := range options {
+		if optval == nil {
+			continue // matches TypeScript: if (optval === undefined) continue;
+		}
+
+		// Process options with validation - matches TypeScript try/catch blocks
+		switch name {
+		case "minimumIntegerDigits", "minimumFractionDigits", "maximumFractionDigits",
+			"minimumSignificantDigits", "maximumSignificantDigits", "roundingIncrement":
+			if intVal, err := asPositiveInteger(optval); err == nil {
+				mergedOptions[name] = intVal
+			} else {
+				msg := fmt.Sprintf("Value %v is not valid for :number option %s", optval, name)
+				ctx.OnError(errors.NewBadOptionError(msg, ctx.Source()))
+			}
+		case "roundingMode", "roundingPriority", "select", "signDisplay",
+			"trailingZeroDisplay", "useGrouping":
+			if strVal, err := asString(optval); err == nil {
+				mergedOptions[name] = strVal
+			} else {
+				msg := fmt.Sprintf("Value %v is not valid for :number option %s", optval, name)
+				ctx.OnError(errors.NewBadOptionError(msg, ctx.Source()))
+			}
+		default:
+			// Unknown option - silently ignore to match TypeScript behavior
+		}
+	}
 
 	return getMessageNumber(ctx, numInput.Value, mergedOptions, true)
 }
 
-// IntegerFunction implements the :integer function
+// IntegerFunction implements the :integer function for integer number formatting
 // TypeScript original code:
 // export function integer(
 //
@@ -147,7 +228,24 @@ func NumberFunction(
 //	    localeMatcher: ctx.localeMatcher,
 //	    maximumFractionDigits: 0
 //	  } as const);
-//	  // ... option processing ...
+//	  for (const [name, optval] of Object.entries(exprOpt)) {
+//	    if (optval === undefined) continue;
+//	    try {
+//	      switch (name) {
+//	        case 'minimumIntegerDigits':
+//	        case 'maximumSignificantDigits':
+//	          options[name] = asPositiveInteger(optval);
+//	          break;
+//	        case 'select':
+//	        case 'signDisplay':
+//	        case 'useGrouping':
+//	          options[name] = asString(optval);
+//	      }
+//	    } catch {
+//	      const msg = `Value ${optval} is not valid for :integer option ${name}`;
+//	      ctx.onError(new MessageResolutionError('bad-option', msg, ctx.source));
+//	    }
+//	  }
 //	  return getMessageNumber(ctx, value, options, true);
 //	}
 func IntegerFunction(
@@ -155,14 +253,14 @@ func IntegerFunction(
 	options map[string]interface{},
 	operand interface{},
 ) messagevalue.MessageValue {
-	// Read numeric operand
+	// Read numeric operand - matches TypeScript: const input = readNumericOperand(operand, ctx.source);
 	numInput, err := readNumericOperand(operand, ctx.Source())
 	if err != nil {
 		ctx.OnError(err)
 		return messagevalue.NewFallbackValue(ctx.Source(), getFirstLocale(ctx.Locales()))
 	}
 
-	// Round to integer
+	// Round to integer - matches TypeScript: Number.isFinite(input.value) ? Math.round(input.value as number) : input.value;
 	var value interface{}
 	switch v := numInput.Value.(type) {
 	case float64:
@@ -188,119 +286,158 @@ func IntegerFunction(
 		value = numInput.Value
 	}
 
-	// Merge options
-	mergedOptions := mergeNumberOptions(numInput.Options, options, ctx.LocaleMatcher())
+	// Start with operand options and set defaults - matches TypeScript Object.assign
+	mergedOptions := mergeNumberOptions(numInput.Options, nil, ctx.LocaleMatcher())
 	mergedOptions["maximumFractionDigits"] = 0
+
+	// Process expression options - matches TypeScript for loop
+	for name, optval := range options {
+		if optval == nil {
+			continue // matches TypeScript: if (optval === undefined) continue;
+		}
+
+		// Process options with validation - matches TypeScript try/catch blocks
+		switch name {
+		case "minimumIntegerDigits", "maximumSignificantDigits":
+			if intVal, err := asPositiveInteger(optval); err == nil {
+				mergedOptions[name] = intVal
+			} else {
+				msg := fmt.Sprintf("Value %v is not valid for :integer option %s", optval, name)
+				ctx.OnError(errors.NewBadOptionError(msg, ctx.Source()))
+			}
+		case "select", "signDisplay", "useGrouping":
+			if strVal, err := asString(optval); err == nil {
+				mergedOptions[name] = strVal
+			} else {
+				msg := fmt.Sprintf("Value %v is not valid for :integer option %s", optval, name)
+				ctx.OnError(errors.NewBadOptionError(msg, ctx.Source()))
+			}
+		default:
+			// Unknown option - silently ignore to match TypeScript behavior
+		}
+	}
 
 	return getMessageNumber(ctx, value, mergedOptions, true)
 }
 
-// getMessageNumber creates a MessageNumber value
+// getMessageNumber creates a MessageNumber value with formatting options
+// TypeScript original code:
+// export function getMessageNumber(
+//
+//	ctx: MessageFunctionContext,
+//	value: number | bigint,
+//	options: MessageNumberOptions,
+//	canSelect: boolean
+//
+// ): MessageNumber
 func getMessageNumber(
 	ctx MessageFunctionContext,
 	value interface{},
 	options map[string]interface{},
 	canSelect bool,
 ) messagevalue.MessageValue {
-	// Validate select option
+	// Validate select option - matches TypeScript select validation logic
 	if canSelect {
 		if selectVal, hasSelect := options["select"]; hasSelect {
+			// Check if select option is set by literal value
 			if !ctx.LiteralOptionKeys()["select"] {
-				ctx.OnError(errors.NewResolutionError(
-					errors.ErrorTypeBadOption,
-					"The option select may only be set by a literal value",
-					ctx.Source(),
-				))
+				ctx.OnError(errors.NewBadOptionError("The option select may only be set by a literal value", ctx.Source()))
 				canSelect = false
 			} else {
-				// Validate select value
+				// Validate select value - matches TypeScript select value validation
 				if selectStr, ok := selectVal.(string); ok {
 					if selectStr != "exact" && selectStr != "cardinal" && selectStr != "ordinal" {
-						ctx.OnError(errors.NewResolutionError(
-							errors.ErrorTypeBadOption,
-							fmt.Sprintf("invalid select value: %s", selectStr),
-							ctx.Source(),
-						))
+						msg := fmt.Sprintf("invalid select value: %s", selectStr)
+						ctx.OnError(errors.NewBadOptionError(msg, ctx.Source()))
 					}
+				} else {
+					ctx.OnError(errors.NewBadOptionError("select option must be a string", ctx.Source()))
 				}
 			}
 		}
 	}
 
-	// Get first locale
+	// Get first locale - matches TypeScript locale handling
 	locale := getFirstLocale(ctx.Locales())
 
-	return messagevalue.NewNumberValue(value, locale, ctx.Source(), options)
+	// Determine direction - matches TypeScript: let { dir, locales } = ctx;
+	dir := ctx.Dir()
+	if dir == "" {
+		// If dir is not set in context, determine from locale
+		// matches TypeScript: dir = getLocaleDir(locale);
+		dir = string(bidi.GetLocaleDirection(locale))
+	}
+
+	// Convert string direction to bidi.Direction
+	var bidiDir bidi.Direction
+	switch dir {
+	case "ltr":
+		bidiDir = bidi.DirLTR
+	case "rtl":
+		bidiDir = bidi.DirRTL
+	default:
+		bidiDir = bidi.DirAuto
+	}
+
+	return messagevalue.NewNumberValueWithSelection(value, locale, ctx.Source(), bidiDir, options, canSelect)
 }
 
-// mergeNumberOptions merges options from different sources
+// mergeNumberOptions merges options from operand and expression sources
+// Combines operand options with expression options, with expression options taking precedence
+// Matches TypeScript Object.assign({}, input.options, { localeMatcher: ctx.localeMatcher, ... })
 func mergeNumberOptions(
 	operandOptions map[string]interface{},
 	exprOptions map[string]interface{},
 	localeMatcher string,
 ) map[string]interface{} {
-	merged := map[string]interface{}{
-		"localeMatcher": localeMatcher,
-		"style":         "decimal",
-	}
+	// Start with empty map - matches TypeScript Object.assign({}, ...)
+	merged := make(map[string]interface{})
 
-	// Add operand options first
+	// Add operand options first - matches TypeScript Object.assign({}, input.options, ...)
 	if operandOptions != nil {
 		for k, v := range operandOptions {
 			merged[k] = v
 		}
 	}
 
-	// Add expression options (override operand options)
+	// Add default options - matches TypeScript Object.assign(..., { localeMatcher: ctx.localeMatcher })
+	merged["localeMatcher"] = localeMatcher
+
+	// Add expression options (override operand options) - matches TypeScript Object.assign(..., exprOpt)
 	if exprOptions != nil {
 		for k, v := range exprOptions {
-			if k == "locale" {
-				continue // Handle locale separately
-			}
-
-			// Validate and convert option values
-			switch k {
-			case "minimumIntegerDigits", "minimumFractionDigits", "maximumFractionDigits",
-				"minimumSignificantDigits", "maximumSignificantDigits", "roundingIncrement":
-				if intVal, err := asPositiveInteger(v); err == nil {
-					merged[k] = intVal
-				}
-			case "roundingMode", "roundingPriority", "select", "signDisplay",
-				"trailingZeroDisplay", "useGrouping", "style":
-				if strVal, err := asString(v); err == nil {
-					merged[k] = strVal
-				}
-			}
+			merged[k] = v
 		}
 	}
 
 	return merged
 }
 
-// Helper functions
+// parseJSONNumber parses a string as a JSON number (integer or float)
+// Matches TypeScript JSON.parse() behavior for numeric values
+// This function strictly follows JSON number format rules to match TypeScript behavior
 func parseJSONNumber(s string) (interface{}, error) {
-	// Try integer first
-	if intVal, err := strconv.ParseInt(s, 10, 64); err == nil {
-		return intVal, nil
+	// Use JSON.Unmarshal to strictly validate JSON number format
+	// This will reject invalid JSON numbers like "00", "042", "1.", ".1", "+1", etc.
+	var jsonVal interface{}
+	if err := json.Unmarshal([]byte(s), &jsonVal); err != nil {
+		return nil, fmt.Errorf("not a valid JSON number: %s", s)
 	}
 
-	// Try float
-	if floatVal, err := strconv.ParseFloat(s, 64); err == nil {
+	// JSON.Unmarshal only returns float64 for numbers
+	if floatVal, ok := jsonVal.(float64); ok {
+		// Check if it's actually an integer value
+		if floatVal == float64(int64(floatVal)) && floatVal >= float64(math.MinInt64) && floatVal <= float64(math.MaxInt64) {
+			return int64(floatVal), nil
+		}
 		return floatVal, nil
 	}
 
-	// Try JSON parsing for edge cases
-	var jsonVal interface{}
-	if err := json.Unmarshal([]byte(s), &jsonVal); err == nil {
-		switch v := jsonVal.(type) {
-		case float64, int64:
-			return v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("not a valid number: %s", s)
+	return nil, fmt.Errorf("not a valid JSON number: %s", s)
 }
 
+// isFinite checks if a float64 value is finite (not infinite or NaN)
+// Matches TypeScript Number.isFinite() behavior
 func isFinite(f float64) bool {
 	return !math.IsInf(f, 0) && !math.IsNaN(f)
 }

@@ -15,7 +15,7 @@ func TestStringValue(t *testing.T) {
 	assert.Equal(t, "string", sv.Type())
 	assert.Equal(t, "test", sv.Source())
 	assert.Equal(t, "en", sv.Locale())
-	assert.Equal(t, bidi.DirectionAuto, sv.Dir())
+	assert.Equal(t, bidi.DirAuto, sv.Dir())
 	assert.Nil(t, sv.Options())
 
 	str, err := sv.ToString()
@@ -42,10 +42,10 @@ func TestStringValue(t *testing.T) {
 }
 
 func TestStringValueWithDir(t *testing.T) {
-	sv := NewStringValueWithDir("مرحبا", "ar", "test", bidi.DirectionRTL)
+	sv := NewStringValueWithDir("مرحبا", "ar", "test", bidi.DirRTL)
 
 	assert.Equal(t, "string", sv.Type())
-	assert.Equal(t, bidi.DirectionRTL, sv.Dir())
+	assert.Equal(t, bidi.DirRTL, sv.Dir())
 	assert.Equal(t, "ar", sv.Locale())
 }
 
@@ -55,7 +55,7 @@ func TestNumberValue(t *testing.T) {
 	assert.Equal(t, "number", nv.Type())
 	assert.Equal(t, "test", nv.Source())
 	assert.Equal(t, "en", nv.Locale())
-	assert.Equal(t, bidi.DirectionAuto, nv.Dir())
+	assert.Equal(t, bidi.DirAuto, nv.Dir())
 	assert.NotNil(t, nv.Options())
 
 	str, err := nv.ToString()
@@ -70,7 +70,7 @@ func TestNumberValue(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, parts, 1)
 	assert.Equal(t, "number", parts[0].Type())
-	assert.Equal(t, 42, parts[0].Value())
+	assert.Equal(t, "42", parts[0].Value())
 }
 
 func TestNumberValueTypes(t *testing.T) {
@@ -129,7 +129,7 @@ func TestFallbackValue(t *testing.T) {
 	assert.Equal(t, "fallback", fv.Type())
 	assert.Equal(t, "$name", fv.Source())
 	assert.Equal(t, "en", fv.Locale())
-	assert.Equal(t, bidi.DirectionAuto, fv.Dir())
+	assert.Equal(t, bidi.DirAuto, fv.Dir())
 	assert.Nil(t, fv.Options())
 
 	str, err := fv.ToString()
@@ -158,7 +158,7 @@ func TestTextPart(t *testing.T) {
 	assert.Equal(t, "hello", tp.Value())
 	assert.Equal(t, "source", tp.Source())
 	assert.Equal(t, "en", tp.Locale())
-	assert.Equal(t, bidi.DirectionAuto, tp.Dir())
+	assert.Equal(t, bidi.DirAuto, tp.Dir())
 }
 
 func TestBidiIsolationPart(t *testing.T) {
@@ -168,7 +168,7 @@ func TestBidiIsolationPart(t *testing.T) {
 	assert.Equal(t, string(bidi.LRI), bip.Value())
 	assert.Empty(t, bip.Source())
 	assert.Empty(t, bip.Locale())
-	assert.Equal(t, bidi.DirectionAuto, bip.Dir())
+	assert.Equal(t, bidi.DirAuto, bip.Dir())
 }
 
 func TestMarkupPart(t *testing.T) {
@@ -179,7 +179,7 @@ func TestMarkupPart(t *testing.T) {
 	assert.Equal(t, "b", mp.Value())
 	assert.Equal(t, "<b>", mp.Source())
 	assert.Empty(t, mp.Locale())
-	assert.Equal(t, bidi.DirectionAuto, mp.Dir())
+	assert.Equal(t, bidi.DirAuto, mp.Dir())
 	assert.Equal(t, "open", mp.Kind())
 	assert.Equal(t, "b", mp.Name())
 	assert.Equal(t, options, mp.Options())
@@ -199,5 +199,5 @@ func TestFallbackPart(t *testing.T) {
 	assert.Equal(t, "{$name}", fp.Value())
 	assert.Equal(t, "$name", fp.Source())
 	assert.Equal(t, "en", fp.Locale())
-	assert.Equal(t, bidi.DirectionAuto, fp.Dir())
+	assert.Equal(t, bidi.DirAuto, fp.Dir())
 }

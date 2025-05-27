@@ -97,6 +97,7 @@ type Message interface {
 //	  declarations: Declaration[];
 //	  pattern: Pattern;
 //	  comment?: string;
+//	  /** @private */
 //	  [cstKey]?: CST.SimpleMessage | CST.ComplexMessage;
 //	}
 type PatternMessage struct {
@@ -153,6 +154,14 @@ func (pm *PatternMessage) CST() cst.Node {
 }
 
 // SelectMessage represents a message with variants for selection
+// SelectMessage generalises the plural, selectordinal and select
+// argument types of MessageFormat 1.
+// Each case is defined by a key of one or more string identifiers,
+// and selection between them is made according to
+// the values of a corresponding number of selectors.
+//
+// Pattern Selection picks the best match among the variants.
+// The result of the selection is always a single Pattern.
 // TypeScript original code:
 //
 //	export interface SelectMessage {
@@ -161,6 +170,7 @@ func (pm *PatternMessage) CST() cst.Node {
 //	  selectors: VariableRef[];
 //	  variants: Variant[];
 //	  comment?: string;
+//	  /** @private */
 //	  [cstKey]?: CST.SelectMessage;
 //	}
 type SelectMessage struct {
@@ -236,6 +246,9 @@ func (sm *SelectMessage) CST() cst.Node {
 }
 
 // Declaration represents variable declarations
+// A message may declare any number of input and local variables,
+// each with a value defined by an Expression.
+// The name of each declaration must be unique within the Message.
 // TypeScript original code:
 // export type Declaration = InputDeclaration | LocalDeclaration;
 type Declaration interface {
@@ -255,6 +268,7 @@ type Declaration interface {
 //	  type: 'input';
 //	  name: string;
 //	  value: Expression<VariableRef>;
+//	  /** @private */
 //	  [cstKey]?: CST.Declaration;
 //	}
 type InputDeclaration struct {
@@ -264,8 +278,8 @@ type InputDeclaration struct {
 }
 
 // VariableRefExpression represents an Expression with VariableRef constraint
-// TypeScript original code: Expression<VariableRef>
 // This ensures the expression has a VariableRef arg, matching TypeScript constraint
+// TypeScript original code: Expression<VariableRef>
 type VariableRefExpression struct {
 	arg         *VariableRef // Must be VariableRef (not optional)
 	functionRef *FunctionRef // Optional function reference
@@ -358,6 +372,7 @@ func (id *InputDeclaration) CST() cst.Node {
 //	  type: 'local';
 //	  name: string;
 //	  value: Expression;
+//	  /** @private */
 //	  [cstKey]?: CST.Declaration;
 //	}
 type LocalDeclaration struct {
@@ -411,6 +426,7 @@ func (ld *LocalDeclaration) CST() cst.Node {
 //	  type?: never;
 //	  keys: Array<Literal | CatchallKey>;
 //	  value: Pattern;
+//	  /** @private */
 //	  [cstKey]?: CST.Variant;
 //	}
 type Variant struct {
@@ -468,6 +484,7 @@ type VariantKey interface {
 //	export interface CatchallKey {
 //	  type: '*';
 //	  value?: string;
+//	  /** @private */
 //	  [cstKey]?: CST.CatchallKey;
 //	}
 type CatchallKey struct {
@@ -511,6 +528,10 @@ func (ck *CatchallKey) CST() cst.Node {
 }
 
 // Pattern represents the body of a message composed of a sequence of parts
+// The body of each Message is composed of a sequence of parts,
+// some of them fixed (Text),
+// others Expression and Markup placeholders
+// for values depending on additional data.
 // TypeScript original code:
 // export type Pattern = Array<string | Expression | Markup>;
 type Pattern []PatternElement
@@ -592,6 +613,8 @@ func (te *TextElement) CST() cst.Node {
 }
 
 // Expression represents expressions used in declarations and placeholders
+// Expressions are used in declarations and as placeholders.
+// Each must include at least an arg or a functionRef, or both.
 // TypeScript original code:
 // export type Expression<
 //
@@ -603,6 +626,7 @@ func (te *TextElement) CST() cst.Node {
 //	> = {
 //	  type: 'expression';
 //	  attributes?: Attributes;
+//	  /** @private */
 //	  [cstKey]?: CST.Expression;
 //	} & (A extends Literal | VariableRef
 //
@@ -656,11 +680,18 @@ func (e *Expression) CST() cst.Node {
 }
 
 // Literal represents an immediately defined literal value
+// An immediately defined literal value.
+//
+// Always contains a string value.
+// In FunctionRef arguments and options,
+// the expected type of the value may result in the value being
+// further parsed as a boolean or a number by the function handler.
 // TypeScript original code:
 //
 //	export interface Literal {
 //	  type: 'literal';
 //	  value: string;
+//	  /** @private */
 //	  [cstKey]?: CST.Literal;
 //	}
 type Literal struct {
@@ -701,11 +732,15 @@ func (l *Literal) CST() cst.Node {
 }
 
 // VariableRef represents a reference to a variable
+// The value of a VariableRef is defined by a declaration,
+// or by the msgParams argument of a MessageFormat.format or
+// MessageFormat.formatToParts call.
 // TypeScript original code:
 //
 //	export interface VariableRef {
 //	  type: 'variable';
 //	  name: string;
+//	  /** @private */
 //	  [cstKey]?: CST.VariableRef;
 //	}
 type VariableRef struct {
@@ -746,12 +781,17 @@ func (vr *VariableRef) CST() cst.Node {
 }
 
 // FunctionRef represents a reference to a function
+// To resolve a FunctionRef, a MessageFunction is called.
+//
+// The name identifies one of the DefaultFunctions,
+// or a function included in the MessageFormatOptions.functions.
 // TypeScript original code:
 //
 //	export interface FunctionRef {
 //	  type: 'function';
 //	  name: string;
 //	  options?: Options;
+//	  /** @private */
 //	  [cstKey]?: CST.FunctionRef;
 //	}
 type FunctionRef struct {
@@ -803,6 +843,7 @@ func (fr *FunctionRef) CST() cst.Node {
 //	  name: string;
 //	  options?: Options;
 //	  attributes?: Attributes;
+//	  /** @private */
 //	  [cstKey]?: CST.Expression;
 //	}
 type Markup struct {

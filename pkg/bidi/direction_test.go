@@ -15,42 +15,42 @@ func TestGetDirection(t *testing.T) {
 		{
 			name:     "English text",
 			text:     "Hello World",
-			expected: DirectionLTR,
+			expected: DirLTR,
 		},
 		{
 			name:     "Arabic text",
 			text:     "مرحبا",
-			expected: DirectionRTL,
+			expected: DirRTL,
 		},
 		{
 			name:     "Hebrew text",
 			text:     "שלום",
-			expected: DirectionRTL,
+			expected: DirRTL,
 		},
 		{
 			name:     "Mixed text with LTR first",
 			text:     "Hello مرحبا",
-			expected: DirectionLTR,
+			expected: DirLTR,
 		},
 		{
 			name:     "Mixed text with RTL first",
 			text:     "مرحبا Hello",
-			expected: DirectionRTL,
+			expected: DirRTL,
 		},
 		{
 			name:     "Numbers only",
 			text:     "12345",
-			expected: DirectionAuto,
+			expected: DirAuto,
 		},
 		{
 			name:     "Empty text",
 			text:     "",
-			expected: DirectionAuto,
+			expected: DirAuto,
 		},
 		{
 			name:     "Punctuation only",
 			text:     "!@#$%",
-			expected: DirectionAuto,
+			expected: DirAuto,
 		},
 	}
 
@@ -71,67 +71,67 @@ func TestGetLocaleDirection(t *testing.T) {
 		{
 			name:     "English locale",
 			locale:   "en",
-			expected: DirectionLTR,
+			expected: DirLTR,
 		},
 		{
 			name:     "English US locale",
 			locale:   "en-US",
-			expected: DirectionLTR,
+			expected: DirLTR,
 		},
 		{
 			name:     "Arabic locale",
 			locale:   "ar",
-			expected: DirectionRTL,
+			expected: DirRTL,
 		},
 		{
 			name:     "Arabic Saudi locale",
 			locale:   "ar-SA",
-			expected: DirectionRTL,
+			expected: DirRTL,
 		},
 		{
 			name:     "Hebrew locale",
 			locale:   "he",
-			expected: DirectionRTL,
+			expected: DirRTL,
 		},
 		{
 			name:     "Hebrew Israel locale",
 			locale:   "he-IL",
-			expected: DirectionRTL,
+			expected: DirRTL,
 		},
 		{
 			name:     "Persian locale",
 			locale:   "fa",
-			expected: DirectionRTL,
+			expected: DirRTL,
 		},
 		{
 			name:     "Urdu locale",
 			locale:   "ur",
-			expected: DirectionRTL,
+			expected: DirRTL,
 		},
 		{
 			name:     "Yiddish locale",
 			locale:   "yi",
-			expected: DirectionRTL,
+			expected: DirRTL,
 		},
 		{
 			name:     "French locale",
 			locale:   "fr",
-			expected: DirectionLTR,
+			expected: DirLTR,
 		},
 		{
 			name:     "German locale",
 			locale:   "de",
-			expected: DirectionLTR,
+			expected: DirLTR,
 		},
 		{
 			name:     "Empty locale",
 			locale:   "",
-			expected: DirectionLTR,
+			expected: DirLTR,
 		},
 		{
 			name:     "Unknown locale",
 			locale:   "xx",
-			expected: DirectionLTR,
+			expected: DirLTR,
 		},
 	}
 
@@ -153,19 +153,19 @@ func TestWrapWithIsolation(t *testing.T) {
 		{
 			name:     "LTR isolation",
 			text:     "Hello",
-			dir:      DirectionLTR,
+			dir:      DirLTR,
 			expected: string(LRI) + "Hello" + string(PDI),
 		},
 		{
 			name:     "RTL isolation",
 			text:     "مرحبا",
-			dir:      DirectionRTL,
+			dir:      DirRTL,
 			expected: string(RLI) + "مرحبا" + string(PDI),
 		},
 		{
 			name:     "Auto isolation",
 			text:     "Hello",
-			dir:      DirectionAuto,
+			dir:      DirAuto,
 			expected: string(FSI) + "Hello" + string(PDI),
 		},
 		{
@@ -177,7 +177,7 @@ func TestWrapWithIsolation(t *testing.T) {
 		{
 			name:     "Empty text with LTR",
 			text:     "",
-			dir:      DirectionLTR,
+			dir:      DirLTR,
 			expected: string(LRI) + string(PDI),
 		},
 	}
@@ -243,9 +243,9 @@ func TestIsIsolationChar(t *testing.T) {
 
 func TestDirectionConstants(t *testing.T) {
 	// Test that direction constants are properly defined
-	assert.Equal(t, "ltr", string(DirectionLTR))
-	assert.Equal(t, "rtl", string(DirectionRTL))
-	assert.Equal(t, "auto", string(DirectionAuto))
+	assert.Equal(t, "ltr", string(DirLTR))
+	assert.Equal(t, "rtl", string(DirRTL))
+	assert.Equal(t, "auto", string(DirAuto))
 }
 
 func TestUnicodeConstants(t *testing.T) {

@@ -22,7 +22,7 @@ import (
 //	  }
 //	}
 type ParseContext struct {
-	errors   []*errors.MessageError
+	errors   []*errors.MessageSyntaxError
 	resource bool
 	source   string
 }
@@ -31,7 +31,7 @@ type ParseContext struct {
 // TypeScript original code: ParseContext constructor
 func NewParseContext(source string, resource bool) *ParseContext {
 	return &ParseContext{
-		errors:   make([]*errors.MessageError, 0),
+		errors:   make([]*errors.MessageSyntaxError, 0),
 		resource: resource,
 		source:   source,
 	}
@@ -39,7 +39,7 @@ func NewParseContext(source string, resource bool) *ParseContext {
 
 // Errors returns the collected errors
 // TypeScript original code: readonly errors: MessageSyntaxError[]
-func (ctx *ParseContext) Errors() []*errors.MessageError {
+func (ctx *ParseContext) Errors() []*errors.MessageSyntaxError {
 	return ctx.errors
 }
 
@@ -69,44 +69,47 @@ func (ctx *ParseContext) Source() string {
 // ): void;
 // onError(type: 'missing-syntax', start: number, char: string): void;
 func (ctx *ParseContext) OnError(errorType string, start int, endOrChar interface{}) {
-	var err *errors.MessageError
-
-	// matches TypeScript: if (type === 'missing-syntax')
-	if errorType == "missing-syntax" {
-		if expected, ok := endOrChar.(string); ok {
-			// matches TypeScript: err = new MessageSyntaxError(type, start, start + exp.length, exp);
-			err = &errors.MessageError{
-				Type:    errors.ErrorTypeMissingSyntax,
-				Message: "missing syntax: " + expected,
-				Start:   start,
-				End:     start + len(expected),
-			}
-		} else {
-			err = &errors.MessageError{
-				Type:    errors.ErrorTypeMissingSyntax,
-				Message: "missing syntax",
-				Start:   start,
-				End:     start + 1,
-			}
-		}
-	} else {
-		// matches TypeScript: err = new MessageSyntaxError(type, start, Number(end));
-		if end, ok := endOrChar.(int); ok {
-			err = &errors.MessageError{
-				Type:    errors.ErrorType(errorType),
-				Message: errorType,
-				Start:   start,
-				End:     end,
-			}
-		} else {
-			err = &errors.MessageError{
-				Type:    errors.ErrorType(errorType),
-				Message: errorType,
-				Start:   start,
-				End:     start + 1,
-			}
-		}
+	// Convert string error types to constants
+	var errorTypeConstant string
+	switch errorType {
+	case "missing-syntax":
+		errorTypeConstant = errors.ErrorTypeMissingSyntax
+	case "extra-content":
+		errorTypeConstant = errors.ErrorTypeExtraContent
+	case "empty-token":
+		errorTypeConstant = errors.ErrorTypeEmptyToken
+	case "bad-escape":
+		errorTypeConstant = errors.ErrorTypeBadEscape
+	case "bad-input-expression":
+		errorTypeConstant = errors.ErrorTypeBadInputExpression
+	case "parse-error":
+		errorTypeConstant = errors.ErrorTypeParseError
+	default:
+		// Fallback to parse-error for unknown types
+		errorTypeConstant = errors.ErrorTypeParseError
 	}
+
+	var err *errors.MessageSyntaxError
+	var endPos int
+	var expected *string
+
+	// Handle different parameter types
+	if errorType == "missing-syntax" && endOrChar != nil {
+		if expectedStr, ok := endOrChar.(string); ok {
+			// matches TypeScript: err = new MessageSyntaxError(type, start, start + exp.length, exp);
+			endPos = start + len(expectedStr)
+			expected = &expectedStr
+		} else {
+			endPos = start + 1
+		}
+	} else if end, ok := endOrChar.(int); ok {
+		// matches TypeScript: err = new MessageSyntaxError(type, start, Number(end));
+		endPos = end
+	} else {
+		endPos = start + 1
+	}
+
+	err = errors.NewMessageSyntaxError(errorTypeConstant, start, &endPos, expected)
 
 	// matches TypeScript: this.errors.push(err);
 	ctx.errors = append(ctx.errors, err)
@@ -267,6 +270,9 @@ func parseVariant(ctx *ParseContext, start int) *Variant {
 				literal.value = strings.ToValidUTF8(literal.value, "")
 				key = literal
 				pos = literal.End()
+			} else {
+				// If literal is nil, we can't proceed
+				break
 			}
 		}
 

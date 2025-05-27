@@ -2,6 +2,7 @@ package messagevalue
 
 import (
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
+	"golang.org/x/text/unicode/norm"
 )
 
 // StringValue implements MessageValue for strings
@@ -32,7 +33,7 @@ func NewStringValue(value, locale, source string) *StringValue {
 	return &StringValue{
 		value:  value,
 		locale: locale,
-		dir:    bidi.DirectionAuto,
+		dir:    bidi.DirAuto,
 		source: source,
 	}
 }
@@ -87,8 +88,12 @@ func (sv *StringValue) ValueOf() (interface{}, error) {
 }
 
 func (sv *StringValue) SelectKeys(keys []string) ([]string, error) {
+	// Apply Unicode NFC normalization for comparison (matches TypeScript: str.normalize())
+	normalizedValue := norm.NFC.String(sv.value)
+
 	for _, key := range keys {
-		if key == sv.value {
+		normalizedKey := norm.NFC.String(key)
+		if normalizedKey == normalizedValue {
 			return []string{key}, nil
 		}
 	}

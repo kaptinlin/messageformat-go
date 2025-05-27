@@ -32,7 +32,7 @@ func NewFallbackValue(source, locale string) *FallbackValue {
 	return &FallbackValue{
 		source: source,
 		locale: locale,
-		dir:    bidi.DirectionAuto,
+		dir:    bidi.DirAuto,
 	}
 }
 

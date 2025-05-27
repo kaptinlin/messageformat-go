@@ -67,7 +67,7 @@ func NewTextPart(value, source, locale string) *TextPart {
 		value:  value,
 		source: source,
 		locale: locale,
-		dir:    bidi.DirectionAuto,
+		dir:    bidi.DirAuto,
 	}
 }
 
@@ -91,7 +91,7 @@ func (bip *BidiIsolationPart) Type() string        { return "bidiIsolation" }
 func (bip *BidiIsolationPart) Value() interface{}  { return bip.value }
 func (bip *BidiIsolationPart) Source() string      { return "" }
 func (bip *BidiIsolationPart) Locale() string      { return "" }
-func (bip *BidiIsolationPart) Dir() bidi.Direction { return bidi.DirectionAuto }
+func (bip *BidiIsolationPart) Dir() bidi.Direction { return bidi.DirAuto }
 
 // MarkupPart represents markup elements
 type MarkupPart struct {
@@ -118,7 +118,7 @@ func (mp *MarkupPart) Type() string                    { return "markup" }
 func (mp *MarkupPart) Value() interface{}              { return mp.name }
 func (mp *MarkupPart) Source() string                  { return mp.source }
 func (mp *MarkupPart) Locale() string                  { return "" }
-func (mp *MarkupPart) Dir() bidi.Direction             { return bidi.DirectionAuto }
+func (mp *MarkupPart) Dir() bidi.Direction             { return bidi.DirAuto }
 func (mp *MarkupPart) Kind() string                    { return mp.kind }
 func (mp *MarkupPart) Name() string                    { return mp.name }
 func (mp *MarkupPart) Options() map[string]interface{} { return mp.options }
@@ -135,7 +135,7 @@ func NewFallbackPart(source, locale string) *FallbackPart {
 	return &FallbackPart{
 		source: source,
 		locale: locale,
-		dir:    bidi.DirectionAuto,
+		dir:    bidi.DirAuto,
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReadNumericOperand(t *testing.T) {
@@ -139,4 +140,212 @@ func TestIsFinite(t *testing.T) {
 	assert.False(t, isFinite(math.Inf(1)))  // +Inf
 	assert.False(t, isFinite(math.Inf(-1))) // -Inf
 	assert.False(t, isFinite(math.NaN()))   // NaN
+}
+
+// TestNumberSoftFailForIntegerOptions tests soft fail for integer options
+// TypeScript original code:
+//
+//	test('soft fail for integer options', () => {
+//	  const mf = new MessageFormat('en', '{42 :number minimumFractionDigits=foo}');
+//	  const onError = jest.fn();
+//	  expect(mf.format(undefined, onError)).toEqual('42');
+//	  expect(onError.mock.calls).toMatchObject([[{ type: 'bad-option' }]]);
+//	});
+func TestNumberSoftFailForIntegerOptions(t *testing.T) {
+	// TypeScript original code: const onError = jest.fn();
+	var errors []error
+	onError := func(err error) {
+		errors = append(errors, err)
+	}
+
+	// TypeScript original code: const mf = new MessageFormat('en', '{42 :number minimumFractionDigits=foo}');
+	ctx := NewMessageFunctionContext(
+		[]string{"en"},
+		"test source",
+		"best fit",
+		onError,
+		nil,
+		"",
+		"",
+	)
+
+	options := map[string]interface{}{
+		"minimumFractionDigits": "foo", // Invalid value
+	}
+
+	// TypeScript original code: expect(mf.format(undefined, onError)).toEqual('42');
+	result := NumberFunction(ctx, options, 42)
+	require.NotNil(t, result)
+	assert.Equal(t, "number", result.Type())
+
+	// Should still format the number despite the bad option
+	str, err := result.ToString()
+	require.NoError(t, err)
+	assert.Contains(t, str, "42")
+
+	// TypeScript original code: expect(onError.mock.calls).toMatchObject([[{ type: 'bad-option' }]]);
+	assert.Len(t, errors, 1)
+	assert.Contains(t, errors[0].Error(), "bad-option")
+}
+
+// TestNumberSelection tests number function in selection context
+// TypeScript original code:
+//
+//	test('selection', () => {
+//	  const mf = new MessageFormat(
+//	    'en',
+//	    '.local $exact = {exact} .local $n = {42 :number select=$exact} .match $n 42 {{exact}} * {{other}}'
+//	  );
+//	  const onError = jest.fn();
+//	  expect(mf.format(undefined, onError)).toEqual('other');
+//	  expect(onError.mock.calls).toMatchObject([
+//	    [{ type: 'bad-option' }],
+//	    [{ type: 'bad-selector' }]
+//	  ]);
+//	});
+func TestNumberSelection(t *testing.T) {
+	// TypeScript original code: const onError = jest.fn();
+	var errors []error
+	onError := func(err error) {
+		errors = append(errors, err)
+	}
+
+	// TypeScript original code: const mf = new MessageFormat(
+	ctx := NewMessageFunctionContext(
+		[]string{"en"},
+		"test source",
+		"best fit",
+		onError,
+		map[string]bool{
+			"select": false, // select option is not set by literal value
+		},
+		"",
+		"",
+	)
+
+	options := map[string]interface{}{
+		"select": "exact", // This should cause a bad-option error since it's not literal
+	}
+
+	// Test that number function returns a MessageValue
+	result := NumberFunction(ctx, options, 42)
+	require.NotNil(t, result)
+	assert.Equal(t, "number", result.Type())
+
+	// TypeScript original code: expect(onError.mock.calls).toMatchObject([
+	//   [{ type: 'bad-option' }],
+	//   [{ type: 'bad-selector' }]
+	// ]);
+	// Note: In the Go implementation, we only get the bad-option error
+	// The bad-selector error would come from the matching logic, not the function itself
+	assert.Len(t, errors, 1)
+	assert.Contains(t, errors[0].Error(), "bad-option")
+}
+
+// TestNumberBasicFunctionality tests basic number function behavior
+func TestNumberBasicFunctionality(t *testing.T) {
+	t.Run("basic number formatting", func(t *testing.T) {
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test source",
+			"best fit",
+			nil,
+			nil,
+			"",
+			"",
+		)
+
+		options := map[string]interface{}{
+			"style": "decimal",
+		}
+
+		result := NumberFunction(ctx, options, 42)
+		require.NotNil(t, result)
+		assert.Equal(t, "number", result.Type())
+
+		str, err := result.ToString()
+		require.NoError(t, err)
+		assert.Equal(t, "42", str)
+	})
+
+	t.Run("with fraction digits", func(t *testing.T) {
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test source",
+			"best fit",
+			nil,
+			nil,
+			"",
+			"",
+		)
+
+		options := map[string]interface{}{
+			"minimumFractionDigits": 2,
+			"maximumFractionDigits": 2,
+		}
+
+		result := NumberFunction(ctx, options, 42)
+		require.NotNil(t, result)
+		assert.Equal(t, "number", result.Type())
+
+		str, err := result.ToString()
+		require.NoError(t, err)
+		assert.Contains(t, str, "42.00")
+	})
+
+	t.Run("with sign display", func(t *testing.T) {
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test source",
+			"best fit",
+			nil,
+			nil,
+			"",
+			"",
+		)
+
+		options := map[string]interface{}{
+			"signDisplay": "always",
+		}
+
+		result := NumberFunction(ctx, options, 42)
+		require.NotNil(t, result)
+		assert.Equal(t, "number", result.Type())
+
+		str, err := result.ToString()
+		require.NoError(t, err)
+		assert.Contains(t, str, "+42")
+	})
+
+	t.Run("invalid option values", func(t *testing.T) {
+		var errors []error
+		onError := func(err error) {
+			errors = append(errors, err)
+		}
+
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test source",
+			"best fit",
+			onError,
+			nil,
+			"",
+			"",
+		)
+
+		options := map[string]interface{}{
+			"minimumFractionDigits": "invalid",
+			"signDisplay":           123, // Should be string
+		}
+
+		result := NumberFunction(ctx, options, 42)
+		require.NotNil(t, result)
+		assert.Equal(t, "number", result.Type())
+
+		// Should have errors for invalid options
+		assert.Len(t, errors, 2)
+		for _, err := range errors {
+			assert.Contains(t, err.Error(), "bad-option")
+		}
+	})
 }

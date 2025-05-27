@@ -36,6 +36,9 @@ type Context struct {
 
 	// Variable scope
 	Scope map[string]interface{}
+
+	// Track variables currently being resolved (for circular reference detection)
+	ResolvingVars map[string]bool
 }
 
 // NewContext creates a new resolution context
@@ -60,6 +63,7 @@ func NewContext(
 		Locales:       locales,
 		LocalVars:     make(map[messagevalue.MessageValue]bool),
 		Scope:         scope,
+		ResolvingVars: make(map[string]bool),
 	}
 }
 
@@ -85,6 +89,7 @@ func (ctx *Context) Clone() *Context {
 		Locales:       ctx.Locales, // Immutable, safe to share
 		LocalVars:     newLocalVars,
 		Scope:         newScope,
+		ResolvingVars: ctx.ResolvingVars, // Share the resolving vars tracking
 	}
 }
 
