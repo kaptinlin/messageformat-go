@@ -1,10 +1,18 @@
 package functions
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
+)
+
+// Static errors to avoid dynamic error creation
+var (
+	ErrNotBoolean         = errors.New("not a boolean")
+	ErrNotPositiveInteger = errors.New("not a positive integer")
+	ErrNotString          = errors.New("not a string")
 )
 
 // asBoolean casts a value as a Boolean, unwrapping objects using their valueOf() methods
@@ -40,7 +48,7 @@ func asBoolean(value interface{}) (bool, error) {
 		return false, nil
 	}
 
-	return false, fmt.Errorf("not a boolean")
+	return false, ErrNotBoolean
 }
 
 // asPositiveInteger casts a value as a non-negative integer
@@ -89,7 +97,7 @@ func asPositiveInteger(value interface{}) (int, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("not a positive integer")
+	return 0, ErrNotPositiveInteger
 }
 
 // asString casts a value as a string, unwrapping objects using their valueOf() methods
@@ -115,7 +123,7 @@ func asString(value interface{}) (string, error) {
 	}
 
 	// For non-string types, return error to match TypeScript behavior
-	return "", fmt.Errorf("not a string")
+	return "", ErrNotString
 }
 
 // getStringOption safely gets a string option with a default value

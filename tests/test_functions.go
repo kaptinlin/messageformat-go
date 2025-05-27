@@ -1,13 +1,25 @@
 package tests
 
 import (
-	"fmt"
+	"errors"
 	"strconv"
 	"strings"
 
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
+)
+
+// Static errors to avoid dynamic error creation
+var (
+	ErrNotSelectable    = errors.New("not selectable")
+	ErrBadOption        = errors.New("bad option")
+	ErrSelectionFailed  = errors.New("selection failed")
+	ErrNotFormattable   = errors.New("not formattable")
+	ErrFormattingFailed = errors.New("formatting failed")
+	ErrNotPositiveInt   = errors.New("not a positive integer")
+	ErrNotString        = errors.New("not a string")
+	ErrInvalidNumeric   = errors.New("input is not numeric")
 )
 
 // TestFunctions provides test-only functions for the MessageFormat test suite
@@ -64,13 +76,13 @@ func (tv *testValue) ValueOf() (interface{}, error) {
 // SelectKeys performs selection for the test value
 func (tv *testValue) SelectKeys(keys []string) ([]string, error) {
 	if !tv.canSelect {
-		return nil, fmt.Errorf("not selectable")
+		return nil, ErrNotSelectable
 	}
 	if tv.badOption {
-		return nil, fmt.Errorf("bad option")
+		return nil, ErrBadOption
 	}
 	if tv.failsSelect {
-		return nil, fmt.Errorf("selection failed")
+		return nil, ErrSelectionFailed
 	}
 
 	if tv.input == 1 {
@@ -94,10 +106,10 @@ func (tv *testValue) SelectKeys(keys []string) ([]string, error) {
 // ToString formats the test value as a string
 func (tv *testValue) ToString() (string, error) {
 	if !tv.canFormat {
-		return "", fmt.Errorf("not formattable")
+		return "", ErrNotFormattable
 	}
 	if tv.failsFormat {
-		return "", fmt.Errorf("formatting failed")
+		return "", ErrFormattingFailed
 	}
 
 	// Format the number directly
@@ -130,10 +142,10 @@ func (tv *testValue) ToString() (string, error) {
 // ToParts formats the test value as message parts
 func (tv *testValue) ToParts() ([]messagevalue.MessagePart, error) {
 	if !tv.canFormat {
-		return nil, fmt.Errorf("not formattable")
+		return nil, ErrNotFormattable
 	}
 	if tv.failsFormat {
-		return nil, fmt.Errorf("formatting failed")
+		return nil, ErrFormattingFailed
 	}
 
 	// Create a text part with the formatted value
@@ -262,9 +274,9 @@ func parseNumericInput(input interface{}) (float64, error) {
 		if val, err := strconv.ParseFloat(v, 64); err == nil {
 			return val, nil
 		}
-		return 0, fmt.Errorf("invalid numeric string: %s", v)
+		return 0, ErrInvalidNumeric
 	default:
-		return 0, fmt.Errorf("input is not numeric: %T", input)
+		return 0, ErrInvalidNumeric
 	}
 }
 
@@ -284,12 +296,12 @@ func asPositiveInteger(value interface{}) (int, error) {
 			return i, nil
 		}
 	}
-	return 0, fmt.Errorf("not a positive integer")
+	return 0, ErrNotPositiveInt
 }
 
 func asString(value interface{}) (string, error) {
 	if str, ok := value.(string); ok {
 		return str, nil
 	}
-	return "", fmt.Errorf("not a string")
+	return "", ErrNotString
 }

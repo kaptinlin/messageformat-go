@@ -2,13 +2,19 @@ package functions
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
 
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
-	"github.com/kaptinlin/messageformat-go/pkg/errors"
+	pkgErrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
+)
+
+// Static errors to avoid dynamic error creation
+var (
+	ErrNotValidJSONNumber = errors.New("not a valid JSON number")
 )
 
 // NumericInput represents parsed numeric input with value and options
@@ -59,8 +65,8 @@ func readNumericOperand(value interface{}, source string) (*NumericInput, error)
 			// Get the underlying value from MessageValue
 			rawValue, err := mv.ValueOf()
 			if err != nil {
-				return nil, errors.NewMessageResolutionError(
-					errors.ErrorTypeBadOperand,
+				return nil, pkgErrors.NewMessageResolutionError(
+					pkgErrors.ErrorTypeBadOperand,
 					"Input is not numeric",
 					source,
 				)
@@ -92,8 +98,8 @@ func readNumericOperand(value interface{}, source string) (*NumericInput, error)
 		if parsed, err := parseJSONNumber(str); err == nil {
 			value = parsed
 		} else {
-			return nil, errors.NewMessageResolutionError(
-				errors.ErrorTypeBadOperand,
+			return nil, pkgErrors.NewMessageResolutionError(
+				pkgErrors.ErrorTypeBadOperand,
 				"Input is not numeric",
 				source,
 			)
@@ -108,8 +114,8 @@ func readNumericOperand(value interface{}, source string) (*NumericInput, error)
 	case float32, float64:
 	case *big.Int, *big.Float:
 	default:
-		return nil, errors.NewMessageResolutionError(
-			errors.ErrorTypeBadOperand,
+		return nil, pkgErrors.NewMessageResolutionError(
+			pkgErrors.ErrorTypeBadOperand,
 			"Input is not numeric",
 			source,
 		)
@@ -193,7 +199,7 @@ func NumberFunction(
 				mergedOptions[name] = intVal
 			} else {
 				msg := fmt.Sprintf("Value %v is not valid for :number option %s", optval, name)
-				ctx.OnError(errors.NewBadOptionError(msg, ctx.Source()))
+				ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
 			}
 		case "roundingMode", "roundingPriority", "select", "signDisplay",
 			"trailingZeroDisplay", "useGrouping":
@@ -201,7 +207,7 @@ func NumberFunction(
 				mergedOptions[name] = strVal
 			} else {
 				msg := fmt.Sprintf("Value %v is not valid for :number option %s", optval, name)
-				ctx.OnError(errors.NewBadOptionError(msg, ctx.Source()))
+				ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
 			}
 		default:
 			// Unknown option - silently ignore to match TypeScript behavior

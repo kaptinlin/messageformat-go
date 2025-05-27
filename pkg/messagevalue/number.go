@@ -1,6 +1,7 @@
 package messagevalue
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -9,6 +10,11 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 	"golang.org/x/text/number"
+)
+
+// Static errors to avoid dynamic error creation
+var (
+	ErrNumberNotSelectable = errors.New("number value does not support selection")
 )
 
 // NumberValue implements MessageValue for numbers
@@ -641,7 +647,7 @@ func (nv *NumberValue) ValueOf() (interface{}, error) {
 func (nv *NumberValue) SelectKeys(keys []string) ([]string, error) {
 	// Check if this NumberValue supports selection
 	if !nv.canSelect {
-		return nil, fmt.Errorf("number value does not support selection")
+		return nil, ErrNumberNotSelectable
 	}
 
 	// Convert value to string for exact matching
