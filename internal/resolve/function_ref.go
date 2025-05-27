@@ -93,7 +93,6 @@ func resolveFunctionRefInternal(
 	functionRef *datamodel.FunctionRef,
 	source string,
 ) (messagevalue.MessageValue, error) {
-
 	// matches TypeScript: const fnInput = operand ? [resolveValue(ctx, operand)] : [];
 	var fnInput []interface{}
 	if operand != nil {
@@ -281,10 +280,8 @@ func isUniversalOption(name string) bool {
 func convertOptionsToMap(options datamodel.Options) map[string]interface{} {
 	converted := make(map[string]interface{})
 
-	if options != nil {
-		for name, value := range options {
-			converted[name] = value
-		}
+	for name, value := range options {
+		converted[name] = value
 	}
 
 	return converted

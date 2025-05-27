@@ -70,7 +70,7 @@ func TestName(tc Test) string {
 	if tc.Locale != "" {
 		name += fmt.Sprintf(", locale: %s", tc.Locale)
 	}
-	if tc.Params != nil && len(tc.Params) > 0 {
+	if len(tc.Params) > 0 {
 		name += fmt.Sprintf(", params: %v", tc.Params)
 	}
 

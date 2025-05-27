@@ -58,7 +58,7 @@ func MathFunction(
 	operandOptions := numericOperand.Options
 
 	// Parse add and subtract options
-	var add, subtract int = -1, -1
+	add, subtract := -1, -1
 
 	// Try to get add option
 	if addVal, ok := options["add"]; ok {
@@ -119,10 +119,8 @@ func MathFunction(
 	// Delegate to number function with the new value and merged options
 	// Merge the original operand options with any new options
 	mergedOptions := make(map[string]interface{})
-	if operandOptions != nil {
-		for k, v := range operandOptions {
-			mergedOptions[k] = v
-		}
+	for k, v := range operandOptions {
+		mergedOptions[k] = v
 	}
 
 	// Delegate to number function with the new value

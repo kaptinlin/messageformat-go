@@ -77,6 +77,8 @@ func DatetimeFunction(
 	locale := getFirstLocale(ctx.Locales())
 	if locale != "" {
 		c = c.SetLocale(locale)
+		// Note: Carbon's SetLocale returns a new instance, but we continue using the original
+		// This is intentional as the locale setting affects the formatting behavior
 	}
 
 	// Process options to determine format

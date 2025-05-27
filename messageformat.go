@@ -462,10 +462,8 @@ func (mf *MessageFormat) createContext(
 	scope := make(map[string]interface{})
 
 	// Add provided values first
-	if values != nil {
-		for k, v := range values {
-			scope[k] = v
-		}
+	for k, v := range values {
+		scope[k] = v
 	}
 
 	// Add message declarations
@@ -606,6 +604,8 @@ func (mf *MessageFormat) getBidiIsolationStart(valueDir bidi.Direction) string {
 		return string(bidi.LRI)
 	case bidi.DirRTL:
 		return string(bidi.RLI)
+	case bidi.DirAuto:
+		return string(bidi.FSI)
 	default:
 		return string(bidi.FSI)
 	}

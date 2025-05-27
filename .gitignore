@@ -51,4 +51,7 @@ vendor/
 
 # Temporary folders
 tmp/
-temp/ .DS_Store
+temp/
+
+# Build output
+bin/

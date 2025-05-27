@@ -105,8 +105,6 @@ func validateMessage(msg Message, onError func(string, interface{})) *Validation
 	variables := make(map[string]bool)
 	variants := make(map[string]bool)
 
-	setArgAsDeclared := true
-
 	// Visit all declarations first
 	// TypeScript: visit(msg, { declaration(decl) { ... } })
 	for _, decl := range msg.Declarations() {
@@ -127,7 +125,7 @@ func validateMessage(msg Message, onError func(string, interface{})) *Validation
 		}
 
 		// TypeScript: setArgAsDeclared = decl.type === 'local';
-		setArgAsDeclared = decl.Type() == "local"
+		setArgAsDeclared := decl.Type() == "local"
 
 		// Check for duplicate declaration before adding to declared set
 		// This includes checking if the declaration references itself

@@ -49,7 +49,7 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 
 	options := markup.Options()
 	// matches TypeScript: if (options?.size)
-	if options != nil && len(options) > 0 {
+	if len(options) > 0 {
 		partOptions := make(map[string]interface{})
 		var partID string
 

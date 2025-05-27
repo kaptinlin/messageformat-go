@@ -56,6 +56,8 @@ func tests(tc utils.Test) func(*testing.T) {
 				})
 			})
 
+		case utils.TestTypeFormat:
+			fallthrough
 		default:
 			t.Run("format", func(t *testing.T) {
 				// Create MessageFormat options

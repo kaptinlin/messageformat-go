@@ -165,7 +165,7 @@ func formatFunction(ctx functions.MessageFunctionContext, options map[string]int
 			rightPad := padding[len(padding)/2:]
 			str = leftPad + str + rightPad
 		default: // left
-			str = str + padding
+			str += padding
 		}
 	}
 

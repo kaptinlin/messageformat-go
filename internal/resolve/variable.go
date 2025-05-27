@@ -55,6 +55,11 @@ func isScope(scope interface{}) bool {
 	switch v.Kind() {
 	case reflect.Map, reflect.Struct, reflect.Ptr, reflect.Func:
 		return true
+	case reflect.Invalid, reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
+		reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128, reflect.Array,
+		reflect.Chan, reflect.Interface, reflect.Slice, reflect.String, reflect.UnsafePointer:
+		return false
 	default:
 		return false
 	}

@@ -394,20 +394,16 @@ func mergeNumberOptions(
 	merged := make(map[string]interface{})
 
 	// Add operand options first - matches TypeScript Object.assign({}, input.options, ...)
-	if operandOptions != nil {
-		for k, v := range operandOptions {
-			merged[k] = v
-		}
+	for k, v := range operandOptions {
+		merged[k] = v
 	}
 
 	// Add default options - matches TypeScript Object.assign(..., { localeMatcher: ctx.localeMatcher })
 	merged["localeMatcher"] = localeMatcher
 
 	// Add expression options (override operand options) - matches TypeScript Object.assign(..., exprOpt)
-	if exprOptions != nil {
-		for k, v := range exprOptions {
-			merged[k] = v
-		}
+	for k, v := range exprOptions {
+		merged[k] = v
 	}
 
 	return merged

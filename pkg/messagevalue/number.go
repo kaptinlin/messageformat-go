@@ -206,7 +206,7 @@ func (nv *NumberValue) formatNumber() (string, error) {
 		var result strings.Builder
 		if _, err := p.Fprintf(&result, "%v", number.Decimal(num)); err != nil {
 			// Fallback to simple formatting if there's an error
-			return strconv.FormatFloat(num, 'f', maxFractionDigits, 64), nil
+			return strconv.FormatFloat(num, 'f', maxFractionDigits, 64), err
 		}
 		formatted = result.String()
 	} else {
