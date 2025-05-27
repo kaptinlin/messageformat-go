@@ -18,9 +18,9 @@ var (
 	ValidateMessage = datamodel.ValidateMessage
 
 	// Error constructors
-	NewSyntaxError     = errors.NewSyntaxError
-	NewResolutionError = errors.NewResolutionError
-	NewSelectionError  = errors.NewSelectionError
+	NewMessageSyntaxError     = errors.NewMessageSyntaxError
+	NewMessageResolutionError = errors.NewMessageResolutionError
+	NewMessageSelectionError  = errors.NewMessageSelectionError
 
 	// Type guards - essential utilities for runtime type checking
 	IsExpression     = datamodel.IsExpression

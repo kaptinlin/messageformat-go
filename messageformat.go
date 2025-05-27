@@ -17,6 +17,33 @@ import (
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
+// BidiIsolation represents the bidi isolation strategy
+type BidiIsolation string
+
+const (
+	BidiDefault BidiIsolation = "default"
+	BidiNone    BidiIsolation = "none"
+)
+
+// Direction represents text direction
+// Use the Direction type from bidi package as the authoritative definition
+type Direction = bidi.Direction
+
+// Re-export constants from bidi package for API compatibility
+const (
+	DirLTR  = bidi.DirLTR
+	DirRTL  = bidi.DirRTL
+	DirAuto = bidi.DirAuto
+)
+
+// LocaleMatcher represents locale matching strategy
+type LocaleMatcher string
+
+const (
+	LocaleBestFit LocaleMatcher = "best fit"
+	LocaleLookup  LocaleMatcher = "lookup"
+)
+
 // MessageFormatOptions represents options for creating a MessageFormat
 // TypeScript original code:
 // export interface MessageFormatOptions<
@@ -34,21 +61,38 @@ type MessageFormatOptions struct {
 	// The bidi isolation strategy for message formatting.
 	// "default" isolates all expression placeholders except when both message and placeholder are LTR.
 	// "none" applies no isolation at all.
-	BidiIsolation *string `json:"bidiIsolation,omitempty"` // "default" | "none"
+	BidiIsolation BidiIsolation `json:"bidiIsolation,omitempty"`
 
 	// Explicitly set the message's base direction.
 	// If not set, the direction is detected from the primary locale.
-	Dir *string `json:"dir,omitempty"` // "ltr" | "rtl" | "auto"
+	Dir Direction `json:"dir,omitempty"`
+
+	// Locale matching algorithm for multiple locales.
+	LocaleMatcher LocaleMatcher `json:"localeMatcher,omitempty"`
 
 	// Custom functions to make available during message resolution.
 	// Extends the default functions.
 	Functions map[string]functions.MessageFunction `json:"functions,omitempty"`
 
-	// Locale matching algorithm for multiple locales.
-	LocaleMatcher *string `json:"localeMatcher,omitempty"` // "best fit" | "lookup"
-
 	// Logger for this MessageFormat instance. If nil, uses global logger.
 	Logger *slog.Logger `json:"-"`
+}
+
+// NewMessageFormatOptions creates a new MessageFormatOptions with defaults
+func NewMessageFormatOptions(opts *MessageFormatOptions) *MessageFormatOptions {
+	if opts == nil {
+		opts = &MessageFormatOptions{}
+	}
+	if opts.BidiIsolation == "" {
+		opts.BidiIsolation = BidiDefault
+	}
+	if opts.Dir == "" {
+		opts.Dir = DirAuto
+	}
+	if opts.LocaleMatcher == "" {
+		opts.LocaleMatcher = LocaleBestFit
+	}
+	return opts
 }
 
 // MessageFormat represents a compiled MessageFormat 2.0 message
@@ -116,7 +160,7 @@ func New(
 	case nil:
 		localeList = []string{}
 	default:
-		return nil, errors.NewSyntaxError("locales must be string, []string, or nil", 0, 0)
+		return nil, errors.NewCustomSyntaxError("locales must be string, []string, or nil")
 	}
 
 	// Parse source parameter - matches TypeScript: string | Message
@@ -132,7 +176,8 @@ func New(
 		if len(cstMessage.Errors()) > 0 {
 			// Return the first error
 			firstError := cstMessage.Errors()[0]
-			return nil, errors.NewSyntaxError(firstError.Message, firstError.Start, firstError.End)
+			end := firstError.End
+			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, firstError.Start, &end, nil)
 		}
 
 		// Convert CST to datamodel
@@ -143,15 +188,13 @@ func New(
 	case datamodel.Message:
 		message = s
 	case nil:
-		return nil, errors.NewSyntaxError("source cannot be nil", 0, 0)
+		return nil, errors.NewCustomSyntaxError("source cannot be nil")
 	default:
-		return nil, errors.NewSyntaxError("source must be string or datamodel.Message", 0, 0)
+		return nil, errors.NewCustomSyntaxError("source must be string or datamodel.Message")
 	}
 
 	// Validate the message
-	_, err = datamodel.ValidateMessage(message, func(string, interface{}) {
-		// Ignore validation errors for now
-	})
+	_, err = datamodel.ValidateMessage(message, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +218,8 @@ func New(
 			// Single functional option
 			opts = applyOptions(optFunc)
 		} else {
-			return nil, errors.NewSyntaxError("invalid options parameter", 0, 0)
+			end := 1
+			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
 		}
 	} else {
 		// Multiple functional options
@@ -184,32 +228,32 @@ func New(
 			if optFunc, ok := opt.(Option); ok {
 				funcOpts = append(funcOpts, optFunc)
 			} else {
-				return nil, errors.NewSyntaxError("invalid options parameter", 0, 0)
+				end := 1
+				return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
 			}
 		}
 		opts = applyOptions(funcOpts...)
 	}
 
+	// Apply defaults to options
+	opts = NewMessageFormatOptions(opts)
+
 	// Resolve bidiIsolation option (default is "default" which means true)
-	bidiIsolation := true
-	if opts.BidiIsolation != nil && *opts.BidiIsolation == "none" {
-		bidiIsolation = false
-	}
+	bidiIsolation := opts.BidiIsolation != BidiNone
 
 	// Resolve dir option
-	dir := "auto" // default
-	if opts.Dir != nil {
-		dir = *opts.Dir
-	} else if len(localeList) > 0 {
-		// Determine direction from first locale
-		dir = string(bidi.GetLocaleDirection(localeList[0]))
+	dir := string(opts.Dir)
+	if dir == "" || dir == string(DirAuto) {
+		if len(localeList) > 0 {
+			// Determine direction from first locale
+			dir = string(bidi.GetLocaleDirection(localeList[0]))
+		} else {
+			dir = "auto"
+		}
 	}
 
 	// Resolve localeMatcher option
-	localeMatcher := "best fit" // default
-	if opts.LocaleMatcher != nil {
-		localeMatcher = *opts.LocaleMatcher
-	}
+	localeMatcher := string(opts.LocaleMatcher)
 
 	// Set up functions
 	functionMap := make(map[string]functions.MessageFunction)
@@ -288,6 +332,10 @@ func (mf *MessageFormat) Format(
 			result.WriteString(p.Value().(string))
 		case *messagevalue.FallbackPart:
 			result.WriteString(p.Value().(string))
+		case *messagevalue.MarkupPart:
+			// Markup elements format as empty string - matches TypeScript behavior
+			// TypeScript: formatMarkup(ctx, elem); // Handle errors, but discard results
+			// Do nothing - markup doesn't contribute to string output
 		default:
 			// For other parts, try to get string representation
 			if str, ok := p.Value().(string); ok {
@@ -351,7 +399,8 @@ func (mf *MessageFormat) FormatToParts(
 				}
 			}
 		} else {
-			return nil, errors.NewSyntaxError("invalid options parameter", 0, 0)
+			end := 1
+			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
 		}
 	} else {
 		// Multiple functional options
@@ -360,7 +409,8 @@ func (mf *MessageFormat) FormatToParts(
 			if formatOpt, ok := opt.(FormatOption); ok {
 				funcOpts = append(funcOpts, formatOpt)
 			} else {
-				return nil, errors.NewSyntaxError("invalid options parameter", 0, 0)
+				end := 1
+				return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
 			}
 		}
 		formatOpts := applyFormatOptions(funcOpts...)
@@ -477,6 +527,13 @@ func (mf *MessageFormat) formatPattern(
 			// Expression placeholder
 			mv := resolve.ResolveExpression(ctx, elem)
 
+			// Check if resolution failed
+			if mv == nil {
+				// Add fallback part for failed resolution
+				parts = append(parts, messagevalue.NewFallbackPart("", getFirstLocale(ctx.Locales)))
+				continue
+			}
+
 			// Apply bidi isolation if needed (matches TypeScript logic)
 			if mf.shouldApplyBidiIsolation(mv) {
 				// Add opening isolation
@@ -487,17 +544,19 @@ func (mf *MessageFormat) formatPattern(
 			// Convert MessageValue to parts
 			valueParts, err := mv.ToParts()
 			if err != nil {
+				// Error during formatting - emit error and use fallback
 				ctx.OnError(err)
 				// Add fallback part
 				parts = append(parts, messagevalue.NewFallbackPart(mv.Source(), getFirstLocale(ctx.Locales)))
 			} else {
+				// Add the actual parts
 				parts = append(parts, valueParts...)
 			}
 
-			// Apply bidi isolation if needed
+			// Apply closing bidi isolation if we opened it
 			if mf.shouldApplyBidiIsolation(mv) {
 				// Add closing isolation
-				parts = append(parts, messagevalue.NewBidiIsolationPart(string(bidi.PDI)))
+				parts = append(parts, messagevalue.NewBidiIsolationPart("\u2069")) // PDI
 			}
 
 		case *datamodel.Markup:
@@ -525,29 +584,56 @@ func (mf *MessageFormat) shouldApplyBidiIsolation(value messagevalue.MessageValu
 
 	// Apply isolation if:
 	// 1. Message direction is not LTR, OR
-	// 2. Value direction is not LTR
-	// Note: BIDI_ISOLATE flag is handled by individual value implementations
+	// 2. Value direction is not LTR, OR
+	// 3. Value has BIDI_ISOLATE flag set
 	valueDir := value.Dir()
-	return mf.dir != "ltr" || valueDir != bidi.DirectionLTR
+
+	// Check if value needs isolation based on TypeScript logic
+	needsIsolation := mf.dir != "ltr" || valueDir != bidi.DirLTR
+
+	// Check for BIDI_ISOLATE flag - matches TypeScript: mv[BIDI_ISOLATE]
+	if hasIsolateFlag, ok := value.(interface{ HasBidiIsolate() bool }); ok {
+		needsIsolation = needsIsolation || hasIsolateFlag.HasBidiIsolate()
+	}
+
+	return needsIsolation
 }
 
 // getBidiIsolationStart returns the appropriate bidi isolation start character
 func (mf *MessageFormat) getBidiIsolationStart(valueDir bidi.Direction) string {
 	switch valueDir {
-	case bidi.DirectionLTR:
+	case bidi.DirLTR:
 		return string(bidi.LRI)
-	case bidi.DirectionRTL:
+	case bidi.DirRTL:
 		return string(bidi.RLI)
 	default:
 		return string(bidi.FSI)
 	}
 }
 
-// addDefaultFunctions adds default functions to the function map
-func addDefaultFunctions(functionMap map[string]functions.MessageFunction) {
-	defaults := functions.DefaultFunctions
+// Dir returns the message's base direction
+func (mf *MessageFormat) Dir() string {
+	return mf.dir
+}
 
+// BidiIsolation returns whether bidi isolation is enabled
+func (mf *MessageFormat) BidiIsolation() bool {
+	return mf.bidiIsolation
+}
+
+// addDefaultFunctions adds default and draft functions to the function map
+// TypeScript original code:
+// this.#functions = options?.functions ? Object.assign(Object.create(null), DefaultFunctions, options.functions) : DefaultFunctions;
+func addDefaultFunctions(functionMap map[string]functions.MessageFunction) {
+	// Add default functions first
+	defaults := functions.DefaultFunctions
 	for name, fn := range defaults {
+		functionMap[name] = fn
+	}
+
+	// Add draft functions (beta functions like math, currency, etc.)
+	drafts := functions.DraftFunctions
+	for name, fn := range drafts {
 		functionMap[name] = fn
 	}
 }

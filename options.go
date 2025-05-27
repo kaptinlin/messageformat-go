@@ -22,27 +22,71 @@ type FormatOptions struct {
 // WithBidiIsolation sets the bidi isolation strategy
 // TypeScript original code:
 // bidiIsolation?: 'default' | 'none';
-func WithBidiIsolation(strategy string) Option {
+func WithBidiIsolation(strategy BidiIsolation) Option {
 	return func(opts *MessageFormatOptions) {
-		opts.BidiIsolation = &strategy
+		opts.BidiIsolation = strategy
+	}
+}
+
+// WithBidiIsolationString sets the bidi isolation strategy from string (for backward compatibility)
+func WithBidiIsolationString(strategy string) Option {
+	return func(opts *MessageFormatOptions) {
+		switch strategy {
+		case "default":
+			opts.BidiIsolation = BidiDefault
+		case "none":
+			opts.BidiIsolation = BidiNone
+		default:
+			opts.BidiIsolation = BidiDefault
+		}
 	}
 }
 
 // WithDir sets the message's base direction
 // TypeScript original code:
 // dir?: 'ltr' | 'rtl' | 'auto';
-func WithDir(direction string) Option {
+func WithDir(direction Direction) Option {
 	return func(opts *MessageFormatOptions) {
-		opts.Dir = &direction
+		opts.Dir = direction
+	}
+}
+
+// WithDirString sets the message's base direction from string (for backward compatibility)
+func WithDirString(direction string) Option {
+	return func(opts *MessageFormatOptions) {
+		switch direction {
+		case "ltr":
+			opts.Dir = DirLTR
+		case "rtl":
+			opts.Dir = DirRTL
+		case "auto":
+			opts.Dir = DirAuto
+		default:
+			opts.Dir = DirAuto
+		}
 	}
 }
 
 // WithLocaleMatcher sets the locale matching algorithm
 // TypeScript original code:
 // localeMatcher?: 'best fit' | 'lookup';
-func WithLocaleMatcher(matcher string) Option {
+func WithLocaleMatcher(matcher LocaleMatcher) Option {
 	return func(opts *MessageFormatOptions) {
-		opts.LocaleMatcher = &matcher
+		opts.LocaleMatcher = matcher
+	}
+}
+
+// WithLocaleMatcherString sets the locale matching algorithm from string (for backward compatibility)
+func WithLocaleMatcherString(matcher string) Option {
+	return func(opts *MessageFormatOptions) {
+		switch matcher {
+		case "best fit":
+			opts.LocaleMatcher = LocaleBestFit
+		case "lookup":
+			opts.LocaleMatcher = LocaleLookup
+		default:
+			opts.LocaleMatcher = LocaleBestFit
+		}
 	}
 }
 
