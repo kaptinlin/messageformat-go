@@ -322,7 +322,7 @@ func parseHexEscape(ctx *ParseContext, start int, hexLen int) *EscapeResult {
 
 	// Check if all characters are hex digits
 	for _, ch := range raw {
-		if !((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') || (ch >= 'a' && ch <= 'f')) {
+		if (ch < '0' || ch > '9') && (ch < 'A' || ch > 'F') && (ch < 'a' || ch > 'f') {
 			ctx.OnError("bad-escape", start, start+2)
 			return nil
 		}

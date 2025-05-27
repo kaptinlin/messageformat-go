@@ -177,15 +177,16 @@ func validateMessage(msg Message, onError func(string, interface{})) *Validation
 			keyStrs := make([]interface{}, len(keys))
 			allCatchall := true
 			for i, key := range keys {
-				if IsCatchallKey(key) {
+				switch {
+				case IsCatchallKey(key):
 					keyStrs[i] = 0
-				} else if IsLiteral(key) {
+				case IsLiteral(key):
 					// Apply Unicode NFC normalization to literal keys for comparison
 					// This matches the MessageFormat 2.0 specification requirement
 					normalizedValue := norm.NFC.String(key.(*Literal).Value())
 					keyStrs[i] = normalizedValue
 					allCatchall = false
-				} else {
+				default:
 					keyStrs[i] = 0
 					allCatchall = false
 				}
@@ -368,8 +369,7 @@ func visitPattern(pattern Pattern, functions, variables map[string]bool, onError
 func checkSelfReference(decl Declaration) bool {
 	declName := decl.Name()
 
-	switch d := decl.(type) {
-	case *LocalDeclaration:
+	if d, ok := decl.(*LocalDeclaration); ok {
 		if d.value != nil {
 			// Check if the argument references itself
 			if d.value.Arg() != nil {
@@ -398,8 +398,7 @@ func checkSelfReference(decl Declaration) bool {
 
 // checkUndeclaredReferences checks if a declaration references undeclared variables
 func checkUndeclaredReferences(decl Declaration, declared map[string]bool) bool {
-	switch d := decl.(type) {
-	case *LocalDeclaration:
+	if d, ok := decl.(*LocalDeclaration); ok {
 		if d.value != nil {
 			// Check if function options reference undeclared variables
 			if d.value.FunctionRef() != nil && d.value.FunctionRef().Options() != nil {

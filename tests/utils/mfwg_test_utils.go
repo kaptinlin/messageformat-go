@@ -155,6 +155,7 @@ func TestScenarios(testDir string) ([]TestScenario, error) {
 		}
 
 		// Load the JSON file
+		// #nosec G304 - path is safely constructed from filepath.WalkDir
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("failed to read file %s: %w", path, err)

@@ -127,13 +127,14 @@ func (dtv *DateTimeValue) formatDateTime() (string, error) {
 	timeStyle, hasTimeStyle := dtv.options["timeStyle"].(string)
 
 	// Format based on options
-	if hasDateStyle && hasTimeStyle {
+	switch {
+	case hasDateStyle && hasTimeStyle:
 		return FormatDateTimeWithStyle(*c, dateStyle, timeStyle), nil
-	} else if hasDateStyle {
+	case hasDateStyle:
 		return FormatDateWithStyle(*c, dateStyle), nil
-	} else if hasTimeStyle {
+	case hasTimeStyle:
 		return FormatTimeWithStyle(*c, timeStyle), nil
-	} else {
+	default:
 		// Default formatting
 		return c.ToDateTimeString(), nil
 	}
@@ -218,28 +219,28 @@ func GetTimeFormat(style string) string {
 // Carbon doesn't support all locale formats, so we need to normalize them
 func normalizeLocaleForCarbon(locale string) string {
 	// Handle common locale patterns
-	switch {
-	case locale == "en-US" || locale == "en_US":
+	switch locale {
+	case "en-US", "en_US":
 		return "en"
-	case locale == "zh-CN" || locale == "zh_CN":
+	case "zh-CN", "zh_CN":
 		return "zh"
-	case locale == "zh-TW" || locale == "zh_TW":
+	case "zh-TW", "zh_TW":
 		return "zh"
-	case locale == "es-ES" || locale == "es_ES":
+	case "es-ES", "es_ES":
 		return "es"
-	case locale == "fr-FR" || locale == "fr_FR":
+	case "fr-FR", "fr_FR":
 		return "fr"
-	case locale == "de-DE" || locale == "de_DE":
+	case "de-DE", "de_DE":
 		return "de"
-	case locale == "ja-JP" || locale == "ja_JP":
+	case "ja-JP", "ja_JP":
 		return "ja"
-	case locale == "ko-KR" || locale == "ko_KR":
+	case "ko-KR", "ko_KR":
 		return "ko"
-	case locale == "pt-BR" || locale == "pt_BR":
+	case "pt-BR", "pt_BR":
 		return "pt"
-	case locale == "ru-RU" || locale == "ru_RU":
+	case "ru-RU", "ru_RU":
 		return "ru"
-	case locale == "ar-SA" || locale == "ar_SA":
+	case "ar-SA", "ar_SA":
 		return "ar"
 	default:
 		// For other locales, try to extract the language part

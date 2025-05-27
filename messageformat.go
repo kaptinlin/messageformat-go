@@ -201,9 +201,10 @@ func New(
 
 	// Handle options - support both traditional struct and functional options
 	var opts *MessageFormatOptions
-	if len(options) == 0 {
+	switch len(options) {
+	case 0:
 		opts = &MessageFormatOptions{}
-	} else if len(options) == 1 {
+	case 1:
 		// Check if it's nil (traditional way of passing no options)
 		if options[0] == nil {
 			opts = &MessageFormatOptions{}
@@ -221,7 +222,7 @@ func New(
 			end := 1
 			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
 		}
-	} else {
+	default:
 		// Multiple functional options
 		var funcOpts []Option
 		for _, opt := range options {
@@ -372,14 +373,15 @@ func (mf *MessageFormat) FormatToParts(
 	// Parse options - support both traditional callback and functional options
 	var onError func(error)
 
-	if len(options) == 0 {
+	switch len(options) {
+	case 0:
 		// Default error handler that emits warnings (matches TypeScript behavior)
 		// TypeScript: process.emitWarning(error) or console.warn(error)
 		onError = func(err error) {
 			// Default: emit warning using logger (matches TypeScript behavior)
 			mf.logger.Warn("MessageFormat error", "error", err)
 		}
-	} else if len(options) == 1 {
+	case 1:
 		// Check if it's nil (traditional way of passing no error handler)
 		if options[0] == nil {
 			onError = func(err error) {
@@ -402,7 +404,7 @@ func (mf *MessageFormat) FormatToParts(
 			end := 1
 			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
 		}
-	} else {
+	default:
 		// Multiple functional options
 		var funcOpts []FormatOption
 		for _, opt := range options {
@@ -486,20 +488,18 @@ func (mf *MessageFormat) addDeclarationsToScope(
 		case *datamodel.InputDeclaration:
 			// For input declarations, create an unresolved expression
 			// that will be resolved with the provided msgParams
-			if expr := d.Value(); expr != nil {
-				if varRefExpr, ok := expr.(*datamodel.VariableRefExpression); ok {
-					// Convert VariableRefExpression to Expression for resolve package
-					generalExpr := datamodel.NewExpression(varRefExpr.Arg(), varRefExpr.FunctionRef(), varRefExpr.Attributes())
-					scope[d.Name()] = resolve.NewUnresolvedExpression(generalExpr, msgParams)
-				}
+			expr := d.Value()
+			if varRefExpr, ok := expr.(*datamodel.VariableRefExpression); ok {
+				// Convert VariableRefExpression to Expression for resolve package
+				generalExpr := datamodel.NewExpression(varRefExpr.Arg(), varRefExpr.FunctionRef(), varRefExpr.Attributes())
+				scope[d.Name()] = resolve.NewUnresolvedExpression(generalExpr, msgParams)
 			}
 		case *datamodel.LocalDeclaration:
 			// For local declarations, create an unresolved expression
 			// that will be resolved without external parameters
-			if expr := d.Value(); expr != nil {
-				if localExpr, ok := expr.(*datamodel.Expression); ok {
-					scope[d.Name()] = resolve.NewUnresolvedExpression(localExpr, nil)
-				}
+			expr := d.Value()
+			if localExpr, ok := expr.(*datamodel.Expression); ok {
+				scope[d.Name()] = resolve.NewUnresolvedExpression(localExpr, nil)
 			}
 		}
 	}

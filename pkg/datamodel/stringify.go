@@ -287,11 +287,12 @@ func stringifyVariableRef(vr *VariableRef) string {
 func stringifyOption(name string, value interface{}) string {
 	var valueStr string
 
-	if IsVariableRef(value) {
+	switch {
+	case IsVariableRef(value):
 		valueStr = stringifyVariableRef(value.(*VariableRef))
-	} else if IsLiteral(value) {
+	case IsLiteral(value):
 		valueStr = stringifyLiteral(value.(*Literal))
-	} else {
+	default:
 		valueStr = fmt.Sprintf("%v", value)
 	}
 
@@ -305,11 +306,12 @@ func stringifyOption(name string, value interface{}) string {
 //	  return value === true ? `@${name}` : `@${name}=${stringifyLiteral(value)}`;
 //	}
 func stringifyAttribute(name string, value interface{}) string {
-	if value == true {
+	switch {
+	case value == true:
 		return "@" + name
-	} else if IsLiteral(value) {
+	case IsLiteral(value):
 		return fmt.Sprintf("@%s=%s", name, stringifyLiteral(value.(*Literal)))
-	} else {
+	default:
 		return fmt.Sprintf("@%s=%v", name, value)
 	}
 }

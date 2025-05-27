@@ -1,6 +1,7 @@
 package resolve
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -9,7 +10,7 @@ import (
 
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
-	"github.com/kaptinlin/messageformat-go/pkg/errors"
+	pkgErrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
@@ -313,18 +314,13 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 			operand interface{},
 		) messagevalue.MessageValue {
 			// Mock implementation that respects hour12 option
-			hour12, _ := options["hour12"]
-			timeStyle, _ := options["timeStyle"]
+			hour12 := options["hour12"]
 
 			var result string
 			if hour12 == "true" || hour12 == true {
 				result = "3:00 PM" // 12-hour format
 			} else {
 				result = "15:00" // 24-hour format
-			}
-
-			if timeStyle == "short" {
-				// Keep short format
 			}
 
 			return messagevalue.NewStringValue(result, "en", ctx.Source())
@@ -395,7 +391,7 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 			options map[string]interface{},
 			operand interface{},
 		) messagevalue.MessageValue {
-			hour12, _ := options["hour12"]
+			hour12 := options["hour12"]
 
 			var result string
 			// Handle both string "false" and boolean false
@@ -581,7 +577,8 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 		onError := func(err error) {
 			errorCalled = true
 			// Check if it's a resolution error with unknown-function type
-			if resErr, ok := err.(*errors.MessageResolutionError); ok {
+			var resErr *pkgErrors.MessageResolutionError
+			if errors.As(err, &resErr) {
 				errorType = resErr.GetType()
 			}
 		}

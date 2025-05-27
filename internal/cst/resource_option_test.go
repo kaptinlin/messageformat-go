@@ -173,7 +173,7 @@ func TestMessagesInResources(t *testing.T) {
 		// TypeScript original code: errors: [{ type: 'bad-escape' }, { type: 'bad-escape' }],
 		assert.Len(t, noRes.Errors(), 2)
 		for _, err := range noRes.Errors() {
-			assert.Equal(t, "bad-escape", string(err.Type))
+			assert.Equal(t, "bad-escape", err.Type)
 		}
 
 		simple, ok := noRes.(*SimpleMessage)
@@ -214,7 +214,7 @@ func TestMessagesInResources(t *testing.T) {
 		// TypeScript original code: errors: [{ type: 'bad-escape' }, { type: 'bad-escape' }],
 		assert.Len(t, noRes.Errors(), 2)
 		for _, err := range noRes.Errors() {
-			assert.Equal(t, "bad-escape", string(err.Type))
+			assert.Equal(t, "bad-escape", err.Type)
 		}
 
 		simple, ok := noRes.(*SimpleMessage)

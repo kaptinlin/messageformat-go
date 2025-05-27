@@ -68,9 +68,10 @@ func tests(tc utils.Test) func(*testing.T) {
 				// Set bidi isolation if specified (matches TypeScript: bidiIsolation: tc.bidiIsolation)
 				if tc.BidiIsolationRaw != nil {
 					if bidiStr, ok := tc.BidiIsolationRaw.(string); ok {
-						if bidiStr == "default" {
+						switch bidiStr {
+						case "default":
 							options.BidiIsolation = messageformat.BidiDefault
-						} else if bidiStr == "none" {
+						case "none":
 							options.BidiIsolation = messageformat.BidiNone
 						}
 					} else if tc.BidiIsolation != nil {
@@ -266,15 +267,16 @@ func TestMessageFormatWorkingGroup(t *testing.T) {
 				testName := utils.TestName(tc)
 
 				// Handle test execution (matches TypeScript: const describe_ = tc.only ? describe.only : ...)
-				if tc.Only {
+				switch {
+				case tc.Only:
 					// Run only this test
 					t.Run(testName, tests(tc))
-				} else if shouldSkip {
+				case shouldSkip:
 					// Skip this test
 					t.Run(testName, func(t *testing.T) {
 						t.Skip("Skipped due to tag")
 					})
-				} else {
+				default:
 					// Run normal test
 					t.Run(testName, tests(tc))
 				}

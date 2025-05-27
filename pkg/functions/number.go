@@ -309,14 +309,14 @@ func IntegerFunction(
 				mergedOptions[name] = intVal
 			} else {
 				msg := fmt.Sprintf("Value %v is not valid for :integer option %s", optval, name)
-				ctx.OnError(errors.NewBadOptionError(msg, ctx.Source()))
+				ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
 			}
 		case "select", "signDisplay", "useGrouping":
 			if strVal, err := asString(optval); err == nil {
 				mergedOptions[name] = strVal
 			} else {
 				msg := fmt.Sprintf("Value %v is not valid for :integer option %s", optval, name)
-				ctx.OnError(errors.NewBadOptionError(msg, ctx.Source()))
+				ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
 			}
 		default:
 			// Unknown option - silently ignore to match TypeScript behavior
@@ -347,17 +347,17 @@ func getMessageNumber(
 		if selectVal, hasSelect := options["select"]; hasSelect {
 			// Check if select option is set by literal value
 			if !ctx.LiteralOptionKeys()["select"] {
-				ctx.OnError(errors.NewBadOptionError("The option select may only be set by a literal value", ctx.Source()))
+				ctx.OnError(pkgErrors.NewBadOptionError("The option select may only be set by a literal value", ctx.Source()))
 				canSelect = false
 			} else {
 				// Validate select value - matches TypeScript select value validation
 				if selectStr, ok := selectVal.(string); ok {
 					if selectStr != "exact" && selectStr != "cardinal" && selectStr != "ordinal" {
 						msg := fmt.Sprintf("invalid select value: %s", selectStr)
-						ctx.OnError(errors.NewBadOptionError(msg, ctx.Source()))
+						ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
 					}
 				} else {
-					ctx.OnError(errors.NewBadOptionError("select option must be a string", ctx.Source()))
+					ctx.OnError(pkgErrors.NewBadOptionError("select option must be a string", ctx.Source()))
 				}
 			}
 		}
@@ -423,7 +423,7 @@ func parseJSONNumber(s string) (interface{}, error) {
 	// This will reject invalid JSON numbers like "00", "042", "1.", ".1", "+1", etc.
 	var jsonVal interface{}
 	if err := json.Unmarshal([]byte(s), &jsonVal); err != nil {
-		return nil, fmt.Errorf("not a valid JSON number: %s", s)
+		return nil, fmt.Errorf("%w: %s", ErrNotValidJSONNumber, s)
 	}
 
 	// JSON.Unmarshal only returns float64 for numbers
@@ -435,7 +435,7 @@ func parseJSONNumber(s string) (interface{}, error) {
 		return floatVal, nil
 	}
 
-	return nil, fmt.Errorf("not a valid JSON number: %s", s)
+	return nil, fmt.Errorf("%w: %s", ErrNotValidJSONNumber, s)
 }
 
 // isFinite checks if a float64 value is finite (not infinite or NaN)

@@ -345,13 +345,14 @@ func (mv *messageValueWithOptions) ToParts() ([]messagevalue.MessagePart, error)
 		for i, part := range parts {
 			// Determine locale based on dir and id according to test expectations
 			var locale string
-			if mv.dir == "rtl" || mv.dir == "auto" {
+			switch {
+			case mv.dir == "rtl" || mv.dir == "auto":
 				// For rtl and auto, include locale
 				locale = mv.wrapped.Locale()
-			} else if mv.dir == "ltr" && mv.id != "" {
+			case mv.dir == "ltr" && mv.id != "":
 				// For ltr with id, don't include locale (leave empty)
 				locale = ""
-			} else if mv.dir == "ltr" && mv.id == "" {
+			case mv.dir == "ltr" && mv.id == "":
 				// For ltr without id, include locale
 				locale = mv.wrapped.Locale()
 			}

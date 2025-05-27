@@ -304,18 +304,20 @@ func parsePattern(ctx *ParseContext, start int, quoted bool) *Pattern {
 	var body []Node
 	for pos < len(ctx.source) {
 		ch := ctx.source[pos]
-		if ch == '{' {
+		switch ch {
+		case '{':
 			expr := parseExpression(ctx, pos)
 			body = append(body, expr)
 			pos = expr.End()
-		} else if ch == '}' {
-			break
-		} else {
+		case '}':
+			goto loop_end
+		default:
 			text := ParseText(ctx, pos)
 			body = append(body, text)
 			pos = text.End()
 		}
 	}
+loop_end:
 
 	if quoted {
 		if strings.HasPrefix(ctx.source[pos:], "}}") {
@@ -341,11 +343,12 @@ func parseDeclarations(ctx *ParseContext, start int) ([]Declaration, int) {
 		}
 
 		var decl Declaration
-		if strings.HasPrefix(source[pos:], ".input") {
+		switch {
+		case strings.HasPrefix(source[pos:], ".input"):
 			decl = parseInputDeclaration(ctx, pos)
-		} else if strings.HasPrefix(source[pos:], ".local") {
+		case strings.HasPrefix(source[pos:], ".local"):
 			decl = parseLocalDeclaration(ctx, pos)
-		} else {
+		default:
 			decl = parseDeclarationJunk(ctx, pos)
 		}
 
