@@ -176,12 +176,10 @@ func main() {
 
 	// Example 8: Traditional options struct
 	fmt.Println("\n8. Traditional Options Struct:")
-	bidiIsolation := "none"
-	dir := "ltr"
 
 	mf8, err := messageformat.New("en", "Hello, {$name}!", &messageformat.MessageFormatOptions{
-		BidiIsolation: &bidiIsolation,
-		Dir:           &dir,
+		BidiIsolation: messageformat.BidiNone,
+		Dir:           messageformat.DirLTR,
 	})
 	if err != nil {
 		log.Fatal(err)
