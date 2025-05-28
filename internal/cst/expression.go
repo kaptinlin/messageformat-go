@@ -189,6 +189,9 @@ func parseFunctionRefOrMarkup(ctx *ParseContext, start int, nodeType string) Nod
 	var options []Option
 	var close *Syntax
 
+	// Track option names to detect duplicates
+	optionNames := make(map[string]bool)
+
 	for pos < len(source) {
 		ws := Whitespaces(source, pos)
 		next := byte(0)
@@ -220,6 +223,15 @@ func parseFunctionRefOrMarkup(ctx *ParseContext, start int, nodeType string) Nod
 		if opt.End() == pos {
 			break // error
 		}
+
+		// Check for duplicate option names
+		optionName := getOptionName(opt.Name())
+		if optionNames[optionName] {
+			ctx.OnError("duplicate-option-name", opt.Start(), opt.End())
+		} else {
+			optionNames[optionName] = true
+		}
+
 		options = append(options, *opt)
 		pos = opt.End()
 	}
@@ -231,6 +243,15 @@ func parseFunctionRefOrMarkup(ctx *ParseContext, start int, nodeType string) Nod
 		open := NewSyntax(start, start+1, string(source[start]))
 		return NewMarkup(start, pos, open, id.Parts, options, close)
 	}
+}
+
+// getOptionName extracts the full option name from identifier parts
+func getOptionName(identifier Identifier) string {
+	var name string
+	for _, part := range identifier {
+		name += part.Value()
+	}
+	return name
 }
 
 // IdentifierResult represents the result of parsing an identifier

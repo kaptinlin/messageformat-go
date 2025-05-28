@@ -10,23 +10,28 @@ import (
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
-// Static errors to avoid dynamic error creation
+// Static error variables to avoid dynamic error creation
 var (
-	ErrNotSelectable    = errors.New("not selectable")
-	ErrBadOption        = errors.New("bad option")
-	ErrSelectionFailed  = errors.New("selection failed")
-	ErrNotFormattable   = errors.New("not formattable")
-	ErrFormattingFailed = errors.New("formatting failed")
-	ErrNotPositiveInt   = errors.New("not a positive integer")
-	ErrNotString        = errors.New("not a string")
-	ErrInvalidNumeric   = errors.New("input is not numeric")
+	ErrInvalidNumeric       = errors.New("invalid numeric input")
+	ErrNotPositiveInt       = errors.New("not a positive integer")
+	ErrNotString            = errors.New("not a string")
+	ErrInvalidDecimalPlaces = errors.New("invalid option decimalPlaces")
+	ErrInvalidFailsOption   = errors.New("invalid option fails")
+	ErrNotSelectable        = errors.New("not selectable")
+	ErrBadOption            = errors.New("bad option")
+	ErrSelectionFailed      = errors.New("selection failed")
+	ErrNotFormattable       = errors.New("not formattable")
+	ErrFormattingFailed     = errors.New("formatting failed")
 )
 
-// TestFunctions provides test-only functions for the MessageFormat test suite
-var TestFunctions = map[string]functions.MessageFunction{
-	"test:function": testFunction,
-	"test:select":   testSelectFunction,
-	"test:format":   testFormatFunction,
+// TestFunctions returns a map of test functions for MessageFormat testing
+func TestFunctions() map[string]functions.MessageFunction {
+	return map[string]functions.MessageFunction{
+		"test":        testFunction,
+		"test:select": testSelectFunction,
+		"test:format": testFormatFunction,
+		"placeholder": placeholderFunction,
+	}
 }
 
 // testValue represents a test function result with specific capabilities
@@ -85,7 +90,9 @@ func (tv *testValue) SelectKeys(keys []string) ([]string, error) {
 		return nil, ErrSelectionFailed
 	}
 
+	// Follow TypeScript logic: if value === 1
 	if tv.input == 1 {
+		// Check for "1.0" first if decimalPlaces === 1
 		if tv.decimalPlaces == 1 {
 			for _, key := range keys {
 				if key == "1.0" {
@@ -93,6 +100,7 @@ func (tv *testValue) SelectKeys(keys []string) ([]string, error) {
 				}
 			}
 		}
+		// Then check for "1"
 		for _, key := range keys {
 			if key == "1" {
 				return []string{"1"}, nil
@@ -100,7 +108,8 @@ func (tv *testValue) SelectKeys(keys []string) ([]string, error) {
 		}
 	}
 
-	return []string{}, nil // No match
+	// Return null (empty slice) if no match found, like TypeScript
+	return []string{}, nil
 }
 
 // ToString formats the test value as a string
@@ -112,10 +121,10 @@ func (tv *testValue) ToString() (string, error) {
 		return "", ErrFormattingFailed
 	}
 
-	// Format the number directly
+	// Follow TypeScript testParts logic
 	var result strings.Builder
 
-	// Handle negative sign
+	// Handle negative numbers
 	if tv.input < 0 {
 		result.WriteString("-")
 	}
@@ -126,12 +135,14 @@ func (tv *testValue) ToString() (string, error) {
 		abs = -abs
 	}
 
+	// Integer part (Math.floor equivalent)
 	intPart := int64(abs)
 	result.WriteString(strconv.FormatInt(intPart, 10))
 
-	// Add decimal part if needed
+	// Add decimal part if decimalPlaces === 1
 	if tv.decimalPlaces == 1 {
 		result.WriteString(".")
+		// Fractional part: Math.floor((abs - Math.floor(abs)) * 10)
 		fracPart := int64((abs - float64(intPart)) * 10)
 		result.WriteString(strconv.FormatInt(fracPart, 10))
 	}
@@ -194,7 +205,7 @@ func createTestValue(ctx functions.MessageFunctionContext, options map[string]in
 		dir:           bidi.DirAuto,
 	}
 
-	// Handle operand that might be another test value
+	// Handle operand that might be another test value (like TypeScript valueOf)
 	if testVal, ok := operand.(*testValue); ok {
 		tv.input = testVal.input
 		tv.decimalPlaces = testVal.decimalPlaces
@@ -208,36 +219,41 @@ func createTestValue(ctx functions.MessageFunctionContext, options map[string]in
 			return messagevalue.NewFallbackValue(ctx.Source(), locale)
 		}
 
-		// Try to parse numeric input, but don't fail if it's not numeric
-		input, err := parseNumericInput(operand)
+		// Try to parse numeric input - be more strict like TypeScript
+		input, err := parseNumericInputStrict(operand)
 		if err != nil {
-			// For non-numeric operands, use a default value but continue processing
+			// For non-numeric input, use 0 as default but continue processing
+			// This allows the fails option to be processed and take effect
 			tv.input = 0
 		} else {
 			tv.input = input
 		}
 	}
 
-	// Process options
+	// Process decimalPlaces option with strict validation like TypeScript
 	if decimalPlaces, exists := options["decimalPlaces"]; exists {
 		if dp, err := asPositiveInteger(decimalPlaces); err == nil {
 			if dp == 0 || dp == 1 {
 				tv.decimalPlaces = dp
 			} else {
-				// Invalid decimalPlaces value - this should cause a bad-option error
+				// Invalid decimalPlaces value - TypeScript throws bad-option error
 				tv.badOption = true
+				// In TypeScript, this would call onError with MessageResolutionError
+				ctx.OnError(ErrInvalidDecimalPlaces)
 			}
 		} else {
-			// Invalid decimalPlaces format - this should cause a bad-option error
+			// Invalid decimalPlaces format
 			tv.badOption = true
+			ctx.OnError(ErrInvalidDecimalPlaces)
 		}
 	}
 
+	// Process fails option with exact TypeScript logic
 	if fails, exists := options["fails"]; exists {
 		if failsStr, err := asString(fails); err == nil {
 			switch failsStr {
 			case "never":
-				// Default behavior
+				// Default behavior - no changes
 			case "select":
 				tv.failsSelect = true
 			case "format":
@@ -246,18 +262,38 @@ func createTestValue(ctx functions.MessageFunctionContext, options map[string]in
 				tv.failsSelect = true
 				tv.failsFormat = true
 			default:
-				return messagevalue.NewFallbackValue(ctx.Source(), locale)
+				// Invalid fails value - TypeScript calls onError
+				ctx.OnError(ErrInvalidFailsOption)
 			}
 		} else {
-			return messagevalue.NewFallbackValue(ctx.Source(), locale)
+			// Invalid fails format
+			ctx.OnError(ErrInvalidFailsOption)
 		}
 	}
 
 	return tv
 }
 
-// parseNumericInput parses various input types into a numeric value
-func parseNumericInput(input interface{}) (float64, error) {
+// parseNumericInputStrict parses input more strictly like TypeScript version
+func parseNumericInputStrict(input interface{}) (float64, error) {
+	// Handle valueOf() method like TypeScript
+	if obj, ok := input.(interface{ ValueOf() (interface{}, error) }); ok {
+		if val, err := obj.ValueOf(); err == nil {
+			input = val
+		}
+	}
+
+	// Try JSON parsing for strings like TypeScript
+	if str, ok := input.(string); ok {
+		// Try to parse as number directly
+		if val, err := strconv.ParseFloat(str, 64); err == nil {
+			return val, nil
+		}
+		// If not a valid number string, return error
+		return 0, ErrInvalidNumeric
+	}
+
+	// Handle numeric types
 	switch v := input.(type) {
 	case int:
 		return float64(v), nil
@@ -269,13 +305,8 @@ func parseNumericInput(input interface{}) (float64, error) {
 		return float64(v), nil
 	case float64:
 		return v, nil
-	case string:
-		// Try to parse as JSON number
-		if val, err := strconv.ParseFloat(v, 64); err == nil {
-			return val, nil
-		}
-		return 0, ErrInvalidNumeric
 	default:
+		// TypeScript throws error for non-numeric input
 		return 0, ErrInvalidNumeric
 	}
 }
@@ -304,4 +335,15 @@ func asString(value interface{}) (string, error) {
 		return str, nil
 	}
 	return "", ErrNotString
+}
+
+// placeholderFunction implements a simple placeholder function for testing
+func placeholderFunction(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+	locale := "en"
+	if locales := ctx.Locales(); len(locales) > 0 {
+		locale = locales[0]
+	}
+
+	// Return a simple text value
+	return messagevalue.NewStringValue("placeholder", locale, ctx.Source())
 }

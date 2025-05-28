@@ -159,10 +159,12 @@ func isNameChar(r rune) bool {
 		return true
 	}
 
-	// Unicode ranges (simplified check)
+	// Unicode ranges (according to ABNF spec)
+	// %xA1-61B but omit BidiControl: %x61C
 	if r >= 0xa1 && r <= 0x61b {
 		return true
 	}
+	// Skip %x61C (Arabic Letter Mark - bidirectional control character)
 	if r >= 0x61d && r <= 0x167f {
 		return true
 	}
@@ -172,15 +174,19 @@ func isNameChar(r rune) bool {
 	if r >= 0x200b && r <= 0x200d {
 		return true
 	}
+	// Skip BidiControl: %x200E-200F (LRM, RLM)
 	if r >= 0x2010 && r <= 0x2027 {
 		return true
 	}
+	// Skip Whitespace: %x2028-2029 %x202F, BidiControl: %x202A-202E
 	if r >= 0x2030 && r <= 0x205e {
 		return true
 	}
+	// Skip Whitespace: %x205F
 	if r >= 0x2060 && r <= 0x2065 {
 		return true
 	}
+	// Skip BidiControl: %x2066-2069 (LRI, RLI, FSI, PDI)
 	if r >= 0x206a && r <= 0x2fff {
 		return true
 	}

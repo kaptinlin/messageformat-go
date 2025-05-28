@@ -35,14 +35,14 @@ func TestBasicFunctionality(t *testing.T) {
 
 	t.Run("test function", func(t *testing.T) {
 		options := &messageformat.MessageFormatOptions{
-			Functions:     TestFunctions,
+			Functions:     TestFunctions(),
 			BidiIsolation: messageformat.BidiNone,
 		}
-		mf, err := messageformat.New("en", "{42 :test:function}", options)
+		mf, err := messageformat.New("en", "{42 :test}", options)
 		require.NoError(t, err)
 
 		result, err := mf.Format(nil, nil)
 		require.NoError(t, err)
-		assert.Equal(t, "42", result) // test:function should format the number
+		assert.Equal(t, "42", result) // test function should format the number
 	})
 }

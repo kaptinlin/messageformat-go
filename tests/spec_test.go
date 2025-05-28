@@ -29,7 +29,7 @@ func tests(tc utils.Test) func(*testing.T) {
 		}
 
 		// Add test functions
-		for name, fn := range TestFunctions {
+		for name, fn := range TestFunctions() {
 			allFunctions[name] = fn
 		}
 

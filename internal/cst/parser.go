@@ -82,6 +82,8 @@ func (ctx *ParseContext) OnError(errorType string, start int, endOrChar interfac
 		errorTypeConstant = errors.ErrorTypeBadEscape
 	case "bad-input-expression":
 		errorTypeConstant = errors.ErrorTypeBadInputExpression
+	case "duplicate-option-name":
+		errorTypeConstant = errors.ErrorTypeDuplicateOptionName
 	case "parse-error":
 		errorTypeConstant = errors.ErrorTypeParseError
 	default:
@@ -158,7 +160,7 @@ func ParseCST(source string, resource bool) Message {
 	} else {
 		// matches TypeScript: return source.startsWith('{{', pos) ? parsePatternMessage(...) : parsePatternMessage(...);
 		if strings.HasPrefix(source[pos:], "{{") {
-			return parsePatternMessage(ctx, pos, []Declaration{}, true)
+			return parsePatternMessage(ctx, 0, []Declaration{}, true)
 		} else {
 			return parsePatternMessage(ctx, 0, []Declaration{}, false)
 		}
@@ -292,6 +294,8 @@ func parsePattern(ctx *ParseContext, start int, quoted bool) *Pattern {
 	var braces []Syntax
 
 	if quoted {
+		// Skip optional whitespace and bidi characters before {{
+		pos = Whitespaces(ctx.source, pos).End
 		if strings.HasPrefix(ctx.source[pos:], "{{") {
 			braces = append(braces, NewSyntax(pos, pos+2, "{{"))
 			pos += 2
@@ -312,7 +316,14 @@ func parsePattern(ctx *ParseContext, start int, quoted bool) *Pattern {
 		case '}':
 			goto loop_end
 		default:
-			text := ParseText(ctx, pos)
+			var text *Text
+			if quoted {
+				// In quoted patterns, use regular ParseText (no escape sequences)
+				text = ParseText(ctx, pos)
+			} else {
+				// In simple patterns, use ParseSimpleText (with escape sequences)
+				text = ParseSimpleText(ctx, pos)
+			}
 			body = append(body, text)
 			pos = text.End()
 		}
@@ -320,6 +331,8 @@ func parsePattern(ctx *ParseContext, start int, quoted bool) *Pattern {
 loop_end:
 
 	if quoted {
+		// Skip optional whitespace and bidi characters before }}
+		pos = Whitespaces(ctx.source, pos).End
 		if strings.HasPrefix(ctx.source[pos:], "}}") {
 			braces = append(braces, NewSyntax(pos, pos+2, "}}"))
 			pos += 2

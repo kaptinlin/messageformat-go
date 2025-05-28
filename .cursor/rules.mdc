@@ -1,3 +1,8 @@
+---
+description:
+globs:
+alwaysApply: true
+---
 # MessageFormat 2.0 Go Implementation Rules
 
 ## Core Principles
@@ -124,7 +129,7 @@ func TestFunction(t *testing.T) {
         {"case1", "input1", "output1", false},
         {"error_case", "invalid", "", true},
     }
-    
+
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             result, err := Function(tt.input)
@@ -165,4 +170,4 @@ func TestFunction(t *testing.T) {
 - Include comprehensive package documentation
 - Provide usage examples
 - Document all public APIs
-- Maintain TypeScript compatibility notes 
+- Maintain TypeScript compatibility notes

@@ -64,7 +64,11 @@ func ParseText(ctx *ParseContext, start int) *Text {
 				i += esc.Length
 				pos = i + 1
 			}
-		case '{', '}':
+		case '{':
+			// Single { means end of text ({{ is handled by parsePattern for quoted patterns)
+			goto loop_end
+		case '}':
+			// Single } means end of text (}} is handled by parsePattern for quoted patterns)
 			goto loop_end
 		case '\n':
 			if ctx.Resource() {
@@ -339,4 +343,76 @@ func parseHexEscape(ctx *ParseContext, start int, hexLen int) *EscapeResult {
 		Value:  string(rune(value)),
 		Length: 1 + hexLen,
 	}
+}
+
+// ParseSimpleText parses literal text content with escape sequence support
+// This is used for simple messages that are not quoted patterns
+func ParseSimpleText(ctx *ParseContext, start int) *Text {
+	var value strings.Builder
+	pos := start
+	i := start
+	source := ctx.Source()
+
+	for i < len(source) {
+		ch := source[i]
+		switch ch {
+		case '\\':
+			esc := parseEscape(ctx, i)
+			if esc != nil {
+				value.WriteString(source[pos:i])
+				value.WriteString(esc.Value)
+				i += esc.Length
+				pos = i + 1
+			}
+		case '{':
+			// Check for {{ escape sequence
+			if i+1 < len(source) && source[i+1] == '{' {
+				// This is an escaped {, add the text before it and the literal {
+				value.WriteString(source[pos:i])
+				value.WriteString("{")
+				i += 2 // Skip both {{
+				pos = i
+				continue
+			}
+			// Single { means end of text
+			goto loop_end
+		case '}':
+			// Check for }} escape sequence
+			if i+1 < len(source) && source[i+1] == '}' {
+				// This is an escaped }, add the text before it and the literal }
+				value.WriteString(source[pos:i])
+				value.WriteString("}")
+				i += 2 // Skip both }}
+				pos = i
+				continue
+			}
+			// Single } means end of text
+			goto loop_end
+		case '\n':
+			if ctx.Resource() {
+				nl := i
+				next := byte(0)
+				if i+1 < len(source) {
+					next = source[i+1]
+				}
+				for next == ' ' || next == '\t' {
+					i++
+					if i+1 < len(source) {
+						next = source[i+1]
+					} else {
+						break
+					}
+				}
+				if i > nl {
+					value.WriteString(source[pos : nl+1])
+					pos = i + 1
+				}
+			}
+		}
+		i++
+	}
+
+loop_end:
+	value.WriteString(source[pos:i])
+	return NewText(start, i, value.String())
 }

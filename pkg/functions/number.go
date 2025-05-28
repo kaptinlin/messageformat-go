@@ -183,7 +183,7 @@ func NumberFunction(
 
 	// Start with operand options and set defaults - matches TypeScript Object.assign
 	mergedOptions := mergeNumberOptions(numInput.Options, nil, ctx.LocaleMatcher())
-	mergedOptions["style"] = "decimal"
+	// Don't force style=decimal here - let user options override
 
 	// Process expression options - matches TypeScript for loop
 	for name, optval := range options {
@@ -202,7 +202,7 @@ func NumberFunction(
 				ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
 			}
 		case "roundingMode", "roundingPriority", "select", "signDisplay",
-			"trailingZeroDisplay", "useGrouping":
+			"trailingZeroDisplay", "useGrouping", "style", "currency", "currencyDisplay", "currencySign":
 			if strVal, err := asString(optval); err == nil {
 				mergedOptions[name] = strVal
 			} else {
@@ -212,6 +212,11 @@ func NumberFunction(
 		default:
 			// Unknown option - silently ignore to match TypeScript behavior
 		}
+	}
+
+	// Set default style if not specified
+	if _, hasStyle := mergedOptions["style"]; !hasStyle {
+		mergedOptions["style"] = "decimal"
 	}
 
 	return getMessageNumber(ctx, numInput.Value, mergedOptions, true)

@@ -1,5 +1,5 @@
 // Package errors provides error types for MessageFormat 2.0 implementation
-// TypeScript original code: errors.ts module
+// Following TypeScript errors.ts module with Go best practices
 package errors
 
 import (
@@ -35,6 +35,14 @@ func (e *MessageError) Error() string {
 // GetType returns the error type
 func (e *MessageError) GetType() string {
 	return e.Type
+}
+
+// Is implements error comparison for errors.Is()
+func (e *MessageError) Is(target error) bool {
+	if t, ok := target.(*MessageError); ok {
+		return e.Type == t.Type
+	}
+	return false
 }
 
 // NewMessageError creates a new base message error

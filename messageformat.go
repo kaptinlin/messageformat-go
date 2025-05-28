@@ -290,6 +290,20 @@ func New(
 	return mf, nil
 }
 
+// MustNew creates a new MessageFormat and panics if there's an error
+// This is a convenience function for cases where you're certain the input is valid
+func MustNew(
+	locales interface{}, // string | []string | nil
+	source interface{}, // string | datamodel.Message
+	options ...interface{}, // *MessageFormatOptions or ...Option
+) *MessageFormat {
+	mf, err := New(locales, source, options...)
+	if err != nil {
+		panic(err)
+	}
+	return mf
+}
+
 // Format formats the message with the given values and optional error handler
 // Supports both traditional onError callback and functional options pattern
 // TypeScript original code:
@@ -644,4 +658,64 @@ func getFirstLocale(locales []string) string {
 		return locales[0]
 	}
 	return "en"
+}
+
+// ResolvedMessageFormatOptions represents the resolved options for a MessageFormat instance
+// Based on TC39 Intl.MessageFormat proposal
+// https://github.com/tc39/proposal-intl-messageformat#constructor-options-and-resolvedoptions
+type ResolvedMessageFormatOptions struct {
+	BidiIsolation BidiIsolation                        `json:"bidiIsolation"`
+	Dir           Direction                            `json:"dir"`
+	Functions     map[string]functions.MessageFunction `json:"functions"`
+	LocaleMatcher LocaleMatcher                        `json:"localeMatcher"`
+}
+
+// ResolvedOptions returns the resolved options for this MessageFormat instance
+// This method is required by the TC39 Intl.MessageFormat proposal
+// https://github.com/tc39/proposal-intl-messageformat#constructor-options-and-resolvedoptions
+func (mf *MessageFormat) ResolvedOptions() ResolvedMessageFormatOptions {
+	// Convert internal bidiIsolation boolean to BidiIsolation enum
+	var bidiIsolation BidiIsolation
+	if mf.bidiIsolation {
+		bidiIsolation = BidiDefault
+	} else {
+		bidiIsolation = BidiNone
+	}
+
+	// Convert internal dir string to Direction type
+	var dir Direction
+	switch mf.dir {
+	case "ltr":
+		dir = DirLTR
+	case "rtl":
+		dir = DirRTL
+	case "auto":
+		dir = DirAuto
+	default:
+		dir = DirAuto
+	}
+
+	// Convert internal localeMatcher string to LocaleMatcher type
+	var localeMatcher LocaleMatcher
+	switch mf.localeMatcher {
+	case "best fit":
+		localeMatcher = LocaleBestFit
+	case "lookup":
+		localeMatcher = LocaleLookup
+	default:
+		localeMatcher = LocaleBestFit
+	}
+
+	// Create a copy of the functions map to avoid external modification
+	functionsCopy := make(map[string]functions.MessageFunction)
+	for k, v := range mf.functions {
+		functionsCopy[k] = v
+	}
+
+	return ResolvedMessageFormatOptions{
+		BidiIsolation: bidiIsolation,
+		Dir:           dir,
+		Functions:     functionsCopy,
+		LocaleMatcher: localeMatcher,
+	}
 }
