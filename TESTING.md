@@ -1,15 +1,13 @@
 # Testing Guide - MessageFormat 2.0 Go Implementation
 
-This guide covers testing the MessageFormat 2.0 Go implementation with **100% compliance** to the official Unicode specification.
+This guide covers testing the MessageFormat 2.0 Go implementation for compliance with the official Unicode specification.
 
 ## 🏆 Specification Compliance
 
-**✅ 100% Compliance Achieved**
-
-This implementation passes the complete official MessageFormat 2.0 test suite, ensuring:
-- Full compatibility with Unicode MessageFormat 2.0 specification
+This implementation passes the official MessageFormat 2.0 test suite, ensuring:
+- Compatibility with Unicode MessageFormat 2.0 specification
 - Interoperability with other compliant implementations
-- Reliable behavior across all features and edge cases
+- Consistent behavior across features and edge cases
 
 ## 🚀 Quick Start
 
@@ -28,10 +26,10 @@ ls tests/messageformat-wg/test/tests/
 ### Running Tests
 
 ```bash
-# Run all tests (recommended)
+# Run all tests
 make test
 
-# Quick unit tests only
+# Unit tests only
 make test-unit
 
 # Official test suite only
@@ -50,7 +48,7 @@ go test -v ./...
 
 1. **Official Test Suite** (`./tests/`)
    - Unicode MessageFormat Working Group tests
-   - 100% specification compliance verification
+   - Specification compliance verification
    - Covers syntax, formatting, errors, Unicode, bidi text
 
 2. **API Tests** (`messageformat_test.go`)
@@ -166,20 +164,6 @@ go test -race ./...
 go test -v -run TestSpecificFunction ./pkg/functions/
 ```
 
-## 📊 Performance & Coverage
-
-### Targets
-- **Simple Messages**: < 1μs per operation
-- **Number Formatting**: < 5μs per operation
-- **Complex Patterns**: < 10μs per operation
-- **Test Coverage**: ~47% (focused on critical paths)
-- **Official Compliance**: 100% (1000+ tests passing)
-
-### CI Testing
-- **Platforms**: Ubuntu, macOS, Windows
-- **Go Versions**: 1.21.x, 1.22.x, 1.23.x
-- **Checks**: Unit tests, official suite, linting, examples, benchmarks
-
 ## 📝 Contributing Tests
 
 ### Test Guidelines
@@ -230,4 +214,4 @@ go mod verify
 
 ---
 
-**Ready to start testing?** Run `make test` to execute the complete test suite and verify 100% MessageFormat 2.0 specification compliance.
+**Ready to start testing?** Run `make test` to execute the complete test suite and verify MessageFormat 2.0 specification compliance.
