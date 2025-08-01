@@ -8,7 +8,7 @@ require (
 	github.com/Rhymond/go-money v1.0.15
 	github.com/golang-module/carbon/v2 v2.6.9
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/text v0.25.0
+	golang.org/x/text v0.27.0
 )
 
 require (
