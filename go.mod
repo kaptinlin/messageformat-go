@@ -7,7 +7,7 @@ toolchain go1.24.3
 require (
 	github.com/Rhymond/go-money v1.0.15
 	github.com/dromara/carbon/v2 v2.6.11
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	golang.org/x/text v0.28.0
 )
 
