@@ -1,0 +1,151 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag'
+        required: true
+        type: string
+
+env:
+  GO_VERSION: "1.24"
+
+jobs:
+  # ================================================================================================
+  # VALIDATE RELEASE
+  # ================================================================================================
+  
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          
+      - name: Get tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Validate tag
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid tag format: $TAG"
+            echo "Expected: vX.Y.Z"
+            exit 1
+          fi
+          echo "Valid release tag: $TAG"
+          
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          
+      - name: Validate build
+        run: |
+          make deps
+          make verify
+
+  # ================================================================================================
+  # CREATE RELEASE
+  # ================================================================================================
+  
+  release:
+    name: Create Release
+    needs: validate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          
+      - name: Build release
+        run: |
+          make deps
+          make verify
+          
+      - name: Generate changelog
+        run: |
+          TAG="${{ needs.validate.outputs.tag }}"
+          
+          echo "## What's Changed in $TAG" > changelog.md
+          echo "" >> changelog.md
+          
+          # Get commits since last tag
+          LAST_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+          if [ -n "$LAST_TAG" ] && [ "$LAST_TAG" != "$TAG" ]; then
+            echo "### Commits since $LAST_TAG:" >> changelog.md
+            git log --pretty=format:"- %s (%h)" $LAST_TAG..$TAG >> changelog.md
+          else
+            echo "### Initial release" >> changelog.md
+            git log --pretty=format:"- %s (%h)" >> changelog.md
+          fi
+          
+          echo "" >> changelog.md
+          echo "### Installation" >> changelog.md
+          echo "\`\`\`bash" >> changelog.md
+          echo "go get github.com/kaptinlin/messageformat-go@$TAG" >> changelog.md
+          echo "\`\`\`" >> changelog.md
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.validate.outputs.tag }}
+          name: ${{ needs.validate.outputs.tag }}
+          body_path: changelog.md
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+  # ================================================================================================
+  # NOTIFY
+  # ================================================================================================
+  
+  notify:
+    name: Notify Release
+    needs: [validate, release]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Summary
+        run: |
+          echo "## 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag**: ${{ needs.validate.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status**: ${{ needs.release.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.release.result }}" == "success" ]; then
+            echo "✅ Release created successfully!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📦 Installation:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+            echo "go get github.com/kaptinlin/messageformat-go@${{ needs.validate.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Release failed. Check the logs above." >> $GITHUB_STEP_SUMMARY
+          fi

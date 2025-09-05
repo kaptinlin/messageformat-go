@@ -306,26 +306,6 @@ func MustNew(
 
 // Format formats the message with the given values and optional error handler
 // Supports both traditional onError callback and functional options pattern
-// TypeScript original code:
-// format(
-//
-//	msgParams?: Record<string, unknown>,
-//	onError?: (error: unknown) => void
-//
-//	): string {
-//	  const ctx = this.#createContext(msgParams, onError);
-//	  let res = '';
-//	  for (const elem of selectPattern(ctx, this.#message)) {
-//	    if (typeof elem === 'string') {
-//	      res += elem;
-//	    } else if (elem.type === 'markup') {
-//	      formatMarkup(ctx, elem);
-//	    } else {
-//	      // ... expression handling with bidi isolation ...
-//	    }
-//	  }
-//	  return res;
-//	}
 func (mf *MessageFormat) Format(
 	values map[string]interface{},
 	options ...interface{}, // func(error) or ...FormatOption
@@ -366,20 +346,6 @@ func (mf *MessageFormat) Format(
 
 // FormatToParts formats the message and returns detailed parts
 // Supports both traditional onError callback and functional options pattern
-// TypeScript original code:
-// formatToParts(
-//
-//	msgParams?: Record<string, unknown>,
-//	onError?: (error: unknown) => void
-//
-//	): MessagePart<P>[] {
-//	  const ctx = this.#createContext(msgParams, onError);
-//	  const parts: MessagePart<P>[] = [];
-//	  for (const elem of selectPattern(ctx, this.#message)) {
-//	    // ... pattern element processing with bidi isolation ...
-//	  }
-//	  return parts;
-//	}
 func (mf *MessageFormat) FormatToParts(
 	values map[string]interface{},
 	options ...interface{}, // func(error) or ...FormatOption

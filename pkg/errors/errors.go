@@ -234,6 +234,58 @@ func (e *MessageSelectionError) Unwrap() error {
 	return e.Cause
 }
 
+// MessageFunctionError represents message function errors
+// TypeScript original code:
+//
+//	export class MessageFunctionError extends MessageError {
+//	  declare type:
+//	    | 'bad-operand'
+//	    | 'bad-option'
+//	    | 'bad-variant-key'
+//	    | 'function-error'
+//	    | 'not-formattable'
+//	    | 'unsupported-operation';
+//	  source: string;
+//	  cause?: unknown;
+//	  constructor(
+//	    type: typeof MessageFunctionError.prototype.type,
+//	    message: string
+//	  ) {
+//	    super(type, message);
+//	    this.source = '�';
+//	  }
+//	}
+type MessageFunctionError struct {
+	*MessageError
+	Source string // Source text where error occurred, defaults to '�'
+	Cause  error  // Optional underlying cause error
+}
+
+// NewMessageFunctionError creates a new function error
+// TypeScript original code: MessageFunctionError constructor
+func NewMessageFunctionError(errorType, message string) *MessageFunctionError {
+	return &MessageFunctionError{
+		MessageError: NewMessageError(errorType, message),
+		Source:       "�", // TypeScript default value
+		Cause:        nil,
+	}
+}
+
+// SetSource sets the source for a function error
+func (e *MessageFunctionError) SetSource(source string) {
+	e.Source = source
+}
+
+// SetCause sets the cause for a function error
+func (e *MessageFunctionError) SetCause(cause error) {
+	e.Cause = cause
+}
+
+// Unwrap returns the underlying cause error for error wrapping
+func (e *MessageFunctionError) Unwrap() error {
+	return e.Cause
+}
+
 // Error type constants matching TypeScript definitions
 
 // Syntax error types

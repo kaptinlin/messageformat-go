@@ -1,7 +1,9 @@
 package functions
 
 import (
-	"github.com/kaptinlin/messageformat-go/pkg/errors"
+	"fmt"
+
+	pkgErrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
@@ -77,13 +79,7 @@ func UnitFunction(
 	}
 
 	// Start with operand options and set unit style
-	mergedOptions := make(map[string]interface{})
-	if numericOperand.Options != nil {
-		for k, v := range numericOperand.Options {
-			mergedOptions[k] = v
-		}
-	}
-	mergedOptions["localeMatcher"] = ctx.LocaleMatcher()
+	mergedOptions := mergeNumberOptions(numericOperand.Options, nil, ctx.LocaleMatcher())
 	mergedOptions["style"] = "unit"
 
 	// Process expression options
@@ -97,28 +93,27 @@ func UnitFunction(
 			if strval, err := asString(optval); err == nil {
 				mergedOptions[name] = strval
 			} else {
-				msg := "Value " + toString(optval) + " is not valid for :unit option " + name
-				ctx.OnError(errors.NewBadOptionError(msg, source))
+				msg := fmt.Sprintf("Value %v is not valid for :unit option %s", optval, name)
+				ctx.OnError(pkgErrors.NewBadOptionError(msg, source))
 			}
 
 		case "minimumIntegerDigits", "minimumFractionDigits", "maximumFractionDigits", "minimumSignificantDigits", "maximumSignificantDigits", "roundingIncrement":
 			if intval, err := asPositiveInteger(optval); err == nil {
 				mergedOptions[name] = intval
 			} else {
-				msg := "Value " + toString(optval) + " is not valid for :unit option " + name
-				ctx.OnError(errors.NewBadOptionError(msg, source))
+				msg := fmt.Sprintf("Value %v is not valid for :unit option %s", optval, name)
+				ctx.OnError(pkgErrors.NewBadOptionError(msg, source))
 			}
 
 		default:
-			msg := "Value " + toString(optval) + " is not valid for :unit option " + name
-			ctx.OnError(errors.NewBadOptionError(msg, source))
+			// Unknown option - silently ignore to match TypeScript behavior
 		}
 	}
 
 	// Check that unit is provided
 	if _, hasUnit := mergedOptions["unit"]; !hasUnit {
 		msg := "A unit identifier is required for :unit"
-		ctx.OnError(errors.NewBadOperandError(msg, source))
+		ctx.OnError(pkgErrors.NewBadOperandError(msg, source))
 		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
 	}
 

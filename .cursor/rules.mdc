@@ -1,173 +1,200 @@
----
-description:
-globs:
-alwaysApply: true
----
-# MessageFormat 2.0 Go Implementation Rules
+# Cursor Rules for MessageFormat Go
 
-## Core Principles
+This document provides coding rules and guidelines for the MessageFormat Go project when using Cursor AI.
 
-### API Compatibility
-- Maintain complete API compatibility with TypeScript implementation
-- Preserve all method signatures and interfaces
-- Use identical error handling strategies and fallback mechanisms
-- Implement identical option processing and validation logic
+## Repository Overview
 
-### Implementation Fidelity
-- Strictly follow MessageFormat 2.0 specification
-- Use Go idioms without adding extra functionality
-- Ensure cross-language compatibility
-- No features beyond TypeScript implementation
+**MessageFormat Go** implements dual versions of message formatting standards with comprehensive optimization and production-ready quality.
 
-## Comment Standards
+## Project Architecture
 
-### Mandatory Format
+This repository contains **dual implementations**:
+
+### v2 (Root Directory) - MessageFormat 2.0 ⭐ **PREFERRED**
+- **Location**: Root directory (`/`)
+- **Module**: `github.com/kaptinlin/messageformat-go`
+- **Purpose**: Modern MessageFormat 2.0 implementation
+- **Specification**: Unicode MessageFormat 2.0 Tech Preview
+- **Development**: Active development, new features
+- **Architecture**: CST (Concrete Syntax Tree) parsing with official WG test suite validation
+
+### v1 (Subdirectory) - ICU MessageFormat 
+- **Location**: `v1/` subdirectory  
+- **Module**: `github.com/kaptinlin/messageformat-go/v1`
+- **Purpose**: Legacy ICU MessageFormat compatibility
+- **Development**: **MAINTENANCE ONLY** - bug fixes and security updates
+- **Optimization**: 80%+ performance improvements using golang.org/x/text
+
+## Current Status
+
+### ✅ Production Ready Features
+- **Performance**: 80%+ improvements in v1, optimized v2 implementation
+- **Code Quality**: Fixed 86+ lint issues, full gofmt compliance  
+- **Error Handling**: Static error definitions, err113 compliant
+- **Testing**: >80% coverage with comprehensive test suites and performance regression detection
+- **CI/CD**: Multi-version workflows with automated testing and releases
+- **Go Version**: 1.24 (unified across both versions)
+
+## Import Paths
+
 ```go
-// FunctionName describes what this function does in Go context
+// v2 (Recommended) - MessageFormat 2.0
+import "github.com/kaptinlin/messageformat-go"
+import "github.com/kaptinlin/messageformat-go/pkg/datamodel"
+
+// v1 (Legacy) - ICU MessageFormat
+import "github.com/kaptinlin/messageformat-go/v1"
+```
+
+## Key Technologies
+
+### v2 Technology Stack
+- Unicode MessageFormat 2.0 specification compliance
+- CST (Concrete Syntax Tree) parsing architecture
+- Official WG test suite validation
+- Modern Go package architecture (`pkg/` for public APIs)
+
+### v1 Technology Stack  
+- `golang.org/x/text/feature/plural` for CLDR plural rules
+- `sync.Pool` for performance optimization
+- Locale-specific number/currency formatting
+- Memory-efficient string operations
+
+## Development Priorities
+
+1. **v2 First**: Default to v2 for all new development unless explicitly specified
+2. **v1 Maintenance**: Bug fixes and security updates only - no new features
+3. **Quality Focus**: Maintain >80% test coverage and full lint compliance
+4. **Performance**: Monitor regression tests, especially for v1 optimizations
+
+## Common Development Tasks
+
+### Adding v2 Features
+1. Work in root directory
+2. Follow TypeScript comment patterns (mandatory)
+3. Use `pkg/` for public APIs, `internal/` for private
+4. Test against official MessageFormat 2.0 test suite
+
+### v1 Bug Fixes (Limited Scope)
+1. Work in `v1/` directory
+2. Make minimal changes only
+3. Maintain API compatibility strictly
+4. Run performance regression tests
+
+## Mandatory Coding Standards
+
+### 1. Comment Format (REQUIRED)
+
+Every function, type, and method MUST have this comment format:
+
+```go
+// FunctionName describes what this function does
 // TypeScript original code:
 // export function functionName(param: Type): ReturnType {
-//   // implementation
+//   // original implementation
 // }
 func FunctionName(param Type) ReturnType {
-    // implementation
+    // Go implementation
 }
 ```
 
-### Language Requirements
+### 2. Language Requirements (STRICT)
+
 - **ALL COMMENTS MUST BE IN ENGLISH ONLY**
-- Include complete TypeScript original code unmodified
-- Primary description starts with Go type/function name
-- Follow the mandatory comment format above
+- Include complete TypeScript original code unmodified in comments
+- Follow Go naming conventions while preserving API compatibility
+- No Chinese or other languages in code comments
 
-## Type Mappings
+### 3. Testing Requirements (MANDATORY)
 
-| TypeScript | Go |
-|------------|-----|
-| `string` | `string` |
-| `number` | `int64` / `float64` |
-| `boolean` | `bool` |
-| `Array<T>` | `[]T` |
-| `Record<K,V>` | `map[K]V` |
-| `object` | `map[string]interface{}` or `struct` |
-| `undefined/null` | `nil` |
-| `unknown` | `interface{}` |
-
-## Package Structure
-
-### Organization
-- Root package: `github.com/kaptinlin/messageformat-go`
-- Public packages: `pkg/datamodel`, `pkg/errors`, `pkg/functions`, `pkg/messagevalue`, `pkg/parts`
-- Internal packages: `internal/bidi`, `internal/cst`, `internal/resolve`, `internal/selector`
-
-### Naming Conventions
-- Use lowercase package names
-- One primary type per file
-- Test files with `_test.go` suffix
-
-## Function Patterns
-
-### Constructors
-```go
-// Use New prefix for constructors
-func NewMessageFormat(locales []string, source string) *MessageFormat
-```
-
-### Methods
-```go
-// Pointer receivers for mutable types
-func (mf *MessageFormat) Format(values map[string]interface{}) (string, error)
-
-// Value receivers for immutable types
-func (s Syntax) Start() int
-```
-
-### Variadic Functions
-```go
-// Match TypeScript spread operator
-func MessageFunction(
-    ctx MessageFunctionContext,
-    options map[string]interface{},
-    input ...interface{}, // TypeScript: ...input: unknown[]
-) MessageValue
-```
-
-## Error Handling
-
-### Conventions
-- Return errors as last return value
-- Use custom error types matching TypeScript hierarchy
-- Collect multiple errors in slices when needed
-- Use error wrapping with `fmt.Errorf("message: %w", err)`
-
-### Error Types
-```go
-type MessageError struct {
-    Type    string
-    Start   int
-    End     int
-    Message string
-}
-```
-
-## Testing Requirements
-
-### Framework
-- **MUST** use `github.com/stretchr/testify` for all testing
-- Use `testify/assert` for assertions
-- Use `testify/require` for critical checks
-
-### Test Structure
-```go
-func TestFunction(t *testing.T) {
-    // Table-driven tests preferred
-    tests := []struct {
-        name     string
-        input    string
-        expected string
-        hasError bool
-    }{
-        {"case1", "input1", "output1", false},
-        {"error_case", "invalid", "", true},
-    }
-
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            result, err := Function(tt.input)
-            if tt.hasError {
-                require.Error(t, err)
-            } else {
-                require.NoError(t, err)
-                assert.Equal(t, tt.expected, result)
-            }
-        })
-    }
-}
-```
-
-### Coverage Requirements
+- **MUST use `github.com/stretchr/testify`** for all testing
+- Use table-driven tests with `testify/assert` and `testify/require`
 - Maintain test coverage > 80%
-- Convert TypeScript test cases to Go table-driven tests
-- Include benchmark tests for performance validation
+- Write tests before implementing features
 
-## Forbidden Practices
+### 4. Error Handling (REQUIRED)
 
-- Adding functionality not in TypeScript implementation
-- Changing API signatures without TypeScript correspondence
-- Using any language other than English in comments
-- Skipping TypeScript original code in comments
-- Breaking Go idioms unnecessarily
-- Implementing features beyond specification requirements
+- Use static error variables defined in `errors.go` files
+- Follow err113 linter requirements (no dynamic error creation)
+- Return errors as the last return value
+- Use custom error types: `MessageSyntaxError`, `MessageResolutionError`, etc.
 
-## Quality Standards
+### 5. Code Quality (ENFORCED)
 
-### Code Quality
-- Follow Go best practices and conventions
-- Use meaningful variable and function names
-- Implement proper error handling
-- Ensure thread safety where applicable
+- Must pass all golangci-lint checks
+- Use `gofmt` for formatting
+- Follow Go best practices and idioms
+- Prefer composition over inheritance
 
-### Documentation
-- Include comprehensive package documentation
-- Provide usage examples
-- Document all public APIs
-- Maintain TypeScript compatibility notes
+## Type Mappings (TypeScript → Go)
+
+| TypeScript | Go | Notes |
+|------------|----|-----------| 
+| `Record<string, unknown>` | `map[string]interface{}` | Use type assertions carefully |
+| `string \| string[]` | `interface{}` | Handle with type switching |
+| `Array<T>` | `[]T` | Use Go slices |
+| `Promise<T>` | `(T, error)` | Go error handling pattern |
+| `MessageFunction` | `func(ctx MessageFunctionContext, options map[string]interface{}, operand interface{}) MessageValue` | Function signature |
+
+## Development Commands
+
+### v2 Development (Default)
+```bash
+# Primary development workflow
+make test          # Run all v2 tests + official MessageFormat 2.0 suite
+make test-unit     # Unit tests only (faster)
+make test-official # Official test suite only
+make lint          # Code quality checks
+make bench         # Performance benchmarks
+make verify        # Complete verification (format, lint, test)
+make ci           # Full CI pipeline locally
+```
+
+### v1 Maintenance (Limited)
+```bash
+# Legacy maintenance workflow  
+cd v1
+make test          # v1 basic tests
+make test-perf     # Performance regression detection
+make lint          # v1 code quality
+make bench         # v1 benchmarks
+```
+
+### Cross-Version Operations
+```bash
+# From root directory
+make test-all      # Test both v1 and v2
+make lint-all      # Lint both versions
+```
+
+## Prohibited Patterns
+
+❌ **DON'T**:
+- Create new features in v1
+- Use dynamic error creation (`fmt.Errorf` with messages)
+- Mix Chinese and English comments
+- Skip TypeScript original code in comments
+- Use non-testify testing patterns
+
+✅ **DO**:
+- Prefer v2 for all new work
+- Use static error variables
+- Include complete TypeScript comments
+- Write comprehensive tests
+- Follow Go idioms while maintaining API compatibility
+
+## Resource References
+
+### Key Documentation
+- **Main Documentation**: `CLAUDE.md` - Comprehensive development guide
+- **Architecture Status**: `IMPLEMENTATION_STATUS.md` - Current implementation overview  
+- **Best Practices**: `go-module-best-practices.md` - Go module management
+- **CI/CD Configuration**: `.github/workflows/` - Automated testing and releases
+
+### Release Management
+- **v2 Tags**: `v2.x.x` - Active development releases
+- **v1 Tags**: `v1.x.x` - Maintenance and security releases
+
+---
+
+Remember: **v2 is the future, v1 is maintenance-only.** The project is production-ready with optimized performance and comprehensive testing.

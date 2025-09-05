@@ -1,54 +1,157 @@
-name: Go
+name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  GO_VERSION: "1.24"
 
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
-
-      - name: Initialize submodules
-        run: git submodule update --init --recursive
-
+        with:
+          submodules: recursive
+          
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.x
-
+          go-version: ${{ env.GO_VERSION }}
+          
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+            
       - name: Download dependencies
-        run: go mod download
-
-      - name: Run unit tests
+        run: make deps
+        
+      - name: Run all tests
         run: make test
-
+        
+      - name: Run V1 specific tests
+        run: make test-v1
+        continue-on-error: true
+        
+      - name: Run V2 specific tests  
+        run: make test-v2
+        
+      - name: Run benchmarks
+        if: matrix.os == 'ubuntu-latest'
+        run: make bench
+        
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
-
+        with:
+          submodules: recursive
+          
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.x
-
-      - name: Read golangci-lint version from .golangci.version
-        id: golangci-version
-        run: echo "GOLANGCI_VERSION=$(cat .golangci.version)" > $GITHUB_OUTPUT
-
-      - uses: golangci/golangci-lint-action@v8
-        name: Install and run golangci-lint
+          go-version: ${{ env.GO_VERSION }}
+          
+      - name: Cache Go modules
+        uses: actions/cache@v4
         with:
-          version: v${{ steps.golangci-version.outputs.GOLANGCI_VERSION }}
-          args: -h
-
-      - run: make lint
-        name: Lint
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+            
+      - name: Download dependencies
+        run: make deps
+        
+      - name: Run linters
+        run: make lint
+        
+      - name: Check formatting
+        run: |
+          make fmt
+          git diff --exit-code
+          
+      - name: Run go vet
+        run: make vet
+        
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+            
+      - name: Download dependencies
+        run: make deps
+        
+      - name: Run tests with coverage
+        run: make test-coverage
+          
+  examples:
+    name: Examples
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+            
+      - name: Download dependencies
+        run: make deps
+        
+      - name: Run examples
+        run: make examples

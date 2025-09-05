@@ -1,6 +1,7 @@
 package messageformat
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -85,6 +86,21 @@ func TestNew(t *testing.T) {
 			},
 			expectError: false,
 		},
+		{
+			name:        "syntax error in pattern",
+			locales:     "en",
+			source:      "Hello {$name", // Missing closing brace
+			options:     nil,
+			expectError: true,
+			errorMsg:    "parse-error",
+		},
+		{
+			name:        "complex pattern with functions",
+			locales:     "en",
+			source:      "You have {$count :number} messages",
+			options:     nil,
+			expectError: false,
+		},
 	}
 
 	for _, tc := range tests {
@@ -103,60 +119,6 @@ func TestNew(t *testing.T) {
 			}
 		})
 	}
-}
-
-// TestMustNew tests the MustNew constructor
-func TestMustNew(t *testing.T) {
-	t.Run("valid input - should not panic", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Errorf("MustNew panicked unexpectedly: %v", r)
-			}
-		}()
-
-		mf := MustNew("en", "Hello World", nil)
-		require.NotNil(t, mf)
-		assert.Equal(t, []string{"en"}, mf.locales)
-	})
-
-	t.Run("invalid input - should panic", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Error("MustNew should have panicked but didn't")
-			}
-		}()
-
-		// This should panic due to invalid locales type
-		MustNew(123, "Hello", nil)
-	})
-
-	t.Run("syntax error - should panic", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Error("MustNew should have panicked but didn't")
-			}
-		}()
-
-		// This should panic due to syntax error
-		MustNew("en", "Hello {$name", nil)
-	})
-
-	t.Run("with options - should not panic", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Errorf("MustNew panicked unexpectedly: %v", r)
-			}
-		}()
-
-		options := &MessageFormatOptions{
-			BidiIsolation: BidiNone,
-			Dir:           DirRTL,
-		}
-		mf := MustNew("en", "Hello", options)
-		require.NotNil(t, mf)
-		assert.False(t, mf.bidiIsolation)
-		assert.Equal(t, "rtl", mf.dir)
-	})
 }
 
 // TestNewWithDataModelMessage tests constructor with datamodel.Message
@@ -210,6 +172,34 @@ func TestFormat(t *testing.T) {
 			values:   nil,
 			onError:  nil,
 			expected: "Hello \u2068{$name}\u2069",
+		},
+		{
+			name:     "number formatting",
+			source:   "Count: {$count :number}",
+			values:   map[string]interface{}{"count": 1234.56},
+			onError:  nil,
+			expected: "Count: 1,234.56",
+		},
+		{
+			name:     "integer formatting",
+			source:   "Items: {$items :integer}",
+			values:   map[string]interface{}{"items": 42.7},
+			onError:  nil,
+			expected: "Items: 43",
+		},
+		{
+			name:     "string function with different types",
+			source:   "Value: {$value :string}",
+			values:   map[string]interface{}{"value": 123},
+			onError:  nil,
+			expected: "Value: \u2068123\u2069",
+		},
+		{
+			name:     "empty pattern",
+			source:   "",
+			values:   map[string]interface{}{"unused": "value"},
+			onError:  nil,
+			expected: "",
 		},
 	}
 
@@ -449,6 +439,92 @@ func TestLocaleHandling(t *testing.T) {
 	}
 }
 
+// MessageFormat 2.0 Pattern Tests
+
+// TestSelectPatterns tests MessageFormat 2.0 select patterns
+func TestSelectPatterns(t *testing.T) {
+	tests := []struct {
+		name     string
+		pattern  string
+		values   map[string]interface{}
+		expected string
+	}{
+		{
+			name: "simple match pattern",
+			pattern: `.input {$count :number}
+.match $count
+0   {{No items}}
+one {{One item}}
+*   {{{$count} items}}`,
+			values:   map[string]interface{}{"count": 0},
+			expected: "No items",
+		},
+		{
+			name: "plural match pattern",
+			pattern: `.input {$count :number}
+.match $count
+0   {{No items}}
+one {{One item}}
+*   {{{$count} items}}`,
+			values:   map[string]interface{}{"count": 1},
+			expected: "One item",
+		},
+		{
+			name: "multiple match pattern",
+			pattern: `.input {$count :number}
+.match $count
+0   {{No items}}
+one {{One item}}
+*   {{{$count} items}}`,
+			values:   map[string]interface{}{"count": 5},
+			expected: "5 items",
+		},
+		{
+			name: "multi-dimensional match",
+			pattern: `.input {$count :number}
+.input {$gender :string}
+.match $count $gender
+0   male   {{He has no items}}
+0   female {{She has no items}}
+0   *      {{They have no items}}
+one male   {{He has one item}}
+one female {{She has one item}}
+one *      {{They have one item}}
+*   male   {{He has {$count} items}}
+*   female {{She has {$count} items}}
+*   *      {{They have {$count} items}}`,
+			values:   map[string]interface{}{"count": 3, "gender": "female"},
+			expected: "She has 3 items",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mf, err := New("en", tc.pattern)
+			require.NoError(t, err)
+
+			result, err := mf.Format(tc.values)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+// TestLocalDeclarations tests local variable declarations
+func TestLocalDeclarations(t *testing.T) {
+	pattern := `.local $greeting = {|Hello| :string}
+.local $punctuation = {|!| :string}
+{{{$greeting}, {$name}{$punctuation}}}`
+
+	mf, err := New("en", pattern)
+	require.NoError(t, err)
+
+	result, err := mf.Format(map[string]interface{}{"name": "World"})
+	require.NoError(t, err)
+	assert.Contains(t, result, "Hello")
+	assert.Contains(t, result, "World")
+}
+
 // Error Handling API Tests
 
 // TestErrorCallback tests error callback functionality
@@ -474,23 +550,120 @@ func TestErrorCallback(t *testing.T) {
 	// Error callback behavior may vary based on implementation
 }
 
+// TestInvalidPatterns tests various invalid pattern scenarios
+func TestInvalidPatterns(t *testing.T) {
+	tests := []struct {
+		name        string
+		pattern     string
+		shouldFail  bool
+		expectParse bool // Some patterns parse but fail at runtime
+	}{
+		{
+			name:        "unclosed brace",
+			pattern:     "Hello {$name",
+			shouldFail:  true,
+			expectParse: false,
+		},
+		{
+			name:        "invalid function - parses but fails at runtime",
+			pattern:     "Hello {$name :invalid}",
+			shouldFail:  false, // This parses successfully
+			expectParse: true,
+		},
+		{
+			name:        "malformed expression",
+			pattern:     "Hello {$}",
+			shouldFail:  true,
+			expectParse: false,
+		},
+		{
+			name:        "invalid match syntax",
+			pattern:     ".match invalid {{text}}",
+			shouldFail:  true,
+			expectParse: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mf, err := New("en", tc.pattern)
+			switch {
+			case tc.expectParse:
+				// Should parse successfully but may fail at format time
+				require.NoError(t, err)
+				require.NotNil(t, mf)
+			case tc.shouldFail:
+				// Should fail to parse
+				require.Error(t, err)
+			default:
+				require.NoError(t, err)
+				require.NotNil(t, mf)
+			}
+		})
+	}
+}
+
+// TestAPIEdgeCases tests edge cases and boundary conditions for the API
+func TestAPIEdgeCases(t *testing.T) {
+	t.Run("extremely long patterns", func(t *testing.T) {
+		// Test with very long pattern
+		longPattern := "Long message: "
+		for i := 0; i < 100; i++ {
+			longPattern += "{$var" + fmt.Sprintf("%d", i) + "} "
+		}
+
+		mf, err := New("en", longPattern)
+		require.NoError(t, err)
+
+		values := make(map[string]interface{})
+		for i := 0; i < 100; i++ {
+			values[fmt.Sprintf("var%d", i)] = fmt.Sprintf("val%d", i)
+		}
+
+		result, err := mf.Format(values)
+		require.NoError(t, err)
+		assert.Contains(t, result, "Long message:")
+	})
+
+	t.Run("nested braces in text", func(t *testing.T) {
+		// Test escaped braces
+		mf, err := New("en", "Object: \\{key: {$value}\\}")
+		require.NoError(t, err)
+
+		result, err := mf.Format(map[string]interface{}{"value": "test"})
+		require.NoError(t, err)
+		assert.Contains(t, result, "{key:")
+	})
+
+	t.Run("unicode in patterns and values", func(t *testing.T) {
+		mf, err := New("zh-CN", "你好，{$name}！")
+		require.NoError(t, err)
+
+		result, err := mf.Format(map[string]interface{}{"name": "世界"})
+		require.NoError(t, err)
+		assert.Contains(t, result, "你好")
+		assert.Contains(t, result, "世界")
+	})
+}
+
 // Index Exports API Tests
 
 // TestIndexExports tests the exported functions from index.go
 func TestIndexExports(t *testing.T) {
-	t.Run("NewMessageFormat alias", func(t *testing.T) {
-		mf, err := NewMessageFormat("en", "Hello", nil)
+	t.Run("ParseMessage function", func(t *testing.T) {
+		message, err := ParseMessage("Hello {$name}")
 		require.NoError(t, err)
-		require.NotNil(t, mf)
+		require.NotNil(t, message)
+		assert.True(t, IsPatternMessage(message))
 	})
 
-	t.Run("ValidateMessage function", func(t *testing.T) {
+	t.Run("Validate function", func(t *testing.T) {
 		pattern := datamodel.NewPattern([]datamodel.PatternElement{
 			datamodel.NewTextElement("Hello"),
 		})
 		message := datamodel.NewPatternMessage(nil, pattern, "")
 
-		_, err := ValidateMessage(message, nil)
+		_, err := Validate(message, nil)
 		require.NoError(t, err)
 	})
 

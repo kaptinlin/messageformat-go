@@ -1,13 +1,16 @@
-# Testing Guide - MessageFormat 2.0 Go Implementation
+# Testing Guide - MessageFormat Go
 
-This guide covers testing the MessageFormat 2.0 Go implementation for compliance with the official Unicode specification.
+This guide covers testing the MessageFormat Go library with its unified architecture.
+
+## 📋 Testing Structure Overview
+
+This repository contains a unified MessageFormat implementation with both V1 and V2 functionality under single version management. Tests are organized to validate both implementations while maintaining unified versioning.
 
 ## 🏆 Specification Compliance
 
-This implementation passes the official MessageFormat 2.0 test suite, ensuring:
-- Compatibility with Unicode MessageFormat 2.0 specification
-- Interoperability with other compliant implementations
-- Consistent behavior across features and edge cases
+- **MessageFormat 2.0**: Passes the official MessageFormat 2.0 test suite
+- **ICU MessageFormat (V1)**: Maintains compatibility with ICU specification and TypeScript messageformat.js library
+- **Unified Management**: Single go.mod and versioning for both implementations
 
 ## 🚀 Quick Start
 
@@ -25,63 +28,74 @@ ls tests/messageformat-wg/test/tests/
 
 ### Running Tests
 
+#### All Tests
 ```bash
-# Run all tests
+# Run all tests (V1 + V2) with race detection
 make test
 
-# Unit tests only
-make test-unit
-
-# Official test suite only
-make test-official
-
-# With coverage
+# Run with coverage report
 make test-coverage
 
-# With verbose output
-go test -v ./...
+# Run with verbose output
+make test-verbose
+```
+
+#### Version-Specific Testing
+```bash
+# V1 Tests (ICU MessageFormat)
+make test-v1
+
+# V2 Tests (MessageFormat 2.0, includes official test suite)
+make test-v2
+
+# Official MessageFormat 2.0 test suite only
+make test-official
+```
+
+#### Examples and Benchmarks
+```bash
+# Run all examples (V1 + V2)
+make examples
+
+# Run benchmarks
+make bench
 ```
 
 ## 📁 Test Structure
 
 ### Test Categories
 
-1. **Official Test Suite** (`./tests/`)
-   - Unicode MessageFormat Working Group tests
-   - Specification compliance verification
-   - Covers syntax, formatting, errors, Unicode, bidi text
+#### MessageFormat 2.0 Tests
+1. **Official Test Suite** (`./tests/`): Unicode MessageFormat Working Group tests
+2. **API Tests** (`messageformat_test.go`): Constructor and formatting methods  
+3. **Feature Tests** (`features_test.go`): MessageFormat 2.0 feature compliance
+4. **Package Tests** (`./pkg/`, `./internal/`): Component-specific functionality
 
-2. **API Tests** (`messageformat_test.go`)
-   - Constructor and options testing
-   - Format/FormatToParts methods
-   - Error handling and custom functions
-
-3. **Feature Tests** (`features_test.go`)
-   - MessageFormat 2.0 feature compliance
-   - Pattern matching, number formatting
-   - Markup, internationalization
-
-4. **Package Tests** (`./pkg/`, `./internal/`)
-   - Component-specific functionality
-   - Functions, data model, parser, resolver
+#### ICU MessageFormat V1 Tests
+1. **Core API Tests** (`v1/messageformat_test.go`): Constructor and compilation
+2. **Parser Tests** (`v1/parse_test.go`): Message parsing and validation
+3. **Compatibility Tests** (`v1/typescript_compatibility_test.go`): TypeScript API compatibility
+4. **Performance Tests** (`v1/benchmarks_test.go`): Performance and memory optimization
 
 ### File Organization
 
 ```
 messageformat-go/
-├── messageformat_test.go              # API tests
-├── features_test.go                   # Feature compliance
-├── messageformat_bench_test.go        # Benchmarks
-├── tests/                             # Official test suite
+├── messageformat_test.go              # V2 API tests
+├── features_test.go                   # V2 feature compliance  
+├── messageformat_bench_test.go        # V2 benchmarks
+├── tests/                             # V2 official test suite
 │   ├── messageformat-wg/             # Git submodule
-│   └── spec_test.go                  # Test runner
-├── pkg/                              # Package tests
-│   ├── functions/
-│   ├── messagevalue/
-│   └── datamodel/
-└── internal/                         # Internal tests
-    ├── cst/
-    └── resolve/
+│   └── spec_test.go                  # V2 test runner
+├── pkg/                              # V2 package tests
+│   └── */*_test.go                   # Component tests
+├── internal/                         # V2 internal tests
+│   └── */*_test.go                   # Internal tests
+└── v1/                               # V1 tests
+    ├── messageformat_test.go         # V1 API tests
+    ├── parse_test.go                 # V1 parser tests
+    ├── typescript_compatibility_test.go # V1 compatibility
+    └── benchmarks_test.go            # V1 benchmark tests
 ```
 
 ## 🔧 Development Commands
@@ -89,38 +103,23 @@ messageformat-go/
 ### Code Quality
 
 ```bash
-# All CI checks
-make ci
+# Format, vet, lint, and test
+make verify
 
-# Individual checks
+# Individual checks  
 make fmt          # Format code
 make vet          # Static analysis
 make lint         # Comprehensive linting
-make verify       # Format + lint + test
 ```
 
-### Benchmarks
+### Coverage and Benchmarks
 
 ```bash
-# Run benchmarks
-make bench
-
-# With memory stats
-go test -bench=. -benchmem ./...
-
-# Specific benchmarks
-go test -bench=BenchmarkSimpleMessage ./...
-```
-
-### Coverage
-
-```bash
-# Generate coverage
+# Coverage report
 make test-coverage
 
-# HTML report
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out -o coverage.html
+# Benchmarks
+make bench
 ```
 
 ## 🛠️ Troubleshooting

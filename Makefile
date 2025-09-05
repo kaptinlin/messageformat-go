@@ -1,4 +1,4 @@
-# MessageFormat 2.0 Go Implementation Makefile
+# MessageFormat Go Library
 # Set up GOBIN so that our binaries are installed to ./bin instead of $GOPATH/bin.
 PROJECT_ROOT = $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 export GOBIN = $(PROJECT_ROOT)/bin
@@ -6,25 +6,26 @@ export GOBIN = $(PROJECT_ROOT)/bin
 GOLANGCI_LINT_VERSION := $(shell $(GOBIN)/golangci-lint version --format short 2>/dev/null || $(GOBIN)/golangci-lint version --short 2>/dev/null)
 REQUIRED_GOLANGCI_LINT_VERSION := $(shell cat .golangci.version)
 
-# Directories containing independent Go modules.
+# Unified single module directory
 MODULE_DIRS = .
 
 .PHONY: all
-all: submodules lint test
+all: lint test
 
 .PHONY: help
 help: ## Show this help message
-	@echo "MessageFormat 2.0 Go Implementation"
+	@echo "MessageFormat Go Library"
 	@echo "Available targets:"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 .PHONY: clean
-clean: ## Clean build artifacts
+clean: ## Clean build artifacts and caches
+	@echo "[clean] Cleaning build artifacts..."
 	@rm -rf $(GOBIN)
 	@go clean -cache -testcache
 
 .PHONY: submodules
-submodules: ## Initialize and update git submodules (required for official tests)
+submodules: ## Initialize git submodules (required for official tests)
 	@echo "[setup] Initializing git submodules..."
 	@git submodule update --init --recursive
 
@@ -35,14 +36,19 @@ deps: ## Download Go module dependencies
 	@go mod tidy
 
 .PHONY: test
-test: submodules ## Run all tests including official test suite
+test: submodules ## Run all tests with race detection
 	@echo "[test] Running all tests..."
 	@$(foreach mod,$(MODULE_DIRS),(cd $(mod) && go test -race ./...) &&) true
 
-.PHONY: test-unit
-test-unit: ## Run unit tests only (excluding official test suite)
-	@echo "[test] Running unit tests..."
-	@go test -race ./pkg/... ./internal/... .
+.PHONY: test-v1
+test-v1: ## Run V1 tests only
+	@echo "[test] Running V1 tests..."
+	@go test -race ./v1/...
+
+.PHONY: test-v2
+test-v2: submodules ## Run V2 tests only (includes official test suite)
+	@echo "[test] Running V2 tests..."
+	@go test -race ./pkg/... ./internal/... ./tests/... .
 
 .PHONY: test-official
 test-official: submodules ## Run official MessageFormat 2.0 test suite only
@@ -76,11 +82,11 @@ install-golangci-lint:
 	@mkdir -p $(GOBIN)
 	@# Install only when version mismatch to avoid unnecessary downloads
 	@if [ "$(GOLANGCI_LINT_VERSION)" != "$(REQUIRED_GOLANGCI_LINT_VERSION)" ]; then \
-			echo "[lint] installing golangci-lint v$(REQUIRED_GOLANGCI_LINT_VERSION) (current: $(GOLANGCI_LINT_VERSION))"; \
-			curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOBIN) v$(REQUIRED_GOLANGCI_LINT_VERSION); \
+		echo "[lint] installing golangci-lint v$(REQUIRED_GOLANGCI_LINT_VERSION) (current: $(GOLANGCI_LINT_VERSION))"; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOBIN) v$(REQUIRED_GOLANGCI_LINT_VERSION); \
 	else \
-			echo "[lint] golangci-lint v$(REQUIRED_GOLANGCI_LINT_VERSION) already installed"; \
-		fi
+		echo "[lint] golangci-lint v$(REQUIRED_GOLANGCI_LINT_VERSION) already installed"; \
+	fi
 
 .PHONY: golangci-lint
 golangci-lint: install-golangci-lint ## Run golangci-lint
@@ -108,19 +114,22 @@ vet: ## Run go vet
 	@echo "[vet] Running go vet..."
 	@go vet ./...
 
-
+.PHONY: verify
+verify: deps fmt vet lint test ## Run all verification steps (deps, format, vet, lint, test)
+	@echo "[verify] All verification steps completed successfully ✅"
 
 .PHONY: examples
 examples: ## Run all examples
-	@echo "[examples] Running examples..."
+	@echo "[examples] Running V2 examples..."
 	@cd examples/basic && go run main.go
+	@cd examples/advanced && go run main.go
+	@cd examples/custom-functions && go run main.go
+	@cd examples/pluralization && go run main.go
+	@echo ""
+	@echo "[examples] Running V1 examples..."
+	@cd v1/examples/basic && go run main.go
+	@cd v1/examples/ecommerce && go run main.go
+	@cd v1/examples/multilingual && go run main.go
+	@cd v1/examples/performance && go run main.go
 	@echo ""
 	@echo "[examples] All examples completed successfully"
-
-.PHONY: verify
-verify: submodules deps fmt vet lint test ## Run all verification steps (format, vet, lint, test)
-	@echo "[verify] All verification steps completed successfully"
-
-.PHONY: ci
-ci: verify ## Run CI pipeline locally
-	@echo "[ci] CI pipeline completed successfully"
