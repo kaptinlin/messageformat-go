@@ -21,7 +21,5 @@ import (
 //	  valueOf: () => input
 //	});
 func UnknownFunction(source string, input interface{}, locale string) messagevalue.MessageValue {
-	// For now, create a string value with the string representation of the input
-	// This is a simplified implementation
-	return messagevalue.NewStringValue(toString(input), source, locale)
+	return messagevalue.NewUnknownValue(source, input, locale)
 }

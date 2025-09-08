@@ -12,7 +12,7 @@ func main() {
 
 	// Example 1: Simple variable substitution
 	fmt.Println("1. Simple Variable Substitution:")
-	mf1, err := messageformat.New("en", "Hello, {$name}!")
+	mf1, err := messageformat.New("en", "Hello, {$name}!", messageformat.WithBidiIsolation(messageformat.BidiNone))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func main() {
 
 	// Example 2: Number formatting
 	fmt.Println("2. Number Formatting:")
-	mf2, err := messageformat.New("en", "You have {$count :number} messages")
+	mf2, err := messageformat.New("en", "You have {$count :number} messages", messageformat.WithBidiIsolation(messageformat.BidiNone))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func main() {
 
 	// Example 3: Multiple variables
 	fmt.Println("3. Multiple Variables:")
-	mf3, err := messageformat.New("en", "{$user} sent {$count} messages")
+	mf3, err := messageformat.New("en", "{$user} sent {$count} messages", messageformat.WithBidiIsolation(messageformat.BidiNone))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func main() {
 	fmt.Println("4. Localization Comparison:")
 
 	// English version
-	mfEn, err := messageformat.New("en", "Hello, {$name}! You have {$count} new messages.")
+	mfEn, err := messageformat.New("en", "Hello, {$name}! You have {$count} new messages.", messageformat.WithBidiIsolation(messageformat.BidiNone))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func main() {
 	fmt.Printf("   English: %s\n", resultEn)
 
 	// Chinese version
-	mfCn, err := messageformat.New("zh-CN", "你好，{$name}！你有 {$count} 条新消息。")
+	mfCn, err := messageformat.New("zh-CN", "你好，{$name}！你有 {$count} 条新消息。", messageformat.WithBidiIsolation(messageformat.BidiNone))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func main() {
 	fmt.Println("5. Built-in Function Formatting:")
 
 	// Number with options
-	mf5a, err := messageformat.New("en", "Price: {$price :number style=currency currency=USD}")
+	mf5a, err := messageformat.New("en", "Price: {$price :number style=currency currency=USD}", messageformat.WithBidiIsolation(messageformat.BidiNone))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func main() {
 	fmt.Printf("   Currency format: %s\n", result5a)
 
 	// Integer formatting
-	mf5b, err := messageformat.New("en", "Count: {$count :integer}")
+	mf5b, err := messageformat.New("en", "Count: {$count :integer}", messageformat.WithBidiIsolation(messageformat.BidiNone))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func main() {
 	fmt.Printf("   Integer format: %s\n", result5b)
 
 	// String formatting
-	mf5c, err := messageformat.New("en", "Name: {$name :string}")
+	mf5c, err := messageformat.New("en", "Name: {$name :string}", messageformat.WithBidiIsolation(messageformat.BidiNone))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -142,14 +142,16 @@ func main() {
 
 	// Example 6: Error handling
 	fmt.Println("6. Error Handling:")
-	mf6, err := messageformat.New("en", "Hello {$name}")
+	mf6, err := messageformat.New("en", "Hello {$name}", messageformat.WithBidiIsolation(messageformat.BidiNone))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	result6, err := mf6.Format(map[string]interface{}{
 		// Intentionally omit the 'name' variable
-	})
+	}, messageformat.WithErrorHandler(func(error) {
+		// Suppress error logging for demo purposes
+	}))
 	if err != nil {
 		fmt.Printf("   Error when variable is missing: %v\n", err)
 	} else {
@@ -159,8 +161,8 @@ func main() {
 	// Example 7: Using functional options
 	fmt.Println("\n7. Functional Options Pattern:")
 	mf7, err := messageformat.New("en", "Hello, {$name}!",
-		messageformat.WithBidiIsolation("none"),
-		messageformat.WithDir("ltr"),
+		messageformat.WithBidiIsolation(messageformat.BidiNone),
+		messageformat.WithDir(messageformat.DirLTR),
 	)
 	if err != nil {
 		log.Fatal(err)

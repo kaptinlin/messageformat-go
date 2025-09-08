@@ -49,7 +49,7 @@ func main() {
 
 	// Example 1: FormatToParts - Structured output
 	fmt.Println("1. Structured Output with FormatToParts:")
-	mf1, err := messageformat.New("en", "Hello, {$name}! You have {$count :number} new messages.")
+	mf1, err := messageformat.New("en", "Hello, {$name}! You have {$count :number} new messages.", messageformat.WithBidiIsolation(messageformat.BidiNone))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,8 +73,8 @@ func main() {
 
 	// English with Arabic name
 	mf2a, err := messageformat.New("en", "User {$name} sent a message",
-		messageformat.WithBidiIsolation("default"),
-		messageformat.WithDir("ltr"),
+		messageformat.WithBidiIsolation(messageformat.BidiDefault),
+		messageformat.WithDir(messageformat.DirLTR),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -90,7 +90,7 @@ func main() {
 
 	// Without bidi isolation
 	mf2b, err := messageformat.New("en", "User {$name} sent a message",
-		messageformat.WithBidiIsolation("none"),
+		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -211,12 +211,11 @@ user  * *      {{User {$name} has {$count} messages}}
 	result6, err := mf6.Format(map[string]interface{}{
 		"count": 42,
 		// Intentionally missing "missing_var"
-	}, errorHandler)
+	})
 	if err != nil {
-		fmt.Printf("   Final error: %v\n", err)
-	} else {
-		fmt.Printf("   Result with missing variable: %s\n", result6)
+		errorHandler(err)
 	}
+	fmt.Printf("   Result with missing variable: %s\n", result6)
 	fmt.Printf("   Total errors handled: %d\n\n", errorCount)
 
 	// Example 7: Nested patterns and declarations

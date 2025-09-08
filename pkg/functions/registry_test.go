@@ -132,7 +132,8 @@ func TestDefaultFunctions(t *testing.T) {
 	assert.Contains(t, DefaultFunctions, "number")
 	assert.Contains(t, DefaultFunctions, "integer")
 	assert.Contains(t, DefaultFunctions, "string")
-	assert.Equal(t, 3, len(DefaultFunctions))
+	assert.Contains(t, DefaultFunctions, "offset")
+	assert.Equal(t, 4, len(DefaultFunctions))
 }
 
 func TestDraftFunctions(t *testing.T) {
@@ -141,7 +142,8 @@ func TestDraftFunctions(t *testing.T) {
 	assert.Contains(t, DraftFunctions, "date")
 	assert.Contains(t, DraftFunctions, "datetime")
 	assert.Contains(t, DraftFunctions, "math")
+	assert.Contains(t, DraftFunctions, "percent")
 	assert.Contains(t, DraftFunctions, "time")
 	assert.Contains(t, DraftFunctions, "unit")
-	assert.Equal(t, 6, len(DraftFunctions))
+	assert.Equal(t, 7, len(DraftFunctions))
 }

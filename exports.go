@@ -3,26 +3,22 @@ package messageformat
 
 import (
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
-	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 )
 
-// Re-export essential constructor and utility functions for convenient access
+// Export convenience aliases for the main API functions
+// These match TypeScript's exported functions while following Go conventions
 
-// Main constructor functions
+// Data model operations - matches TypeScript exports
 var (
-	// MessageFormat constructors
-	NewMessageFormat = New
+	ParseMessage     = datamodel.ParseMessage
+	StringifyMessage = datamodel.StringifyMessage
+	Validate         = datamodel.ValidateMessage
+	Visit            = datamodel.Visit
+)
 
-	// Message validation
-	ValidateMessage = datamodel.ValidateMessage
-
-	// Error constructors
-	NewMessageSyntaxError     = errors.NewMessageSyntaxError
-	NewMessageResolutionError = errors.NewMessageResolutionError
-	NewMessageSelectionError  = errors.NewMessageSelectionError
-
-	// Type guards - essential utilities for runtime type checking
+// Type guards - matches TypeScript exports
+var (
 	IsExpression     = datamodel.IsExpression
 	IsFunctionRef    = datamodel.IsFunctionRef
 	IsLiteral        = datamodel.IsLiteral

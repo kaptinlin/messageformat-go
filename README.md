@@ -1,8 +1,28 @@
-# MessageFormat 2.0 Go Implementation
+# MessageFormat Go
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/kaptinlin/messageformat-go.svg)](https://pkg.go.dev/github.com/kaptinlin/messageformat-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kaptinlin/messageformat-go)](https://goreportcard.com/report/github.com/kaptinlin/messageformat-go)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A comprehensive Go library providing **two implementations** of MessageFormat for internationalization:
+
+- 🆕 **MessageFormat 2.0** (this package): Latest Unicode specification with advanced features
+- 🔒 **ICU MessageFormat v1** ([v1 package](v1/README.md)): Legacy ICU-compatible implementation
+
+## 📋 Version Guide
+
+| Version | Package Path | Specification | Status |
+|---------|-------------|---------------|---------|
+| **V2 (Recommended)** | `github.com/kaptinlin/messageformat-go` | Unicode MessageFormat 2.0 | ✅ Production Ready |
+| **V1 (Legacy)** | `github.com/kaptinlin/messageformat-go/v1` | ICU MessageFormat | ✅ Maintained |
+
+> 💡 **New projects** should use V2. **Existing projects** can continue using V1 or migrate to V2.
+> 
+> 📖 **V1 Documentation**: See [v1/README.md](v1/README.md) for ICU MessageFormat documentation.
+
+---
+
+## MessageFormat 2.0 Implementation
 
 A **production-ready** Go implementation of the [Unicode MessageFormat 2.0 specification](https://unicode.org/reports/tr35/tr35-messageFormat.html), providing comprehensive internationalization (i18n) capabilities with advanced features like pluralization, gender selection, bidirectional text support, and custom formatting functions.
 
@@ -46,7 +66,21 @@ func main() {
     }
 
     fmt.Println(result) // Output: Hello, ⁨World⁩!
+    // Note: ⁨⁩ are Unicode bidi isolation characters (enabled by default)
+    // To disable: messageformat.WithBidiIsolation(messageformat.BidiNone)
 }
+```
+
+### Without Bidirectional Text Isolation
+```go
+// For simpler output without bidi isolation characters
+mf, err := messageformat.New("en", "Hello, {$name}!", 
+    messageformat.WithBidiIsolation(messageformat.BidiNone))
+    
+result, err := mf.Format(map[string]interface{}{
+    "name": "World",
+})
+// Output: Hello, World!
 ```
 
 ## ✨ Key Features
@@ -94,7 +128,7 @@ mf, err := messageformat.New("de-DE",
 result, err := mf.Format(map[string]interface{}{
     "amount": 1234.56,
 })
-// Output: "Preis: 1.234,56 €"
+// Output: "Preis: €1,234.56" (actual format may vary by locale implementation)
 ```
 
 ### Advanced Pluralization

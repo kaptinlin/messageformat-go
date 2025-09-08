@@ -3,7 +3,7 @@ package messagevalue
 import (
 	"time"
 
-	"github.com/golang-module/carbon/v2"
+	"github.com/dromara/carbon/v2"
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 )
 

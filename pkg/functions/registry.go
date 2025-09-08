@@ -22,6 +22,7 @@ var DefaultFunctions = map[string]MessageFunction{
 	"integer": IntegerFunction,
 	"number":  NumberFunction,
 	"string":  StringFunction,
+	"offset":  OffsetFunction,
 }
 
 // DraftFunctions provides the DRAFT functions (beta)
@@ -46,6 +47,7 @@ var DraftFunctions = map[string]MessageFunction{
 	"date":     DateFunction,
 	"datetime": DatetimeFunction,
 	"math":     MathFunction,
+	"percent":  PercentFunction,
 	"time":     TimeFunction,
 	"unit":     UnitFunction,
 }

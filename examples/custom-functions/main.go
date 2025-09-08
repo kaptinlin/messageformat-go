@@ -179,6 +179,7 @@ func main() {
 	fmt.Println("1. Uppercase Function:")
 	mf1, err := messageformat.New("en", "Hello, {$name :uppercase}!",
 		messageformat.WithFunction("uppercase", uppercaseFunction),
+		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -198,6 +199,7 @@ func main() {
 	fmt.Println("2. Reverse Function:")
 	mf2, err := messageformat.New("en", "Original: {$text}, Reversed: {$text :reverse}",
 		messageformat.WithFunction("reverse", reverseFunction),
+		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -217,6 +219,7 @@ func main() {
 	fmt.Println("3. Emoji Function with Options:")
 	mf3, err := messageformat.New("en", "Message: {$msg :emoji type=happy}",
 		messageformat.WithFunction("emoji", emojiFunction),
+		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -238,6 +241,7 @@ func main() {
 	for _, emojiType := range emojiTypes {
 		mf, err := messageformat.New("en", fmt.Sprintf("Status: {$status :emoji type=%s}", emojiType),
 			messageformat.WithFunction("emoji", emojiFunction),
+			messageformat.WithBidiIsolation(messageformat.BidiNone),
 		)
 		if err != nil {
 			log.Fatal(err)
@@ -257,6 +261,7 @@ func main() {
 	fmt.Println("5. Time Ago Function:")
 	mf5, err := messageformat.New("en", "Last seen: {$hours :timeago}",
 		messageformat.WithFunction("timeago", timeAgoFunction),
+		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -278,6 +283,7 @@ func main() {
 	fmt.Println("6. Format Function with Alignment:")
 	mf6, err := messageformat.New("en", "Name: [{$name :format width=15 align=right}]",
 		messageformat.WithFunction("format", formatFunction),
+		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -301,6 +307,7 @@ func main() {
 		messageformat.WithFunction("uppercase", uppercaseFunction),
 		messageformat.WithFunction("emoji", emojiFunction),
 		messageformat.WithFunction("timeago", timeAgoFunction),
+		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -321,6 +328,7 @@ func main() {
 	fmt.Println("8. Error Handling:")
 	mf8, err := messageformat.New("en", "Value: {$value :uppercase}",
 		messageformat.WithFunction("uppercase", uppercaseFunction),
+		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
 	if err != nil {
 		log.Fatal(err)

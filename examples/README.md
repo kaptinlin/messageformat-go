@@ -14,17 +14,36 @@ cd messageformat-go
 # Install dependencies
 go mod tidy
 
-# Run basic examples
+# Run basic examples - learn fundamentals
 go run examples/basic/main.go
 
-# Run pluralization examples
+# Run pluralization examples - see .match patterns
 go run examples/pluralization/main.go
 
-# Run custom functions examples
+# Run custom functions examples - build your own formatters
 go run examples/custom-functions/main.go
 
-# Run advanced features examples
+# Run advanced features examples - production patterns
 go run examples/advanced/main.go
+```
+
+### Expected Output Examples
+
+**Basic Example:**
+```
+=== MessageFormat 2.0 Basic Usage Examples ===
+1. Simple Variable Substitution:
+   Input: "Hello, {$name}!"
+   Variables: name = "World"
+   Output: Hello, World!
+```
+
+**Pluralization Example:**
+```
+1. Basic Pluralization:
+   count = 0: No messages
+   count = 1: One message
+   count = 5: 5 messages
 ```
 
 ## 📁 Project Structure
@@ -41,51 +60,70 @@ examples/
 ## 📖 Example Categories
 
 ### 1. Basic Usage (`basic/`)
-Demonstrates the most fundamental message formatting features:
-- Variable substitution
-- Simple formatting
-- Multiple variables
-- Error handling
-- Built-in functions
+Demonstrates the most fundamental MessageFormat 2.0 features:
+- Simple variable substitution (`{$name}`)
+- Number formatting with `:number` function
+- Multiple variable handling
+- Localization comparison (English vs Chinese)
+- Built-in formatting functions (currency, integer, string)
+- Error handling patterns
+- Functional options pattern vs traditional struct options
+- Bidirectional text isolation controls
 
 ### 2. Pluralization (`pluralization/`)
-Shows how to use MessageFormat 2.0's select message functionality:
-- Basic plural forms
-- Gender selection
-- Complex matching patterns
-- Multiple selector combinations
+Shows how to use MessageFormat 2.0's `.match` statements and selection:
+- Basic pluralization with `.input {$count :number}` and `.match $count`
+- Localized pluralization comparison (English vs Chinese)
+- Gender selection with `.match $gender`
+- Complex multi-selector matching (count + gender)
+- Status-based selection patterns
+- Time-based conditional selection
+- File type selection with fallback patterns
 
 ### 3. Custom Functions (`custom-functions/`)
 Demonstrates how to create and use custom formatting functions:
-- Function registration
-- Custom formatters
-- Function options
-- Error handling in functions
+- Custom function registration with `WithFunction()`
+- Text transformation functions (uppercase, reverse)
+- Functions with options (emoji with type parameter)
+- Time-based formatting functions (timeago)
+- String formatting with alignment
+- Multiple functions in one message
+- Comprehensive error handling in custom functions
+- Type-safe function parameter handling
 
 ### 4. Advanced Features (`advanced/`)
 Covers advanced MessageFormat 2.0 capabilities:
-- Bidirectional text support
-- Structured output (FormatToParts)
-- Complex message patterns
-- Performance optimization
-- Best practices
+- Structured output with `FormatToParts()` for rich text rendering
+- Bidirectional text support with configurable isolation
+- Complex multi-selector pattern matching (.match statements)
+- Custom functions with complex logic and styling
+- Performance optimization techniques and caching
+- Custom error handlers with `WithErrorHandler()`
+- Nested patterns and local declarations
+- Multi-locale support and fallback handling
+- Working with structured data types
 
-## 🌍 Supported Languages
+## 🌍 Languages Demonstrated
 
-The examples demonstrate internationalization with:
-- English (en)
-- Chinese Simplified (zh-CN)
+The examples showcase internationalization with:
+- **English (en)** - Primary language for all examples
+- **Chinese Simplified (zh-CN)** - Used in localization and pluralization comparison examples
+
+All examples are designed to be easily adapted for additional locales.
 
 ## 🔧 Technical Features Demonstrated
 
-- ✅ Complete MessageFormat 2.0 support
-- ✅ Multi-language internationalization
-- ✅ Pluralization handling
-- ✅ Custom formatting functions
-- ✅ Error handling best practices
-- ✅ Performance optimization examples
-- ✅ Functional options pattern
-- ✅ Structured output support
+- ✅ **MessageFormat 2.0 Specification**: Complete `.input`, `.match`, and pattern syntax
+- ✅ **Variable Substitution**: `{$name}` syntax with type safety
+- ✅ **Number Formatting**: `:number`, `:integer` functions with locale support
+- ✅ **Pluralization**: Complex `.match` statements with exact numbers and categories
+- ✅ **Custom Functions**: Registration with `WithFunction()` and parameter options
+- ✅ **Bidirectional Text**: Unicode bidi isolation controls
+- ✅ **Error Handling**: Graceful fallbacks and custom error handlers
+- ✅ **Performance**: Optimization techniques and caching patterns
+- ✅ **Structured Output**: `FormatToParts()` for rich text rendering
+- ✅ **Multi-locale**: Language-specific formatting and fallback handling
+- ✅ **Functional Options**: Modern Go API patterns vs traditional structs
 
 ## 📚 Learning Resources
 
