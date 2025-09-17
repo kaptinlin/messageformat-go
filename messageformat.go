@@ -84,7 +84,9 @@ func NewMessageFormatOptions(opts *MessageFormatOptions) *MessageFormatOptions {
 		opts = &MessageFormatOptions{}
 	}
 	if opts.BidiIsolation == "" {
-		opts.BidiIsolation = BidiDefault
+		// Default to BidiNone for simpler output (KISS principle)
+		// TypeScript defaults to 'default', but Go implementation prioritizes simplicity
+		opts.BidiIsolation = BidiNone
 	}
 	if opts.Dir == "" {
 		opts.Dir = DirAuto

@@ -380,7 +380,7 @@ func TestCustomFunctions(t *testing.T) {
 			functions: map[string]functions.MessageFunction{
 				"uppercase": createUppercaseFunc(),
 			},
-			expected: "Hello \u2068WORLD\u2069!",
+			expected: "Hello WORLD!",
 		},
 		{
 			name:    "reverse_function",
@@ -389,7 +389,7 @@ func TestCustomFunctions(t *testing.T) {
 			functions: map[string]functions.MessageFunction{
 				"reverse": createReverseFunc(),
 			},
-			expected: "Reversed: \u2068olleh\u2069",
+			expected: "Reversed: olleh",
 		},
 		{
 			name:    "multiple_functions",
@@ -399,7 +399,7 @@ func TestCustomFunctions(t *testing.T) {
 				"uppercase": createUppercaseFunc(),
 				"reverse":   createReverseFunc(),
 			},
-			expected: "Name: \u2068JOHN\u2069 \u2068eod\u2069",
+			expected: "Name: JOHN eod",
 		},
 	}
 
@@ -448,7 +448,7 @@ func TestEscapeSequences(t *testing.T) {
 			name:     "escaped_with_variable",
 			message:  "Object: {{ key: {$key} }}",
 			values:   map[string]interface{}{"key": "name"},
-			expected: "Object: { key: \u2068name\u2069 }",
+			expected: "Object: { key: name }",
 		},
 	}
 
@@ -588,7 +588,7 @@ func TestResolvedOptions(t *testing.T) {
 			message: "Hello {$name}!",
 			options: nil,
 			expected: ResolvedMessageFormatOptions{
-				BidiIsolation: BidiDefault,
+				BidiIsolation: BidiNone, // Changed: Default is now BidiNone (KISS principle)
 				Dir:           DirLTR,
 				LocaleMatcher: LocaleBestFit,
 				Functions:     nil, // Will be checked separately
@@ -644,7 +644,7 @@ func TestErrorHandling(t *testing.T) {
 			name:           "missing_variable_fallback",
 			message:        "Hello {$missing}!",
 			values:         map[string]interface{}{},
-			expectedResult: "Hello \u2068{$missing}\u2069!",
+			expectedResult: "Hello {$missing}!",
 			expectError:    false,
 			errorCallback:  false,
 		},
@@ -652,7 +652,7 @@ func TestErrorHandling(t *testing.T) {
 			name:           "unknown_function_fallback",
 			message:        "Value: {$value :unknown}",
 			values:         map[string]interface{}{"value": "test"},
-			expectedResult: "Value: \u2068{$value}\u2069",
+			expectedResult: "Value: {$value}",
 			expectError:    false,
 			errorCallback:  false,
 		},
@@ -660,7 +660,7 @@ func TestErrorHandling(t *testing.T) {
 			name:           "normal_case",
 			message:        "Hello {$name}!",
 			values:         map[string]interface{}{"name": "World"},
-			expectedResult: "Hello \u2068World\u2069!",
+			expectedResult: "Hello World!",
 			expectError:    false,
 			errorCallback:  false,
 		},
@@ -708,7 +708,7 @@ func TestErrorHandling(t *testing.T) {
 
 		result, err := mf.Format(map[string]interface{}{"name": "World"}, onError)
 		require.NoError(t, err)
-		assert.Equal(t, "Hello \u2068World\u2069!", result)
+		assert.Equal(t, "Hello World!", result)
 		assert.Empty(t, errors, "no errors should be captured for valid formatting")
 	})
 }
@@ -805,8 +805,8 @@ func TestBidirectionalTextSupport(t *testing.T) {
 			options:         nil,
 			values:          map[string]interface{}{"name": "أحمد"},
 			expectedDir:     DirRTL,
-			expectedBidi:    BidiDefault,
-			containsIsolate: true,
+			expectedBidi:    BidiNone, // Changed: Default is now BidiNone (KISS principle)
+			containsIsolate: false,    // Changed: No isolation by default
 		},
 		{
 			name:    "hebrew_rtl",
@@ -981,7 +981,7 @@ func TestFormatToParts(t *testing.T) {
 			name:     "simple_message_with_variable",
 			message:  "Hello {$name}!",
 			values:   map[string]interface{}{"name": "World"},
-			expected: 5, // "Hello ", bidi_start, "World", bidi_end, "!"
+			expected: 3, // Changed: "Hello ", "World", "!" (no bidi isolation by default)
 		},
 		{
 			name:     "currency_formatting",
@@ -1055,7 +1055,7 @@ func TestEdgeCases(t *testing.T) {
 			name:        "missing_variable_fallback",
 			message:     "Hello {$missing}!",
 			values:      map[string]interface{}{},
-			expected:    "Hello \u2068{$missing}\u2069!",
+			expected:    "Hello {$missing}!",
 			shouldError: false,
 		},
 		{
@@ -1090,7 +1090,7 @@ func TestEdgeCases(t *testing.T) {
 			name:        "null_value",
 			message:     "Value: {$value}",
 			values:      map[string]interface{}{"value": nil},
-			expected:    "Value: \u2068{$value}\u2069",
+			expected:    "Value: {$value}",
 			shouldError: false,
 		},
 		{
@@ -1104,21 +1104,21 @@ func TestEdgeCases(t *testing.T) {
 			name:        "empty_string",
 			message:     "Text: {$text}",
 			values:      map[string]interface{}{"text": ""},
-			expected:    "Text: \u2068\u2069",
+			expected:    "Text: ",
 			shouldError: false,
 		},
 		{
 			name:        "boolean_false",
 			message:     "Flag: {$flag}",
 			values:      map[string]interface{}{"flag": false},
-			expected:    "Flag: \u2068false\u2069",
+			expected:    "Flag: false",
 			shouldError: false,
 		},
 		{
 			name:        "boolean_true",
 			message:     "Flag: {$flag}",
 			values:      map[string]interface{}{"flag": true},
-			expected:    "Flag: \u2068true\u2069",
+			expected:    "Flag: true",
 			shouldError: false,
 		},
 		{
@@ -1132,7 +1132,7 @@ func TestEdgeCases(t *testing.T) {
 			name:        "multiple_variables",
 			message:     "{$a} {$b} {$c}",
 			values:      map[string]interface{}{"a": "A", "b": "B", "c": "C"},
-			expected:    "\u2068A\u2069 \u2068B\u2069 \u2068C\u2069",
+			expected:    "A B C",
 			shouldError: false,
 		},
 	}
@@ -1271,7 +1271,7 @@ func TestComplexScenarios(t *testing.T) {
 			name:     "percentage_with_custom_function",
 			message:  "Progress: {$rate :number style=percent} - Status: {$status :uppercase}",
 			values:   map[string]interface{}{"rate": 0.75, "status": "completed"},
-			expected: "Progress: 75% - Status: \u2068COMPLETED\u2069",
+			expected: "Progress: 75% - Status: COMPLETED",
 			functions: map[string]functions.MessageFunction{
 				"uppercase": createUppercaseFunc(),
 			},
@@ -1280,19 +1280,19 @@ func TestComplexScenarios(t *testing.T) {
 			name:     "nested_markup_with_variables",
 			message:  "Welcome {#strong}{$name}{/strong}! You have {#em}{$count :number}{/em} new messages.",
 			values:   map[string]interface{}{"name": "Alice", "count": 5},
-			expected: "Welcome \u2068Alice\u2069! You have 5 new messages.",
+			expected: "Welcome Alice! You have 5 new messages.",
 		},
 		{
 			name:     "mixed_content_with_formatToParts",
 			message:  "Order #{$id}: {$amount :number style=currency currency=USD} for {$items :number} items",
 			values:   map[string]interface{}{"id": "12345", "amount": 299.99, "items": 3},
-			expected: "Order #\u206812345\u2069: $299.99 for 3 items",
+			expected: "Order #12345: $299.99 for 3 items",
 		},
 		{
 			name:     "escape_sequences_with_variables",
 			message:  "Config: {{ \"key\": \"{$value}\" }}",
 			values:   map[string]interface{}{"value": "test"},
-			expected: "Config: { \"key\": \"\u2068test\u2069\" }",
+			expected: "Config: { \"key\": \"test\" }",
 		},
 		{
 			name:     "complex_number_formatting",
@@ -1304,7 +1304,7 @@ func TestComplexScenarios(t *testing.T) {
 			name:     "multiple_custom_functions",
 			message:  "Name: {$first :uppercase} {$last :reverse}, Email: {$email}",
 			values:   map[string]interface{}{"first": "john", "last": "doe", "email": "john@example.com"},
-			expected: "Name: \u2068JOHN\u2069 \u2068eod\u2069, Email: \u2068john@example.com\u2069",
+			expected: "Name: JOHN eod, Email: john@example.com",
 			functions: map[string]functions.MessageFunction{
 				"uppercase": createUppercaseFunc(),
 				"reverse":   createReverseFunc(),

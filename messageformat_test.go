@@ -157,21 +157,21 @@ func TestFormat(t *testing.T) {
 			source:   "Hello {$name}",
 			values:   map[string]interface{}{"name": "Alice"},
 			onError:  nil,
-			expected: "Hello \u2068Alice\u2069",
+			expected: "Hello Alice", // Changed: No bidi isolation by default (KISS principle)
 		},
 		{
 			name:     "missing variable",
 			source:   "Hello {$missing}",
 			values:   map[string]interface{}{},
 			onError:  nil,
-			expected: "Hello \u2068{$missing}\u2069",
+			expected: "Hello {$missing}", // Changed: No bidi isolation by default
 		},
 		{
 			name:     "nil values",
 			source:   "Hello {$name}",
 			values:   nil,
 			onError:  nil,
-			expected: "Hello \u2068{$name}\u2069",
+			expected: "Hello {$name}", // Changed: No bidi isolation by default
 		},
 		{
 			name:     "number formatting",
@@ -192,7 +192,7 @@ func TestFormat(t *testing.T) {
 			source:   "Value: {$value :string}",
 			values:   map[string]interface{}{"value": 123},
 			onError:  nil,
-			expected: "Value: \u2068123\u2069",
+			expected: "Value: 123", // Changed: No bidi isolation by default
 		},
 		{
 			name:     "empty pattern",
@@ -235,15 +235,15 @@ func TestFormatToPartsAPI(t *testing.T) {
 			name:          "with variable",
 			source:        "Hello {$name}",
 			values:        map[string]interface{}{"name": "Alice"},
-			expectedParts: 4,
-			expectedTypes: []string{"text", "bidiIsolation", "string", "bidiIsolation"},
+			expectedParts: 2,                          // Changed: No bidi isolation parts by default
+			expectedTypes: []string{"text", "string"}, // Changed: Clean output
 		},
 		{
 			name:          "missing variable",
 			source:        "Hello {$missing}",
 			values:        map[string]interface{}{},
-			expectedParts: 4,
-			expectedTypes: []string{"text", "bidiIsolation", "fallback", "bidiIsolation"},
+			expectedParts: 2,                            // Changed: No bidi isolation parts by default
+			expectedTypes: []string{"text", "fallback"}, // Changed: Clean output
 		},
 	}
 
@@ -279,7 +279,7 @@ func TestMessageFormatOptions(t *testing.T) {
 		{
 			name:            "nil options (defaults)",
 			options:         nil,
-			expectedBidi:    true,
+			expectedBidi:    false, // Changed: Default is now BidiNone (KISS principle)
 			expectedDir:     "ltr",
 			expectedMatcher: "best fit",
 		},
@@ -297,7 +297,7 @@ func TestMessageFormatOptions(t *testing.T) {
 			options: &MessageFormatOptions{
 				Dir: DirRTL,
 			},
-			expectedBidi:    true,
+			expectedBidi:    false, // Changed: Default BidiIsolation is now BidiNone
 			expectedDir:     "rtl",
 			expectedMatcher: "best fit",
 		},
@@ -306,7 +306,7 @@ func TestMessageFormatOptions(t *testing.T) {
 			options: &MessageFormatOptions{
 				LocaleMatcher: LocaleLookup,
 			},
-			expectedBidi:    true,
+			expectedBidi:    false, // Changed: Default BidiIsolation is now BidiNone
 			expectedDir:     "ltr",
 			expectedMatcher: "lookup",
 		},
@@ -540,13 +540,13 @@ func TestErrorCallback(t *testing.T) {
 	// Valid case - no errors should be captured
 	result, err := mf.Format(map[string]interface{}{"name": "World"}, onError)
 	require.NoError(t, err)
-	assert.Equal(t, "Hello \u2068World\u2069", result)
+	assert.Equal(t, "Hello World", result)
 	assert.Empty(t, capturedErrors)
 
 	// Missing variable case - should still work with fallback
 	result, err = mf.Format(map[string]interface{}{}, onError)
 	require.NoError(t, err)
-	assert.Equal(t, "Hello \u2068{$name}\u2069", result)
+	assert.Equal(t, "Hello {$name}", result)
 	// Error callback behavior may vary based on implementation
 }
 
@@ -720,7 +720,7 @@ func TestTypeScriptCompatibility(t *testing.T) {
 		// Should resolve options properly like TypeScript
 		resolved := mf.ResolvedOptions()
 		assert.Equal(t, "best fit", string(resolved.LocaleMatcher))
-		assert.Equal(t, "default", string(resolved.BidiIsolation))
+		assert.Equal(t, "none", string(resolved.BidiIsolation)) // Changed: Go defaults to "none" for simplicity
 	})
 
 	t.Run("function registry behavior", func(t *testing.T) {

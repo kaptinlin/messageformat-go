@@ -65,22 +65,23 @@ func main() {
         panic(err)
     }
 
-    fmt.Println(result) // Output: Hello, ⁨World⁩!
-    // Note: ⁨⁩ are Unicode bidi isolation characters (enabled by default)
-    // To disable: messageformat.WithBidiIsolation(messageformat.BidiNone)
+    fmt.Println(result) // Output: Hello, World!
+    // Note: Clean output by default (BidiIsolation: BidiNone)
+    // For RTL support: messageformat.WithBidiIsolation(messageformat.BidiDefault)
 }
 ```
 
-### Without Bidirectional Text Isolation
+### With Bidirectional Text Isolation (for RTL languages)
 ```go
-// For simpler output without bidi isolation characters
-mf, err := messageformat.New("en", "Hello, {$name}!", 
-    messageformat.WithBidiIsolation(messageformat.BidiNone))
+// For proper RTL support with bidi isolation characters
+mf, err := messageformat.New("ar", "مرحبا {$name}!", 
+    messageformat.WithBidiIsolation(messageformat.BidiDefault))
     
 result, err := mf.Format(map[string]interface{}{
-    "name": "World",
+    "name": "عالم",
 })
-// Output: Hello, World!
+// Output: مرحبا ⁨عالم⁩!
+// Note: ⁨⁩ are Unicode bidi isolation characters for proper RTL display
 ```
 
 ## ✨ Key Features
@@ -92,6 +93,29 @@ result, err := mf.Format(map[string]interface{}{
 - **Custom Functions**: Extensible function system with locale awareness
 - **Markup Support**: `{#tag}`, `{/tag}`, `{#tag /}` syntax support
 - **Unicode Compliance**: Unicode normalization and bidirectional text handling
+
+### 📝 Syntax Guidelines
+
+**Important**: Variables must use `$` prefix and selectors must be properly declared:
+
+```go
+// ❌ Incorrect - missing $ prefix and selector declaration
+mf, err := messageformat.New("en", `.match {count}
+one {{One item}}
+*   {{Many items}}`)
+
+// ✅ Correct - proper variable syntax and selector declaration
+mf, err := messageformat.New("en", `
+.input {$count :number}
+.match $count
+one {{One item}}
+*   {{Many items}}`)
+```
+
+**Key Rules:**
+- Variables: Always use `{$variableName}` syntax
+- Selectors: Declare with `.input {$var :function}` before `.match`
+- Match statements: Use `.match $var` (without braces)
 
 ### 🌐 International Features
 - **Multi-Locale Support**: Intelligent locale fallback and negotiation
@@ -205,10 +229,28 @@ for _, part := range parts {
 
 ## 🎛️ Configuration Options
 
-### Functional Options (Recommended)
+### 🚀 Production Configuration (Recommended)
+
+For most production applications, use this simplified configuration:
+
+```go
+import (
+    "github.com/kaptinlin/messageformat-go"
+    "github.com/kaptinlin/messageformat-go/pkg/functions"
+)
+
+// Recommended production setup - simple and clean output
+mf, err := messageformat.New("en", "Welcome, {$name}!", &messageformat.MessageFormatOptions{
+    BidiIsolation: messageformat.BidiNone,        // Clean output without Unicode control chars
+    LocaleMatcher: messageformat.LocaleBestFit,   // Best locale matching
+    Functions:     functions.DraftFunctions,      // Include all formatting functions
+})
+```
+
+### Functional Options (Alternative)
 ```go
 mf, err := messageformat.New("ar", "مرحبا {$name}!",
-    messageformat.WithBidiIsolation("default"),
+    messageformat.WithBidiIsolation("none"),      // Simplified for most use cases
     messageformat.WithDir("rtl"),
     messageformat.WithFunction("custom", myCustomFunction),
 )
@@ -226,22 +268,33 @@ mf, err := messageformat.New("en", "Hello, {$name}!", &messageformat.MessageForm
 ```
 
 ### TypeScript Mapping Guide
+
+**Key Differences from TypeScript Implementation:**
+
+| Feature | TypeScript Default | Go Default | Rationale |
+|---------|-------------------|------------|-----------|
+| `bidiIsolation` | `'default'` (enabled) | `BidiNone` (disabled) | KISS principle - simpler output |
+| Variable syntax | `{name}` | `{$name}` | MessageFormat 2.0 spec requirement |
+| API style | Object properties | Methods + options struct | Go idioms |
+
 ```typescript
-// TypeScript
-const mf = new MessageFormat('en', 'Hello, {name}!', {
-  bidiIsolation: 'none'
-});
+// TypeScript (default behavior)
+const mf = new MessageFormat('en', 'Hello, {name}!');
 const result = mf.format({ name: 'World' });
+// Output: "Hello, ⁨World⁩!" (with bidi isolation)
 ```
 
 ```go
-// Go equivalent
-mf, err := messageformat.New("en", "Hello, {$name}!", 
-    messageformat.WithBidiIsolation("none"),
-)
+// Go equivalent (clean output by default)
+mf, err := messageformat.New("en", "Hello, {$name}!")
 result, err := mf.Format(map[string]interface{}{
     "name": "World",
 })
+// Output: "Hello, World!" (clean, no bidi isolation)
+
+// To match TypeScript default behavior:
+mf, err := messageformat.New("en", "Hello, {$name}!", 
+    messageformat.WithBidiIsolation(messageformat.BidiDefault))
 ```
 
 ## 🧪 Testing & Verification
