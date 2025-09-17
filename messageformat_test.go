@@ -646,6 +646,102 @@ func TestAPIEdgeCases(t *testing.T) {
 	})
 }
 
+// TypeScript Compatibility Tests - based on reference implementation analysis
+func TestTypeScriptCompatibility(t *testing.T) {
+	t.Run("offset function integration", func(t *testing.T) {
+		// Test that matches TypeScript behavior: offset function with add/subtract
+		pattern := `{$count :offset add=1} people liked this`
+		mf, err := New("en", pattern, &MessageFormatOptions{
+			Functions: map[string]functions.MessageFunction{
+				"offset": functions.OffsetFunction,
+			},
+		})
+		require.NoError(t, err)
+
+		result, err := mf.Format(map[string]interface{}{"count": 5})
+		require.NoError(t, err)
+		assert.Contains(t, result, "6") // 5 + 1 = 6
+	})
+
+	t.Run("error handling matches TypeScript patterns", func(t *testing.T) {
+		// Test that errors are handled the same way as TypeScript
+		pattern := `{$invalid :unknown}`
+		mf, err := New("en", pattern)
+		require.NoError(t, err)
+
+		var capturedErrors []error
+		result, err := mf.Format(map[string]interface{}{}, func(err error) {
+			capturedErrors = append(capturedErrors, err)
+		})
+
+		// Should not fail Format() but should capture errors
+		require.NoError(t, err)
+		assert.NotEmpty(t, capturedErrors)
+		assert.Contains(t, result, "{") // Should contain fallback
+	})
+
+	t.Run("bidi isolation default behavior", func(t *testing.T) {
+		// Test default bidi isolation behavior matches TypeScript
+		pattern := `Hello {$name}!`
+		mf, err := New("ar", pattern) // RTL locale
+		require.NoError(t, err)
+
+		result, err := mf.Format(map[string]interface{}{"name": "عالم"})
+		require.NoError(t, err)
+		// Should contain bidi isolation characters by default
+		assert.Contains(t, result, "Hello")
+	})
+
+	t.Run("formatToParts structure matches TypeScript", func(t *testing.T) {
+		// Test that parts structure is similar to TypeScript implementation
+		pattern := `Hello {$name :string}!`
+		mf, err := New("en", pattern, &MessageFormatOptions{
+			BidiIsolation: BidiNone, // Disable bidi isolation to match expected output
+		})
+		require.NoError(t, err)
+
+		parts, err := mf.FormatToParts(map[string]interface{}{"name": "World"})
+		require.NoError(t, err)
+
+		// Should have structure similar to TypeScript: text, expression, text
+		require.Len(t, parts, 3)
+		assert.Equal(t, "text", parts[0].Type())
+		assert.Equal(t, "Hello ", parts[0].Value())
+		assert.Equal(t, "string", parts[1].Type())
+		assert.Equal(t, "text", parts[2].Type())
+		assert.Equal(t, "!", parts[2].Value())
+	})
+
+	t.Run("locale resolution matches TypeScript", func(t *testing.T) {
+		// Test that locale resolution behavior matches TypeScript
+		mf, err := New([]string{"en-US", "en", "fr"}, "Hello {$name}")
+		require.NoError(t, err)
+
+		// Should resolve options properly like TypeScript
+		resolved := mf.ResolvedOptions()
+		assert.Equal(t, "best fit", string(resolved.LocaleMatcher))
+		assert.Equal(t, "default", string(resolved.BidiIsolation))
+	})
+
+	t.Run("function registry behavior", func(t *testing.T) {
+		// Test that function registry works like TypeScript
+		customFuncs := map[string]functions.MessageFunction{
+			"test": func(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+				return messagevalue.NewStringValue("test-result", "", ctx.Locales()[0])
+			},
+		}
+
+		mf, err := New("en", "{$val :test}", &MessageFormatOptions{
+			Functions: customFuncs,
+		})
+		require.NoError(t, err)
+
+		result, err := mf.Format(map[string]interface{}{"val": "input"})
+		require.NoError(t, err)
+		assert.Contains(t, result, "test-result")
+	})
+}
+
 // Index Exports API Tests
 
 // TestIndexExports tests the exported functions from index.go

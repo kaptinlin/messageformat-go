@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
@@ -188,5 +189,71 @@ func TestOffsetFunctionEdgeCases(t *testing.T) {
 		actualValue, err := numVal.ValueOf()
 		require.NoError(t, err)
 		assert.Equal(t, 3000000, actualValue)
+	})
+
+	// Add TypeScript compatibility test cases based on reference implementation
+	t.Run("TypeScript compatibility - BigInt operand", func(t *testing.T) {
+		var errors []error
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test",
+			"best fit",
+			func(err error) { errors = append(errors, err) },
+			make(map[string]bool),
+			"ltr",
+			"",
+		)
+
+		// Test with big.Int to match TypeScript BigInt behavior
+		bigInt := big.NewInt(9223372036854775807) // Max int64
+		result := OffsetFunction(ctx, map[string]interface{}{"add": 1}, bigInt)
+
+		_, ok := result.(*messagevalue.NumberValue)
+		require.True(t, ok)
+		assert.Empty(t, errors)
+	})
+
+	t.Run("TypeScript compatibility - exactly one option required", func(t *testing.T) {
+		var errors []error
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test",
+			"best fit",
+			func(err error) { errors = append(errors, err) },
+			make(map[string]bool),
+			"ltr",
+			"",
+		)
+
+		// This matches TypeScript: if (add < 0 === sub < 0)
+		result := OffsetFunction(ctx, map[string]interface{}{}, 10)
+
+		_, ok := result.(*messagevalue.FallbackValue)
+		require.True(t, ok)
+		assert.NotEmpty(t, errors)
+		assert.Contains(t, errors[0].Error(), "Exactly one")
+	})
+
+	t.Run("TypeScript compatibility - negative value handling", func(t *testing.T) {
+		var errors []error
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test",
+			"best fit",
+			func(err error) { errors = append(errors, err) },
+			make(map[string]bool),
+			"ltr",
+			"",
+		)
+
+		result := OffsetFunction(ctx, map[string]interface{}{"subtract": 5}, -10)
+
+		numVal, ok := result.(*messagevalue.NumberValue)
+		require.True(t, ok)
+
+		actualValue, err := numVal.ValueOf()
+		require.NoError(t, err)
+		assert.Equal(t, -15, actualValue) // -10 - 5 = -15
+		assert.Empty(t, errors)
 	})
 }

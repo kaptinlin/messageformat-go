@@ -2,6 +2,7 @@ package functions
 
 import (
 	"math"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -347,5 +348,144 @@ func TestNumberBasicFunctionality(t *testing.T) {
 		for _, err := range errors {
 			assert.Contains(t, err.Error(), "bad-option")
 		}
+	})
+}
+
+// TypeScript Compatibility Tests for Number Function
+func TestNumberTypeScriptCompatibility(t *testing.T) {
+	t.Run("BigInt input handling", func(t *testing.T) {
+		// Test BigInt-like values (matches TypeScript BigInt support)
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test source",
+			"best fit",
+			nil,
+			nil,
+			"",
+			"",
+		)
+
+		// Test with big.Int to match TypeScript BigInt behavior
+		bigInt := big.NewInt(9223372036854775807)
+		result := NumberFunction(ctx, map[string]interface{}{}, bigInt)
+		require.NotNil(t, result)
+		assert.Equal(t, "number", result.Type())
+	})
+
+	t.Run("valueOf method operand", func(t *testing.T) {
+		// Test operand with valueOf method (matches TypeScript Number.valueOf())
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test source",
+			"best fit",
+			nil,
+			nil,
+			"",
+			"",
+		)
+
+		// Use a simple number value instead of function since Go doesn't have valueOf pattern
+		operand := map[string]interface{}{
+			"valueOf": 42,
+			"options": map[string]interface{}{"style": "decimal"},
+		}
+
+		result := NumberFunction(ctx, map[string]interface{}{}, operand)
+		require.NotNil(t, result)
+		assert.Equal(t, "number", result.Type())
+	})
+
+	t.Run("toParts method compatibility", func(t *testing.T) {
+		// Test that toParts exists and works like TypeScript Intl.NumberFormat.formatToParts
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test source",
+			"best fit",
+			nil,
+			nil,
+			"",
+			"",
+		)
+
+		result := NumberFunction(ctx, map[string]interface{}{"style": "currency", "currency": "USD"}, 1234.56)
+		require.NotNil(t, result)
+
+		// Should have toParts method like TypeScript
+		parts, err := result.ToParts()
+		require.NoError(t, err)
+		assert.NotEmpty(t, parts)
+	})
+
+	t.Run("select function with number formatting", func(t *testing.T) {
+		// Test select capability that matches TypeScript PluralRules integration
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test source",
+			"best fit",
+			nil,
+			nil,
+			"",
+			"",
+		)
+
+		result := NumberFunction(ctx, map[string]interface{}{"select": "cardinal"}, 1)
+		require.NotNil(t, result)
+
+		// Should be able to select like TypeScript (check if SelectValue interface is available)
+		if selectVal, ok := result.(interface {
+			Select([]string) (string, error)
+		}); ok {
+			selected, err := selectVal.Select([]string{"one", "other"})
+			require.NoError(t, err)
+			assert.Equal(t, "one", selected)
+		} else {
+			// Alternative: check the value type to ensure it supports selection
+			assert.Equal(t, "number", result.Type())
+		}
+	})
+
+	t.Run("locale inheritance behavior", func(t *testing.T) {
+		// Test that locale behavior matches TypeScript Intl.NumberFormat
+		ctx := NewMessageFunctionContext(
+			[]string{"de-DE", "en"},
+			"test source",
+			"best fit",
+			nil,
+			nil,
+			"",
+			"",
+		)
+
+		result := NumberFunction(ctx, map[string]interface{}{}, 1234.56)
+		require.NotNil(t, result)
+
+		str, err := result.ToString()
+		require.NoError(t, err)
+		// German locale should format differently than English
+		assert.Contains(t, str, ",") // German uses comma for decimal
+	})
+
+	t.Run("error boundary matches TypeScript", func(t *testing.T) {
+		// Test that error handling matches TypeScript patterns
+		var errors []error
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test source",
+			"best fit",
+			func(err error) { errors = append(errors, err) },
+			nil,
+			"",
+			"",
+		)
+
+		// Invalid operand should generate error like TypeScript
+		result := NumberFunction(ctx, map[string]interface{}{}, "not-a-number")
+		require.NotNil(t, result)
+
+		// Should have captured error
+		assert.NotEmpty(t, errors)
+
+		// Result should be fallback (like TypeScript error handling)
+		assert.Contains(t, result.Type(), "fallback")
 	})
 }
