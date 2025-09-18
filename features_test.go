@@ -805,8 +805,8 @@ func TestBidirectionalTextSupport(t *testing.T) {
 			options:         nil,
 			values:          map[string]interface{}{"name": "أحمد"},
 			expectedDir:     DirRTL,
-			expectedBidi:    BidiNone, // Changed: Default is now BidiNone (KISS principle)
-			containsIsolate: false,    // Changed: No isolation by default
+			expectedBidi:    BidiDefault, // Auto-enabled for RTL locales to match TypeScript reference
+			containsIsolate: true,        // Isolation auto-enabled for RTL locales
 		},
 		{
 			name:    "hebrew_rtl",

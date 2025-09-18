@@ -84,8 +84,8 @@ func NewMessageFormatOptions(opts *MessageFormatOptions) *MessageFormatOptions {
 		opts = &MessageFormatOptions{}
 	}
 	if opts.BidiIsolation == "" {
-		// Default to BidiNone for simpler output (KISS principle)
-		// TypeScript defaults to 'default', but Go implementation prioritizes simplicity
+		// Default to BidiNone for backward compatibility
+		// However, enable BidiDefault for RTL locales to match TypeScript reference implementation
 		opts.BidiIsolation = BidiNone
 	}
 	if opts.Dir == "" {
@@ -240,6 +240,24 @@ func New(
 
 	// Apply defaults to options
 	opts = NewMessageFormatOptions(opts)
+
+	// Store if BidiIsolation was explicitly set to prevent auto-override
+	explicitBidiIsolation := false
+	for _, opt := range options {
+		if structOpts, ok := opt.(*MessageFormatOptions); ok && structOpts != nil && structOpts.BidiIsolation != "" {
+			explicitBidiIsolation = true
+			break
+		}
+	}
+
+	// Auto-enable bidi isolation for RTL locales when not explicitly set
+	// This matches TypeScript reference implementation behavior
+	if !explicitBidiIsolation && opts.BidiIsolation == BidiNone && len(localeList) > 0 {
+		// Check if the primary locale is RTL
+		if bidi.GetLocaleDirection(localeList[0]) == bidi.DirRTL {
+			opts.BidiIsolation = BidiDefault
+		}
+	}
 
 	// Resolve bidiIsolation option (default is "default" which means true)
 	bidiIsolation := opts.BidiIsolation != BidiNone
