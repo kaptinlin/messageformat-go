@@ -63,6 +63,18 @@ func DatetimeFunction(
 ) messagevalue.MessageValue {
 	source := ctx.Source()
 
+	// Check for missing operand (nil or FallbackValue)
+	if operand == nil {
+		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
+		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+	}
+
+	// Check if operand is already a fallback value
+	if mv, ok := operand.(messagevalue.MessageValue); ok && mv.Type() == "fallback" {
+		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
+		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+	}
+
 	// Parse input to time.Time
 	dateTime, err := parseDateTime(operand)
 	if err != nil {
@@ -165,7 +177,7 @@ func DatetimeFunction(
 
 // DateFunction implements the :date function (DRAFT)
 // date accepts a Date, number or string as its input
-// and formats it according to a single "style" option.
+// and formats it according to a single "length" option.
 func DateFunction(
 	ctx MessageFunctionContext,
 	options map[string]interface{},
@@ -173,6 +185,18 @@ func DateFunction(
 ) messagevalue.MessageValue {
 	source := ctx.Source()
 
+	// Check for missing operand (nil or FallbackValue)
+	if operand == nil {
+		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
+		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+	}
+
+	// Check if operand is already a fallback value
+	if mv, ok := operand.(messagevalue.MessageValue); ok && mv.Type() == "fallback" {
+		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
+		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+	}
+
 	// Parse input to time.Time
 	dateTime, err := parseDateTime(operand)
 	if err != nil {
@@ -190,36 +214,36 @@ func DateFunction(
 	}
 
 	// Process options
-	style := "medium" // default
+	length := "medium" // default (short, medium, long, full)
 	for name, value := range options {
 		if value == nil {
 			continue
 		}
 
 		switch name {
-		case "style":
+		case "length":
 			if strval, err := asString(value); err == nil {
-				style = strval
+				// Map length to style for FormatDateWithStyle
+				length = strval
 			} else {
 				msg := "Value " + toString(value) + " is not valid for :date " + name + " option"
 				ctx.OnError(errors.NewBadOptionError(msg, source))
 			}
-		case "hour12", "calendar", "timeZone":
+		case "calendar", "timeZone":
 			// These are valid options but not implemented yet
 		default:
-			msg := "Value " + toString(value) + " is not valid for :date " + name + " option"
-			ctx.OnError(errors.NewBadOptionError(msg, source))
+			// Unknown option - silently ignore to match TypeScript behavior
 		}
 	}
 
-	// Format the date
-	formatted := messagevalue.FormatDateWithStyle(*c, style)
+	// Format the date using length (which maps to style)
+	formatted := messagevalue.FormatDateWithStyle(*c, length)
 	return messagevalue.NewStringValue(formatted, source, locale)
 }
 
 // TimeFunction implements the :time function (DRAFT)
 // time accepts a Date, number or string as its input
-// and formats it according to a single "style" option.
+// and formats it according to a single "precision" option.
 func TimeFunction(
 	ctx MessageFunctionContext,
 	options map[string]interface{},
@@ -227,6 +251,18 @@ func TimeFunction(
 ) messagevalue.MessageValue {
 	source := ctx.Source()
 
+	// Check for missing operand (nil or FallbackValue)
+	if operand == nil {
+		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
+		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+	}
+
+	// Check if operand is already a fallback value
+	if mv, ok := operand.(messagevalue.MessageValue); ok && mv.Type() == "fallback" {
+		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
+		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+	}
+
 	// Parse input to time.Time
 	dateTime, err := parseDateTime(operand)
 	if err != nil {
@@ -244,16 +280,18 @@ func TimeFunction(
 	}
 
 	// Process options
-	style := "short" // default
+	precision := "short" // default (second, minute, hour, or short/medium/long/full)
 	for name, value := range options {
 		if value == nil {
 			continue
 		}
 
 		switch name {
-		case "style":
+		case "precision":
 			if strval, err := asString(value); err == nil {
-				style = strval
+				// Map precision to style for FormatTimeWithStyle
+				// precision can be: second, minute, hour or short/medium/long/full
+				precision = strval
 			} else {
 				msg := "Value " + toString(value) + " is not valid for :time " + name + " option"
 				ctx.OnError(errors.NewBadOptionError(msg, source))
@@ -261,13 +299,12 @@ func TimeFunction(
 		case "hour12", "calendar", "timeZone":
 			// These are valid options but not implemented yet
 		default:
-			msg := "Value " + toString(value) + " is not valid for :time " + name + " option"
-			ctx.OnError(errors.NewBadOptionError(msg, source))
+			// Unknown option - silently ignore to match TypeScript behavior
 		}
 	}
 
-	// Format the time
-	formatted := messagevalue.FormatTimeWithStyle(*c, style)
+	// Format the time using precision (which maps to style)
+	formatted := messagevalue.FormatTimeWithStyle(*c, precision)
 	return messagevalue.NewStringValue(formatted, source, locale)
 }
 

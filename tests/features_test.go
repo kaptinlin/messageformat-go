@@ -1,10 +1,11 @@
-package messageformat
+package tests
 
 import (
 	"fmt"
 	"strings"
 	"testing"
 
+	messageformat "github.com/kaptinlin/messageformat-go"
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
@@ -56,7 +57,7 @@ one {{You have {$count} new notification}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.message, nil)
+			mf, err := messageformat.New("en", tc.message, nil)
 			require.NoError(t, err, "should parse message successfully")
 
 			result, err := mf.Format(tc.values)
@@ -92,7 +93,7 @@ func TestInputDeclarations(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.message, nil)
+			mf, err := messageformat.New("en", tc.message, nil)
 			require.NoError(t, err, "should parse message successfully")
 
 			result, err := mf.Format(tc.values)
@@ -136,7 +137,7 @@ func TestLocalVariables(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.message, nil)
+			mf, err := messageformat.New("en", tc.message, nil)
 			require.NoError(t, err, "should parse message successfully")
 
 			result, err := mf.Format(tc.values)
@@ -166,7 +167,7 @@ func TestCurrencyFormatting(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			message := fmt.Sprintf("Price: {$amount :number style=currency currency=%s}", tc.currency)
-			mf, err := New(tc.locale, message, nil)
+			mf, err := messageformat.New(tc.locale, message, nil)
 			require.NoError(t, err)
 
 			result, err := mf.Format(map[string]interface{}{"amount": tc.amount})
@@ -196,7 +197,7 @@ func TestPercentageFormatting(t *testing.T) {
 				message = "Completion: {$rate :number style=percent}"
 			}
 
-			mf, err := New("en", message, nil)
+			mf, err := messageformat.New("en", message, nil)
 			require.NoError(t, err)
 
 			result, err := mf.Format(map[string]interface{}{"rate": tc.value})
@@ -225,7 +226,7 @@ one {{You have {$count} item.}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", message, nil)
+			mf, err := messageformat.New("en", message, nil)
 			require.NoError(t, err)
 
 			result, err := mf.Format(map[string]interface{}{"count": tc.count})
@@ -261,7 +262,7 @@ one {{plural one}}
 *   {{other}}`
 
 	t.Run("exact_priority", func(t *testing.T) {
-		mf, err := New("en", priorityMessage, nil)
+		mf, err := messageformat.New("en", priorityMessage, nil)
 		require.NoError(t, err)
 
 		result, err := mf.Format(map[string]interface{}{"count": 1})
@@ -271,7 +272,7 @@ one {{plural one}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", message, nil)
+			mf, err := messageformat.New("en", message, nil)
 			require.NoError(t, err)
 
 			result, err := mf.Format(map[string]interface{}{"count": tc.count})
@@ -314,7 +315,7 @@ user      {{👤 User}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.message, nil)
+			mf, err := messageformat.New("en", tc.message, nil)
 			require.NoError(t, err)
 
 			result, err := mf.Format(map[string]interface{}{tc.key: tc.value})
@@ -405,8 +406,8 @@ func TestCustomFunctions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			opts := &MessageFormatOptions{Functions: tc.functions}
-			mf, err := New("en", tc.message, opts)
+			opts := &messageformat.MessageFormatOptions{Functions: tc.functions}
+			mf, err := messageformat.New("en", tc.message, opts)
 			require.NoError(t, err)
 
 			result, err := mf.Format(tc.values)
@@ -454,7 +455,7 @@ func TestEscapeSequences(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.message, nil)
+			mf, err := messageformat.New("en", tc.message, nil)
 			require.NoError(t, err, "should parse message with escape sequences")
 
 			result, err := mf.Format(tc.values)
@@ -490,7 +491,7 @@ func TestMarkupPlaceholders(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.message, nil)
+			mf, err := messageformat.New("en", tc.message, nil)
 			require.NoError(t, err, "should parse markup syntax")
 
 			result, err := mf.Format(nil)
@@ -543,7 +544,7 @@ func TestMarkupFormatToParts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.message, nil)
+			mf, err := messageformat.New("en", tc.message, nil)
 			require.NoError(t, err)
 
 			parts, err := mf.FormatToParts(nil)
@@ -579,18 +580,18 @@ func TestResolvedOptions(t *testing.T) {
 		name     string
 		locales  string
 		message  string
-		options  *MessageFormatOptions
-		expected ResolvedMessageFormatOptions
+		options  *messageformat.MessageFormatOptions
+		expected messageformat.ResolvedMessageFormatOptions
 	}{
 		{
 			name:    "default_options",
 			locales: "en",
 			message: "Hello {$name}!",
 			options: nil,
-			expected: ResolvedMessageFormatOptions{
-				BidiIsolation: BidiNone, // Changed: Default is now BidiNone (KISS principle)
-				Dir:           DirLTR,
-				LocaleMatcher: LocaleBestFit,
+			expected: messageformat.ResolvedMessageFormatOptions{
+				BidiIsolation: messageformat.BidiNone, // Changed: Default is now messageformat.BidiNone (KISS principle)
+				Dir:           messageformat.DirLTR,
+				LocaleMatcher: messageformat.LocaleBestFit,
 				Functions:     nil, // Will be checked separately
 			},
 		},
@@ -598,15 +599,15 @@ func TestResolvedOptions(t *testing.T) {
 			name:    "custom_options",
 			locales: "ar",
 			message: "مرحبا {$name}!",
-			options: &MessageFormatOptions{
-				BidiIsolation: BidiNone,
-				Dir:           DirRTL,
-				LocaleMatcher: LocaleLookup,
+			options: &messageformat.MessageFormatOptions{
+				BidiIsolation: messageformat.BidiNone,
+				Dir:           messageformat.DirRTL,
+				LocaleMatcher: messageformat.LocaleLookup,
 			},
-			expected: ResolvedMessageFormatOptions{
-				BidiIsolation: BidiNone,
-				Dir:           DirRTL,
-				LocaleMatcher: LocaleLookup,
+			expected: messageformat.ResolvedMessageFormatOptions{
+				BidiIsolation: messageformat.BidiNone,
+				Dir:           messageformat.DirRTL,
+				LocaleMatcher: messageformat.LocaleLookup,
 				Functions:     nil, // Will be checked separately
 			},
 		},
@@ -614,7 +615,7 @@ func TestResolvedOptions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New(tc.locales, tc.message, tc.options)
+			mf, err := messageformat.New(tc.locales, tc.message, tc.options)
 			require.NoError(t, err)
 
 			resolved := mf.ResolvedOptions()
@@ -676,7 +677,7 @@ func TestErrorHandling(t *testing.T) {
 				capturedError = err
 			}
 
-			mf, err := New("en", tc.message, nil)
+			mf, err := messageformat.New("en", tc.message, nil)
 			require.NoError(t, err, "should parse message")
 
 			result, err := mf.Format(tc.values, onError)
@@ -703,7 +704,7 @@ func TestErrorHandling(t *testing.T) {
 			errors = append(errors, err)
 		}
 
-		mf, err := New("en", "Hello {$name}!", nil)
+		mf, err := messageformat.New("en", "Hello {$name}!", nil)
 		require.NoError(t, err)
 
 		result, err := mf.Format(map[string]interface{}{"name": "World"}, onError)
@@ -737,7 +738,7 @@ func TestMessageDataInterface(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.message, nil)
+			mf, err := messageformat.New("en", tc.message, nil)
 			require.NoError(t, err, "should create MessageFormat with datamodel.Message")
 
 			assert.Equal(t, tc.message.Type(), "message")
@@ -775,7 +776,7 @@ func TestMessageDataInterface(t *testing.T) {
 
 		assert.Equal(t, selectMessage.Type(), "select")
 
-		_, err := New("en", selectMessage, nil)
+		_, err := messageformat.New("en", selectMessage, nil)
 		if err != nil {
 			// If validation fails, that's expected for this minimal example
 			assert.Contains(t, err.Error(), "missing-selector-annotation",
@@ -792,10 +793,10 @@ func TestBidirectionalTextSupport(t *testing.T) {
 		name            string
 		locale          string
 		message         string
-		options         *MessageFormatOptions
+		options         *messageformat.MessageFormatOptions
 		values          map[string]interface{}
-		expectedDir     Direction
-		expectedBidi    BidiIsolation
+		expectedDir     messageformat.Direction
+		expectedBidi    messageformat.BidiIsolation
 		containsIsolate bool
 	}{
 		{
@@ -804,67 +805,67 @@ func TestBidirectionalTextSupport(t *testing.T) {
 			message:         "مرحبا {$name}!",
 			options:         nil,
 			values:          map[string]interface{}{"name": "أحمد"},
-			expectedDir:     DirRTL,
-			expectedBidi:    BidiDefault, // Auto-enabled for RTL locales to match TypeScript reference
+			expectedDir:     messageformat.DirRTL,
+			expectedBidi:    messageformat.BidiDefault, // Auto-enabled for RTL locales to match TypeScript reference
 			containsIsolate: true,        // Isolation auto-enabled for RTL locales
 		},
 		{
 			name:    "hebrew_rtl",
 			locale:  "he",
 			message: "שלום {$name}!",
-			options: &MessageFormatOptions{
-				BidiIsolation: BidiDefault,
+			options: &messageformat.MessageFormatOptions{
+				BidiIsolation: messageformat.BidiDefault,
 			},
 			values:          map[string]interface{}{"name": "דוד"},
-			expectedDir:     DirRTL,
-			expectedBidi:    BidiDefault,
+			expectedDir:     messageformat.DirRTL,
+			expectedBidi:    messageformat.BidiDefault,
 			containsIsolate: true,
 		},
 		{
 			name:    "english_explicit_rtl",
 			locale:  "en",
 			message: "Hello {$name}!",
-			options: &MessageFormatOptions{
-				Dir:           DirRTL,
-				BidiIsolation: BidiDefault,
+			options: &messageformat.MessageFormatOptions{
+				Dir:           messageformat.DirRTL,
+				BidiIsolation: messageformat.BidiDefault,
 			},
 			values:          map[string]interface{}{"name": "World"},
-			expectedDir:     DirRTL,
-			expectedBidi:    BidiDefault,
+			expectedDir:     messageformat.DirRTL,
+			expectedBidi:    messageformat.BidiDefault,
 			containsIsolate: true,
 		},
 		{
 			name:    "arabic_bidi_disabled",
 			locale:  "ar",
 			message: "مرحبا {$name}!",
-			options: &MessageFormatOptions{
-				BidiIsolation: BidiNone,
+			options: &messageformat.MessageFormatOptions{
+				BidiIsolation: messageformat.BidiNone,
 			},
 			values:          map[string]interface{}{"name": "أحمد"},
-			expectedDir:     DirRTL,
-			expectedBidi:    BidiNone,
+			expectedDir:     messageformat.DirRTL,
+			expectedBidi:    messageformat.BidiNone,
 			containsIsolate: false,
 		},
 		{
 			name:    "mixed_ltr_rtl_content",
 			locale:  "ar",
 			message: "Email: {$email} - مرحبا {$name}!",
-			options: &MessageFormatOptions{
-				BidiIsolation: BidiDefault,
+			options: &messageformat.MessageFormatOptions{
+				BidiIsolation: messageformat.BidiDefault,
 			},
 			values: map[string]interface{}{
 				"email": "user@example.com",
 				"name":  "أحمد",
 			},
-			expectedDir:     DirRTL,
-			expectedBidi:    BidiDefault,
+			expectedDir:     messageformat.DirRTL,
+			expectedBidi:    messageformat.BidiDefault,
 			containsIsolate: true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New(tc.locale, tc.message, tc.options)
+			mf, err := messageformat.New(tc.locale, tc.message, tc.options)
 			require.NoError(t, err, "should create MessageFormat with RTL support")
 
 			result, err := mf.Format(tc.values)
@@ -874,7 +875,7 @@ func TestBidirectionalTextSupport(t *testing.T) {
 			// Test ResolvedOptions
 			resolved := mf.ResolvedOptions()
 			assert.Equal(t, tc.expectedDir, resolved.Dir, "direction should match expected")
-			assert.Equal(t, tc.expectedBidi, resolved.BidiIsolation, "BidiIsolation should match expected")
+			assert.Equal(t, tc.expectedBidi, resolved.BidiIsolation, "messageformat.BidiIsolation should match expected")
 
 			// Test bidi isolation characters presence
 			if tc.containsIsolate {
@@ -896,61 +897,61 @@ func TestLocaleNegotiation(t *testing.T) {
 		name          string
 		locales       interface{}
 		message       string
-		options       *MessageFormatOptions
+		options       *messageformat.MessageFormatOptions
 		values        map[string]interface{}
-		expectedDir   Direction
-		expectedMatch LocaleMatcher
+		expectedDir   messageformat.Direction
+		expectedMatch messageformat.LocaleMatcher
 	}{
 		{
 			name:    "single_locale_string",
 			locales: "en-US",
 			message: "Hello {$name}!",
-			options: &MessageFormatOptions{
-				LocaleMatcher: LocaleBestFit,
+			options: &messageformat.MessageFormatOptions{
+				LocaleMatcher: messageformat.LocaleBestFit,
 			},
 			values:        map[string]interface{}{"name": "World"},
-			expectedDir:   DirLTR,
-			expectedMatch: LocaleBestFit,
+			expectedDir:   messageformat.DirLTR,
+			expectedMatch: messageformat.LocaleBestFit,
 		},
 		{
 			name:    "multiple_locales_array",
 			locales: []string{"zh-CN", "en", "fr"},
 			message: "Hello {$name}!",
-			options: &MessageFormatOptions{
-				LocaleMatcher: LocaleLookup,
+			options: &messageformat.MessageFormatOptions{
+				LocaleMatcher: messageformat.LocaleLookup,
 			},
 			values:        map[string]interface{}{"name": "世界"},
-			expectedDir:   DirLTR,
-			expectedMatch: LocaleLookup,
+			expectedDir:   messageformat.DirLTR,
+			expectedMatch: messageformat.LocaleLookup,
 		},
 		{
 			name:    "rtl_locale",
 			locales: "ar",
 			message: "مرحبا {$name}!",
-			options: &MessageFormatOptions{
-				LocaleMatcher: LocaleBestFit,
+			options: &messageformat.MessageFormatOptions{
+				LocaleMatcher: messageformat.LocaleBestFit,
 			},
 			values:        map[string]interface{}{"name": "أحمد"},
-			expectedDir:   DirRTL,
-			expectedMatch: LocaleBestFit,
+			expectedDir:   messageformat.DirRTL,
+			expectedMatch: messageformat.LocaleBestFit,
 		},
 		{
 			name:    "explicit_dir_override",
 			locales: "en",
 			message: "Hello {$name}!",
-			options: &MessageFormatOptions{
-				Dir:           DirRTL,
-				LocaleMatcher: LocaleLookup,
+			options: &messageformat.MessageFormatOptions{
+				Dir:           messageformat.DirRTL,
+				LocaleMatcher: messageformat.LocaleLookup,
 			},
 			values:        map[string]interface{}{"name": "World"},
-			expectedDir:   DirRTL,
-			expectedMatch: LocaleLookup,
+			expectedDir:   messageformat.DirRTL,
+			expectedMatch: messageformat.LocaleLookup,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New(tc.locales, tc.message, tc.options)
+			mf, err := messageformat.New(tc.locales, tc.message, tc.options)
 			require.NoError(t, err, "should create MessageFormat with locale negotiation")
 
 			result, err := mf.Format(tc.values)
@@ -999,7 +1000,7 @@ func TestFormatToParts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.message, nil)
+			mf, err := messageformat.New("en", tc.message, nil)
 			require.NoError(t, err)
 
 			parts, err := mf.FormatToParts(tc.values)
@@ -1139,7 +1140,7 @@ func TestEdgeCases(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.message, nil)
+			mf, err := messageformat.New("en", tc.message, nil)
 			if tc.shouldError {
 				if err != nil {
 					return // Expected error during parsing
@@ -1161,7 +1162,7 @@ func TestEdgeCases(t *testing.T) {
 
 // TestConcurrentAccess tests concurrent access safety
 func TestConcurrentAccess(t *testing.T) {
-	mf, err := New("en", "Hello {$name}!", nil)
+	mf, err := messageformat.New("en", "Hello {$name}!", nil)
 	require.NoError(t, err)
 
 	const numGoroutines = 10
@@ -1314,9 +1315,9 @@ func TestComplexScenarios(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var opts *MessageFormatOptions
+			var opts *messageformat.MessageFormatOptions
 			if tc.functions != nil {
-				opts = &MessageFormatOptions{Functions: tc.functions}
+				opts = &messageformat.MessageFormatOptions{Functions: tc.functions}
 			}
 
 			locale := "en"
@@ -1324,7 +1325,7 @@ func TestComplexScenarios(t *testing.T) {
 				locale = "ar"
 			}
 
-			mf, err := New(locale, tc.message, opts)
+			mf, err := messageformat.New(locale, tc.message, opts)
 			require.NoError(t, err, "should parse complex message")
 
 			result, err := mf.Format(tc.values)

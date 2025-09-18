@@ -55,40 +55,53 @@ type NumericInput struct {
 //	  return { value, options };
 //	}
 func readNumericOperand(value interface{}, source string) (*NumericInput, error) {
+	// Check for nil operand first - should return bad-operand error
+	if value == nil {
+		return nil, pkgErrors.NewMessageResolutionError(
+			pkgErrors.ErrorTypeBadOperand,
+			"Input is not numeric",
+			source,
+		)
+	}
+
 	var options map[string]interface{}
 
-	// Handle object types with valueOf method and options - matches TypeScript logic
-	// TypeScript: if (typeof value === 'object') { const valueOf = value?.valueOf; ... }
-	if value != nil {
-		// Check if it's a MessageValue with valueOf method
-		if mv, ok := value.(messagevalue.MessageValue); ok {
-			// Get the underlying value from MessageValue
-			rawValue, err := mv.ValueOf()
-			if err != nil {
-				return nil, pkgErrors.NewMessageResolutionError(
-					pkgErrors.ErrorTypeBadOperand,
-					"Input is not numeric",
-					source,
-				)
-			}
-			value = rawValue
+	// Check if it's a MessageValue with valueOf method
+	if mv, ok := value.(messagevalue.MessageValue); ok {
+		// Special case: if it's a FallbackValue, it's a bad operand
+		if mv.Type() == "fallback" {
+			return nil, pkgErrors.NewMessageResolutionError(
+				pkgErrors.ErrorTypeBadOperand,
+				"Input is not numeric",
+				source,
+			)
+		}
+		// Get the underlying value from MessageValue
+		rawValue, err := mv.ValueOf()
+		if err != nil {
+			return nil, pkgErrors.NewMessageResolutionError(
+				pkgErrors.ErrorTypeBadOperand,
+				"Input is not numeric",
+				source,
+			)
+		}
+		value = rawValue
 
-			// If it's a NumberValue, extract its options
-			if nv, ok := mv.(*messagevalue.NumberValue); ok {
-				if nvOptions := nv.Options(); nvOptions != nil {
-					options = nvOptions
+		// If it's a NumberValue, extract its options
+		if nv, ok := mv.(*messagevalue.NumberValue); ok {
+			if nvOptions := nv.Options(); nvOptions != nil {
+				options = nvOptions
+			}
+		}
+	} else if obj, ok := value.(map[string]interface{}); ok {
+		// Check if value has valueOf method and options
+		if valueOf, hasValueOf := obj["valueOf"]; hasValueOf {
+			if optionsVal, hasOptions := obj["options"]; hasOptions {
+				if optMap, ok := optionsVal.(map[string]interface{}); ok {
+					options = optMap
 				}
 			}
-		} else if obj, ok := value.(map[string]interface{}); ok {
-			// Check if value has valueOf method and options
-			if valueOf, hasValueOf := obj["valueOf"]; hasValueOf {
-				if optionsVal, hasOptions := obj["options"]; hasOptions {
-					if optMap, ok := optionsVal.(map[string]interface{}); ok {
-						options = optMap
-					}
-				}
-				value = valueOf
-			}
+			value = valueOf
 		}
 	}
 

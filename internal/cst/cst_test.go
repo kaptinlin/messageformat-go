@@ -45,8 +45,8 @@ func TestParseCST_SelectMessage(t *testing.T) {
 }
 
 func TestParseCST_SelectMessage_SimpleVariables(t *testing.T) {
-	// Test the new variable parsing without $ prefix
-	source := ".match {count} one {{one item}} * {{many items}}"
+	// Test variable parsing with $ prefix (MessageFormat 2.0 compliant)
+	source := ".match $count one {{one item}} * {{many items}}"
 	msg := ParseCST(source, false)
 
 	assert.Equal(t, "select", msg.Type())
@@ -62,8 +62,8 @@ func TestParseCST_SelectMessage_SimpleVariables(t *testing.T) {
 }
 
 func TestParseCST_SelectMessage_MultipleSelectors(t *testing.T) {
-	// Test multiple selectors with new syntax
-	source := ".match {gender} {count} male one {{He has one item}} female * {{She has many items}} * * {{They have items}}"
+	// Test multiple selectors with MessageFormat 2.0 syntax
+	source := ".match $gender $count male one {{He has one item}} female * {{She has many items}} * * {{They have items}}"
 	msg := ParseCST(source, false)
 
 	assert.Equal(t, "select", msg.Type())
@@ -79,8 +79,8 @@ func TestParseCST_SelectMessage_MultipleSelectors(t *testing.T) {
 }
 
 func TestParseCST_SelectMessage_WithFunctions(t *testing.T) {
-	// Test selectors with function calls
-	source := ".match {count :integer select=cardinal} 0 {{no items}} 1 {{one item}} * {{many items}}"
+	// Test selectors with function calls - need .input for annotation
+	source := ".input {$count :integer select=cardinal} .match $count 0 {{no items}} 1 {{one item}} * {{many items}}"
 	msg := ParseCST(source, false)
 
 	assert.Equal(t, "select", msg.Type())
@@ -89,6 +89,7 @@ func TestParseCST_SelectMessage_WithFunctions(t *testing.T) {
 	assert.True(t, ok)
 	assert.Len(t, select_.Selectors(), 1)
 	assert.Len(t, select_.Variants(), 3)
+	assert.Len(t, select_.Declarations(), 1) // Should have one .input declaration
 }
 
 func TestParseCST_WithDeclarations(t *testing.T) {

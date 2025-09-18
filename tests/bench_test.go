@@ -1,11 +1,13 @@
-package messageformat
+package tests
 
 import (
 	"testing"
+
+	messageformat "github.com/kaptinlin/messageformat-go"
 )
 
 func BenchmarkSimpleMessage(b *testing.B) {
-	mf, err := New("en", "Hello, {$name}!")
+	mf, err := messageformat.New("en", "Hello, {$name}!")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -24,7 +26,7 @@ func BenchmarkSimpleMessage(b *testing.B) {
 }
 
 func BenchmarkNumberFormatting(b *testing.B) {
-	mf, err := New("en", "You have {$count :number} messages")
+	mf, err := messageformat.New("en", "You have {$count :number} messages")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -43,7 +45,7 @@ func BenchmarkNumberFormatting(b *testing.B) {
 }
 
 func BenchmarkSelectMessage(b *testing.B) {
-	mf, err := New("en", `
+	mf, err := messageformat.New("en", `
 .input {$count :number}
 .match $count
 0   {{No items}}
@@ -68,7 +70,7 @@ one {{One item}}
 }
 
 func BenchmarkComplexMessage(b *testing.B) {
-	mf, err := New("en", `
+	mf, err := messageformat.New("en", `
 .input {$userName :string}
 .input {$photoCount :number}
 .input {$userGender :string}
@@ -103,7 +105,7 @@ one *      {{{$userName} added one photo to their album.}}
 }
 
 func BenchmarkFormatToParts(b *testing.B) {
-	mf, err := New("en", "Hello, {$name}! You have {$count :number} messages.")
+	mf, err := messageformat.New("en", "Hello, {$name}! You have {$count :number} messages.")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -127,7 +129,7 @@ func BenchmarkMessageCreation(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := New("en", pattern)
+		_, err := messageformat.New("en", pattern)
 		if err != nil {
 			b.Fatal(err)
 		}

@@ -1165,13 +1165,22 @@ func getPluralCategory(num float64, options map[string]interface{}, locale strin
 		}
 	}
 
+	// For percent style, apply plural rules to the percentage value (value * 100)
+	// This matches the TypeScript behavior where plural selection for percent uses the display value
+	valueForPlural := num
+	if style, hasStyle := options["style"]; hasStyle {
+		if styleStr, ok := style.(string); ok && styleStr == "percent" {
+			valueForPlural = num * 100
+		}
+	}
+
 	if selectType == "ordinal" {
 		// Ordinal rules for English: 1st, 2nd, 3rd, 4th, etc.
-		switch int(num) % 100 {
+		switch int(valueForPlural) % 100 {
 		case 11, 12, 13:
 			return "other"
 		default:
-			switch int(num) % 10 {
+			switch int(valueForPlural) % 10 {
 			case 1:
 				return "one"
 			case 2:
@@ -1184,7 +1193,7 @@ func getPluralCategory(num float64, options map[string]interface{}, locale strin
 		}
 	} else {
 		// Cardinal rules for English: simplified implementation
-		if num == 1 {
+		if valueForPlural == 1 {
 			return "one"
 		}
 		return "other"

@@ -116,18 +116,74 @@ func validateMessage(msg Message, onError func(string, interface{})) *Validation
 	localVars := make(map[string]bool)
 	variables := make(map[string]bool)
 	variants := make(map[string]bool)
-
-	// Create a separate map for tracking declared variables during expression processing
-	expressionDeclared := make(map[string]bool)
 	
-	// Visit all declarations first
+	// Visit all declarations first and check for cyclic/forward references
 	// TypeScript: visit(msg, { declaration(decl) { ... } })
-	var declarationChecks []func() // Store declaration checks to run after visiting expressions
 	
-	for _, decl := range msg.Declarations() {
+	// Process declarations in order and check for invalid references
+	for i, decl := range msg.Declarations() {
 		// Skip all ReservedStatement
 		if decl.Name() == "" {
 			continue
+		}
+
+		// Check for self-reference in local declarations
+		if decl.Type() == "local" {
+			if localDecl, ok := decl.(*LocalDeclaration); ok && localDecl.value != nil {
+				// Check for direct self-reference: .local $foo = {$foo}
+				if localDecl.value.Arg() != nil {
+					if varRef, ok := localDecl.value.Arg().(*VariableRef); ok {
+						if varRef.Name() == localDecl.Name() {
+							// Self-reference detected
+							onError("duplicate-declaration", decl)
+							continue
+						}
+					}
+				}
+				
+				// Check for forward references in local declarations
+				// A local variable can only reference variables declared before it
+				if localDecl.value.Arg() != nil {
+					if varRef, ok := localDecl.value.Arg().(*VariableRef); ok {
+						// Check if this variable is declared later (forward reference)
+						foundLater := false
+						for j := i + 1; j < len(msg.Declarations()); j++ {
+							laterDecl := msg.Declarations()[j]
+							if laterDecl.Name() == varRef.Name() && laterDecl.Type() == "local" {
+								foundLater = true
+								break
+							}
+						}
+						if foundLater {
+							// Forward reference detected
+							onError("duplicate-declaration", decl)
+							continue
+						}
+					}
+				}
+				
+				// Check for forward references in function options
+				if localDecl.value.FunctionRef() != nil && localDecl.value.FunctionRef().Options() != nil {
+					for _, optValue := range localDecl.value.FunctionRef().Options() {
+						if varRef, ok := optValue.(*VariableRef); ok {
+							// Check if this variable is declared later (forward reference)
+							foundLater := false
+							for j := i + 1; j < len(msg.Declarations()); j++ {
+								laterDecl := msg.Declarations()[j]
+								if laterDecl.Name() == varRef.Name() && laterDecl.Type() == "local" {
+									foundLater = true
+									break
+								}
+							}
+							if foundLater || varRef.Name() == localDecl.Name() {
+								// Forward reference or self-reference in options
+								onError("duplicate-declaration", decl)
+								break
+							}
+						}
+					}
+				}
+			}
 		}
 
 		// TypeScript: if (decl.value.functionRef || (decl.type === 'local' && ...))
@@ -144,24 +200,15 @@ func validateMessage(msg Message, onError func(string, interface{})) *Validation
 		// TypeScript: setArgAsDeclared = decl.type === 'local';
 		setArgAsDeclared := decl.Type() == "local"
 
-		// Visit expression in declaration first, using separate declared map
-		visitExpression(decl, functions, variables, expressionDeclared, setArgAsDeclared)
+		// Visit expression in declaration
+		visitExpression(decl, functions, variables, declared, setArgAsDeclared)
 
-		// Store declaration check for later execution (matches TypeScript pattern)
-		currentDecl := decl // Capture for closure
-		declarationChecks = append(declarationChecks, func() {
-			// Check for duplicate declaration or self-reference
-			if declared[currentDecl.Name()] || checkSelfReference(currentDecl) {
-				onError("duplicate-declaration", currentDecl)
-			} else {
-				declared[currentDecl.Name()] = true
-			}
-		})
-	}
-	
-	// Execute declaration checks after all expressions have been visited
-	for _, check := range declarationChecks {
-		check()
+		// Check for duplicate declaration
+		if declared[decl.Name()] {
+			onError("duplicate-declaration", decl)
+		} else {
+			declared[decl.Name()] = true
+		}
 	}
 
 	// Visit message pattern or selectors/variants
@@ -429,20 +476,6 @@ func visitPattern(pattern Pattern, functions, variables map[string]bool, onError
 	}
 }
 
-// checkSelfReference checks if a declaration references itself
-// For MessageFormat 2.0, this only occurs when a local declaration explicitly 
-// references the variable being declared with $ syntax, e.g., .local $foo = {$foo}
-// A declaration like .local $foo = {foo} is NOT self-reference (references external variable)
-func checkSelfReference(decl Declaration) bool {
-	// Currently, we cannot distinguish between {$foo} and {foo} in our data model
-	// since both are parsed as VariableRef with name "foo"
-	// Based on the official test cases, we should only flag true self-references
-	// 
-	// The problematic case .local $foo = {$foo} is handled elsewhere in the validation
-	// For now, disable this check since it's causing false positives
-	// TODO: Enhance CST to preserve $ prefix information for proper self-reference detection
-	return false
-}
 
 
 // checkDuplicateOptions checks for duplicate option names in a function reference

@@ -115,11 +115,11 @@ func parseExpression(ctx *ParseContext, start int) *Expression {
 				arg = literal
 			}
 		} else if isIdentifierStart(ch) {
-			// Unquoted identifier = variable reference: {name} {count}
-			// Parse as variable without $ prefix
-			variable := parseVariableRef(ctx, pos)
-			if variable != nil {
-				arg = variable
+			// Unquoted identifier = unquoted literal: {name} {count}
+			// According to MessageFormat 2.0 spec, these should be literals, not variable references
+			literal := ParseLiteral(ctx, pos, false)
+			if literal != nil {
+				arg = literal
 			}
 		} else {
 			// Fall back to literal parsing for other cases

@@ -845,37 +845,37 @@ func TestPatternSelectionFixes(t *testing.T) {
 	}{
 		{
 			name:     "simple variable selector without $",
-			source:   ".match {status}\nactive {{User is active}}\ninactive {{User is inactive}}\n* {{Unknown status}}",
+			source:   ".match $status\nactive {{User is active}}\ninactive {{User is inactive}}\n* {{Unknown status}}",
 			values:   map[string]interface{}{"status": "active"},
 			expected: "User is active",
 		},
 		{
 			name:     "simple variable selector with fallback",
-			source:   ".match {status}\nactive {{User is active}}\ninactive {{User is inactive}}\n* {{Unknown status}}",
+			source:   ".match $status\nactive {{User is active}}\ninactive {{User is inactive}}\n* {{Unknown status}}",
 			values:   map[string]interface{}{"status": "other"},
 			expected: "Unknown status",
 		},
 		{
 			name:     "function-annotated selector",
-			source:   ".match {count :integer select=cardinal}\n0 {{You have no items}}\n1 {{You have one item}}\n* {{You have {count} items}}",
+			source:   ".input {$count :integer select=cardinal}\n.match $count\n0 {{You have no items}}\n1 {{You have one item}}\n* {{You have {$count} items}}",
 			values:   map[string]interface{}{"count": 0},
 			expected: "You have no items",
 		},
 		{
 			name:     "function-annotated selector with variables",
-			source:   ".match {count :integer select=cardinal}\n0 {{You have no items}}\n1 {{You have one item}}\n* {{You have {count} items}}",
+			source:   ".input {$count :integer select=cardinal}\n.match $count\n0 {{You have no items}}\n1 {{You have one item}}\n* {{You have {$count} items}}",
 			values:   map[string]interface{}{"count": 5},
 			expected: "You have 5 items",
 		},
 		{
 			name:     "multiple selectors",
-			source:   ".match {gender :string} {count :integer select=cardinal}\nmale 0 {{He has no items}}\nmale 1 {{He has one item}}\nmale * {{He has {count} items}}\nfemale 0 {{She has no items}}\nfemale 1 {{She has one item}}\nfemale * {{She has {count} items}}\n* * {{They have {count} items}}",
+			source:   ".input {$gender :string}\n.input {$count :integer select=cardinal}\n.match $gender $count\nmale 0 {{He has no items}}\nmale 1 {{He has one item}}\nmale * {{He has {$count} items}}\nfemale 0 {{She has no items}}\nfemale 1 {{She has one item}}\nfemale * {{She has {$count} items}}\n* * {{They have {$count} items}}",
 			values:   map[string]interface{}{"gender": "male", "count": 0},
 			expected: "He has no items",
 		},
 		{
 			name:     "multiple selectors with fallback",
-			source:   ".match {gender :string} {count :integer select=cardinal}\nmale 0 {{He has no items}}\nmale 1 {{He has one item}}\nmale * {{He has {count} items}}\nfemale 0 {{She has no items}}\nfemale 1 {{She has one item}}\nfemale * {{She has {count} items}}\n* * {{They have {count} items}}",
+			source:   ".input {$gender :string}\n.input {$count :integer select=cardinal}\n.match $gender $count\nmale 0 {{He has no items}}\nmale 1 {{He has one item}}\nmale * {{He has {$count} items}}\nfemale 0 {{She has no items}}\nfemale 1 {{She has one item}}\nfemale * {{She has {$count} items}}\n* * {{They have {$count} items}}",
 			values:   map[string]interface{}{"gender": "other", "count": 5},
 			expected: "They have 5 items",
 		},
@@ -916,13 +916,13 @@ func TestLocalDeclarationsFixes(t *testing.T) {
 		},
 		{
 			name:     "local declaration in selector",
-			source:   ".input {$count :integer}\n.local $status = {$count :string}\n.match {$status}\n0 {{No items}}\n* {{Some items: {$count}}}",
+			source:   ".input {$count :integer}\n.local $status = {$count :string}\n.match $status\n0 {{No items}}\n* {{Some items: {$count}}}",
 			values:   map[string]interface{}{"count": 0},
 			expected: "No items",
 		},
 		{
 			name:     "local declaration in selector non-zero",
-			source:   ".input {$count :integer}\n.local $status = {$count :string}\n.match {$status}\n0 {{No items}}\n* {{Some items: {$count}}}",
+			source:   ".input {$count :integer}\n.local $status = {$count :string}\n.match $status\n0 {{No items}}\n* {{Some items: {$count}}}",
 			values:   map[string]interface{}{"count": 5},
 			expected: "Some items: 5",
 		},
@@ -957,25 +957,25 @@ func TestMissingVariableHandlingFixes(t *testing.T) {
 	}{
 		{
 			name:     "simple missing variable",
-			source:   "Hello {name}!",
+			source:   "Hello {$name}!",
 			values:   map[string]interface{}{}, // missing 'name'
 			expected: "Hello {$name}!",
 		},
 		{
 			name:     "null variable value",
-			source:   "Hello {name}!",
+			source:   "Hello {$name}!",
 			values:   map[string]interface{}{"name": nil},
 			expected: "Hello {$name}!",
 		},
 		{
 			name:     "missing variable with function",
-			source:   "Count: {count :integer}",
+			source:   "Count: {$count :integer}",
 			values:   map[string]interface{}{}, // missing 'count'
 			expected: "Count: {$count}",
 		},
 		{
 			name:     "missing variable in selector falls back to catchall",
-			source:   ".match {status}\nactive {{User is active}}\n* {{Unknown status}}",
+			source:   ".match $status\nactive {{User is active}}\n* {{Unknown status}}",
 			values:   map[string]interface{}{}, // missing 'status'
 			expected: "Unknown status",
 		},
@@ -1013,19 +1013,19 @@ func TestExpressionParsingFixes(t *testing.T) {
 	}{
 		{
 			name:     "simple variable reference",
-			source:   "{name}",
+			source:   "{$name}",
 			values:   map[string]interface{}{"name": "Alice"},
 			expected: "Alice",
 		},
 		{
 			name:     "variable with underscore",
-			source:   "{user_name}",
+			source:   "{$user_name}",
 			values:   map[string]interface{}{"user_name": "john_doe"},
 			expected: "john_doe",
 		},
 		{
 			name:     "variable with number",
-			source:   "{item1}",
+			source:   "{$item1}",
 			values:   map[string]interface{}{"item1": "First Item"},
 			expected: "First Item",
 		},
@@ -1049,7 +1049,7 @@ func TestExpressionParsingFixes(t *testing.T) {
 		},
 		{
 			name:     "function call on variable",
-			source:   "{count :integer}",
+			source:   "{$count :integer}",
 			values:   map[string]interface{}{"count": 42},
 			expected: "42",
 		},

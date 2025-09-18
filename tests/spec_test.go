@@ -111,9 +111,14 @@ func tests(tc utils.Test) func(*testing.T) {
 
 				// Check expected errors (matches TypeScript error checking logic)
 				if tc.ExpErrors != nil {
+					// Check if ExpErrors is false (explicitly no errors)
 					if tc.ExpErrors == false {
 						assert.Empty(t, errors, "Expected no errors but got: %v", errors)
+					} else if errArray, ok := tc.ExpErrors.([]interface{}); ok && len(errArray) == 0 {
+						// Empty array means no expected errors
+						assert.Empty(t, errors, "Expected no errors but got: %v", errors)
 					} else {
+						// Non-empty array or true means errors are expected
 						assert.NotEmpty(t, errors, "Expected errors but got none")
 					}
 				} else {
@@ -223,9 +228,14 @@ func tests(tc utils.Test) func(*testing.T) {
 
 					// Check errors for parts formatting
 					if tc.ExpErrors != nil {
+						// Check if ExpErrors is false (explicitly no errors)
 						if tc.ExpErrors == false {
 							assert.Empty(t, errors, "Expected no errors in parts but got: %v", errors)
+						} else if errArray, ok := tc.ExpErrors.([]interface{}); ok && len(errArray) == 0 {
+							// Empty array means no expected errors
+							assert.Empty(t, errors, "Expected no errors in parts but got: %v", errors)
 						} else {
+							// Non-empty array or true means errors are expected
 							assert.NotEmpty(t, errors, "Expected errors in parts but got none")
 						}
 					} else {

@@ -505,11 +505,11 @@ func (mf *MessageFormat) addDeclarationsToScope(
 				for k, v := range msgParams {
 					combinedScope[k] = v
 				}
-				// Add current scope variables (but don't overwrite message parameters)
+				// Add current scope variables, overwriting message parameters
+				// This is important: if a variable is defined via .input, we want to use
+				// the UnresolvedExpression from scope, not the raw parameter value
 				for k, v := range scope {
-					if _, exists := combinedScope[k]; !exists {
-						combinedScope[k] = v
-					}
+					combinedScope[k] = v
 				}
 				scope[d.Name()] = resolve.NewUnresolvedExpression(localExpr, combinedScope)
 			}

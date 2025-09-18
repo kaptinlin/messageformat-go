@@ -103,10 +103,30 @@ func CurrencyFunction(
 
 	// Start with operand options and set currency style
 	mergedOptions := make(map[string]interface{})
+	
+	// Copy existing options from the operand if any
+	// According to the spec and tests, numbers from :number and :integer CAN be reformatted as currency
+	// Only check if it already has a conflicting style (like "percent")
 	if numericOperand.Options != nil {
+		// Copy existing options
 		for k, v := range numericOperand.Options {
 			mergedOptions[k] = v
 		}
+		
+		// Check if it has a style already set that conflicts
+		if existingStyle, hasStyle := numericOperand.Options["style"]; hasStyle {
+			// It has a style - can only reuse if same style or if converting from basic number formatting
+			if existingStyle != "currency" && existingStyle != "decimal" {
+				// Only reject if it's a conflicting style like "percent"
+				if existingStyle == "percent" {
+					ctx.OnError(errors.NewBadOperandError("Cannot format a percent-formatted number as currency", source))
+					return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+				}
+			}
+			// Otherwise it can be reformatted as currency
+		}
+		// Numbers from :number and :integer CAN be reformatted as currency
+		// The test suite confirms this behavior
 	}
 	mergedOptions["localeMatcher"] = ctx.LocaleMatcher()
 	mergedOptions["style"] = "currency"
@@ -149,7 +169,8 @@ func CurrencyFunction(
 		case "fractionDigits":
 			if strval, err := asString(optval); err == nil {
 				if strval == "auto" {
-					// Remove fraction digit constraints for auto
+					// fractionDigits=auto means to use default currency fraction digits
+					// Don't set minimumFractionDigits/maximumFractionDigits and let the formatter decide
 					delete(mergedOptions, "minimumFractionDigits")
 					delete(mergedOptions, "maximumFractionDigits")
 				} else {
@@ -168,9 +189,14 @@ func CurrencyFunction(
 		}
 	}
 
-	// Check that currency is provided
+	// Check that currency is provided - this must be done AFTER processing options
+	// but BEFORE returning the final value. The TypeScript code throws an error
+	// when currency is not provided, which gets caught and handled as a bad-operand error
 	if _, hasCurrency := mergedOptions["currency"]; !hasCurrency {
-		ctx.OnError(errors.NewBadOperandError("A currency code is required for :currency", source))
+		// This is a bad-operand error because the operand doesn't have the required currency
+		err := errors.NewBadOperandError("A currency code is required for :currency", source)
+		// Unlike TypeScript which throws, we call OnError which will collect the error
+		ctx.OnError(err)
 		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
 	}
 

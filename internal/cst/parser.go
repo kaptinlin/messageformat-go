@@ -208,22 +208,13 @@ func parseSelectMessage(
 		ch := ctx.source[pos]
 		switch ch {
 		case '{':
-			// Parse expression as potential variable reference
+			// Selectors in .match must NOT be in braces according to MessageFormat 2.0
+			// This is a syntax error
 			expr := parseExpression(ctx, pos)
+			ctx.OnError("bad-selector", expr.Start(), expr.End())
 			pos = expr.End()
-
-			// Check if expression contains a variable reference
-			if arg := expr.Arg(); arg != nil {
-				if varRef, ok := arg.(*VariableRef); ok {
-					selectors = append(selectors, *varRef)
-				} else {
-					ctx.OnError("bad-selector", expr.Start(), expr.End())
-				}
-			} else {
-				ctx.OnError("bad-selector", expr.Start(), expr.End())
-			}
 		case '$':
-			// Legacy: explicit $ prefix variables
+			// Correct: explicit $ prefix variables
 			sel := ParseVariable(ctx, pos)
 			selectors = append(selectors, *sel)
 			pos = sel.End()
@@ -235,12 +226,10 @@ func parseSelectMessage(
 		ws = Whitespaces(ctx.source, pos)
 		if !ws.HasWS {
 			// Check if we're at the end or at a variant key - need whitespace between selectors
-			if pos < len(ctx.source) && ctx.source[pos] != '*' {
-				// Check if this looks like the start of a variant key
-				nameValue := ParseNameValue(ctx.source, pos)
-				if nameValue == nil {
-					ctx.OnError("missing-syntax", pos, " ")
-				}
+			// Also need whitespace before '*' variant key
+			if pos < len(ctx.source) {
+				// Always require whitespace after selector, even before '*'
+				ctx.OnError("missing-syntax", pos, " ")
 			}
 		}
 		pos = ws.End

@@ -17,21 +17,21 @@ func TestParseExpression_VariableReferences(t *testing.T) {
 		shouldError   bool
 	}{
 		{
-			name:          "simple variable reference",
+			name:          "unquoted literal (was variable)",
 			source:        "{name}",
-			expectedType:  "variable",
+			expectedType:  "literal",
 			expectedValue: "name",
 		},
 		{
-			name:          "variable with underscore",
+			name:          "unquoted literal with underscore",
 			source:        "{user_name}",
-			expectedType:  "variable",
+			expectedType:  "literal",
 			expectedValue: "user_name",
 		},
 		{
-			name:          "variable with number",
+			name:          "unquoted literal with number",
 			source:        "{count123}",
-			expectedType:  "variable",
+			expectedType:  "literal",
 			expectedValue: "count123",
 		},
 		{
@@ -110,20 +110,20 @@ func TestParseExpression_FunctionCalls(t *testing.T) {
 		expectedFunc string
 	}{
 		{
-			name:         "integer function",
-			source:       "{count :integer}",
+			name:         "integer function on variable",
+			source:       "{$count :integer}",
 			expectedVar:  "count",
 			expectedFunc: "integer",
 		},
 		{
-			name:         "number function",
-			source:       "{price :number}",
+			name:         "number function on variable",
+			source:       "{$price :number}",
 			expectedVar:  "price",
 			expectedFunc: "number",
 		},
 		{
-			name:         "string function",
-			source:       "{name :string}",
+			name:         "string function on variable",
+			source:       "{$name :string}",
 			expectedVar:  "name",
 			expectedFunc: "string",
 		},
@@ -189,14 +189,14 @@ func TestParseExpression_ComplexCases(t *testing.T) {
 			shouldError: true,
 		},
 		{
-			name:         "variable with whitespace",
+			name:         "literal with whitespace",
 			source:       "{ name }",
-			expectedType: "variable",
+			expectedType: "literal",
 		},
 		{
-			name:         "function with whitespace",
+			name:         "function on literal with whitespace", 
 			source:       "{ count :integer }",
-			expectedType: "variable",
+			expectedType: "literal",
 		},
 	}
 
@@ -213,11 +213,16 @@ func TestParseExpression_ComplexCases(t *testing.T) {
 			require.NotNil(t, result, "parseExpression should not return nil")
 			assert.Equal(t, 0, len(ctx.errors), "No parsing errors expected, got: %v", ctx.errors)
 
-			if tt.expectedType == "variable" {
-				arg := result.Arg()
-				require.NotNil(t, arg, "Expression argument should not be nil")
+			arg := result.Arg()
+			require.NotNil(t, arg, "Expression argument should not be nil")
+			
+			switch tt.expectedType {
+			case "variable":
 				_, ok := arg.(*VariableRef)
 				assert.True(t, ok, "Expected VariableRef, got %T", arg)
+			case "literal":
+				_, ok := arg.(*Literal)
+				assert.True(t, ok, "Expected Literal, got %T", arg)
 			}
 		})
 	}

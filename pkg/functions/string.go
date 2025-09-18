@@ -44,7 +44,18 @@ func StringFunction(
 	if operand == nil {
 		stringValue = ""
 	} else {
-		stringValue = fmt.Sprintf("%v", operand)
+		// Handle MessageValue operands - get their string representation
+		if mv, ok := operand.(messagevalue.MessageValue); ok {
+			str, err := mv.ToString()
+			if err != nil {
+				// If ToString fails, fall back to basic formatting
+				stringValue = fmt.Sprintf("%v", operand)
+			} else {
+				stringValue = str
+			}
+		} else {
+			stringValue = fmt.Sprintf("%v", operand)
+		}
 	}
 
 	// Get locale from context or options

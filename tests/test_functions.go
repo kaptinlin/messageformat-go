@@ -84,6 +84,8 @@ func (tv *testValue) SelectKeys(keys []string) ([]string, error) {
 		return nil, ErrNotSelectable
 	}
 	if tv.badOption {
+		// When there's a bad option, return an error that will cause fallback selection
+		// This is critical for proper error handling - bad options should fail selection
 		return nil, ErrBadOption
 	}
 	if tv.failsSelect {
@@ -119,6 +121,12 @@ func (tv *testValue) ToString() (string, error) {
 	}
 	if tv.failsFormat {
 		return "", ErrFormattingFailed
+	}
+	
+	// If there's a bad option, return special value
+	// This happens when formatting is attempted despite a bad option
+	if tv.badOption {
+		return "bad-option-value", nil
 	}
 
 	// Follow TypeScript testParts logic
@@ -206,12 +214,25 @@ func createTestValue(ctx functions.MessageFunctionContext, options map[string]in
 	}
 
 	// Handle operand that might be another test value (like TypeScript valueOf)
-	if testVal, ok := operand.(*testValue); ok {
+	// We need to check both direct *testValue and MessageValue interface wrapping
+	var inheritedTestValue *testValue
+	
+	// First try to get test value from MessageValue interface (most common case)
+	if msgVal, ok := operand.(messagevalue.MessageValue); ok {
+		// Check if it's a test value wrapped in MessageValue interface
+		if msgVal.Type() == "test" {
+			if testVal, ok := msgVal.(*testValue); ok {
+				inheritedTestValue = testVal
+				tv.input = testVal.input
+			}
+		} else if msgVal.Type() == "fallback" {
+			// For fallback operands, return fallback immediately
+			return messagevalue.NewFallbackValue(ctx.Source(), locale)
+		}
+	} else if testVal, ok := operand.(*testValue); ok {
+		// Direct test value (less common)
+		inheritedTestValue = testVal
 		tv.input = testVal.input
-		tv.decimalPlaces = testVal.decimalPlaces
-		tv.failsFormat = testVal.failsFormat
-		tv.failsSelect = testVal.failsSelect
-		tv.badOption = testVal.badOption
 	} else {
 		// Check if operand is a fallback value
 		if fallbackVal, ok := operand.(messagevalue.MessageValue); ok && fallbackVal.Type() == "fallback" {
@@ -229,12 +250,31 @@ func createTestValue(ctx functions.MessageFunctionContext, options map[string]in
 			tv.input = input
 		}
 	}
+	
+	// If we have an inherited test value, inherit its properties
+	if inheritedTestValue != nil {
+		// Always inherit the badOption state - this is critical for error propagation
+		tv.badOption = inheritedTestValue.badOption
+		tv.failsFormat = inheritedTestValue.failsFormat
+		tv.failsSelect = inheritedTestValue.failsSelect
+		
+		// Only inherit decimalPlaces if not explicitly set in current options
+		if _, hasDecimalPlaces := options["decimalPlaces"]; !hasDecimalPlaces {
+			tv.decimalPlaces = inheritedTestValue.decimalPlaces
+		}
+	}
 
 	// Process decimalPlaces option with strict validation like TypeScript
 	if decimalPlaces, exists := options["decimalPlaces"]; exists {
 		if dp, err := asPositiveInteger(decimalPlaces); err == nil {
 			if dp == 0 || dp == 1 {
 				tv.decimalPlaces = dp
+				// Important: If we're setting a valid decimalPlaces, it overrides inherited badOption
+				// This allows fixing a bad option by providing a valid one
+				if inheritedTestValue != nil && inheritedTestValue.badOption {
+					// We still have the badOption from inheritance but apply the new valid option
+					tv.decimalPlaces = dp
+				}
 			} else {
 				// Invalid decimalPlaces value - TypeScript throws bad-option error
 				tv.badOption = true
@@ -246,6 +286,11 @@ func createTestValue(ctx functions.MessageFunctionContext, options map[string]in
 			tv.badOption = true
 			ctx.OnError(ErrInvalidDecimalPlaces)
 		}
+	}
+	
+	// If we have a badOption state (either inherited or from current options), propagate the error
+	if tv.badOption {
+		ctx.OnError(ErrBadOption)
 	}
 
 	// Process fails option with exact TypeScript logic

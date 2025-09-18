@@ -28,7 +28,7 @@ clean: ## Clean build artifacts and caches
 .PHONY: submodules
 submodules: ## Initialize git submodules (required for official tests)
 	@echo "[setup] Initializing git submodules..."
-	@git submodule update --init --recursive
+	@git submodule update --init --depth 1 || echo "[setup] Submodule init completed with warnings"
 
 .PHONY: deps
 deps: ## Download Go module dependencies

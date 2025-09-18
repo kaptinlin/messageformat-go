@@ -63,6 +63,26 @@ func PercentFunction(
 		return messagevalue.NewFallbackValue(ctx.Source(), getFirstLocale(ctx.Locales()))
 	}
 
+	// Check if the number has been formatted before
+	// According to the test suite, numbers from :number and :integer CAN be reformatted as percent
+	// Only conflicting styles (like currency) should be rejected
+	if numInput.Options != nil {
+		// Check if it has a style already set that conflicts
+		if existingStyle, hasStyle := numInput.Options["style"]; hasStyle {
+			// It has a style - can only reuse if same style or if converting from basic number formatting
+			if existingStyle != "percent" && existingStyle != "decimal" {
+				// Only reject if it's a conflicting style like "currency"
+				if existingStyle == "currency" {
+					ctx.OnError(pkgErrors.NewBadOperandError("Cannot format a currency-formatted number as percent", ctx.Source()))
+					return messagevalue.NewFallbackValue(ctx.Source(), getFirstLocale(ctx.Locales()))
+				}
+			}
+			// Otherwise it can be reformatted as percent
+		}
+		// Numbers from :number and :integer CAN be reformatted as percent
+		// The test suite confirms this behavior
+	}
+
 	// Start with operand options and set defaults - matches TypeScript Object.assign
 	mergedOptions := mergeNumberOptions(numInput.Options, nil, ctx.LocaleMatcher())
 	mergedOptions["style"] = "percent" // Set percent style
