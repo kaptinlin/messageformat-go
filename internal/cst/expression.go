@@ -59,6 +59,7 @@ import (
 //	  }
 //	  // ... rest of function
 //	}
+//
 // isDigit checks if a character is a digit
 func isDigit(ch byte) bool {
 	return ch >= '0' && ch <= '9'
@@ -68,8 +69,8 @@ func isDigit(ch byte) bool {
 func isIdentifierStart(ch byte) bool {
 	// Use the existing notNameStartRegex to check if character can start a name
 	// If it matches notNameStart (-.0-9), then it cannot start an identifier
-	return !notNameStartRegex.MatchString(string(ch)) && 
-		   nameCharsRegex.MatchString(string(ch))
+	return !notNameStartRegex.MatchString(string(ch)) &&
+		nameCharsRegex.MatchString(string(ch))
 }
 
 // parseVariableRef parses a variable reference without $ prefix
@@ -80,7 +81,7 @@ func parseVariableRef(ctx *ParseContext, start int) *VariableRef {
 		ctx.OnError("empty-token", start, start+1)
 		return NewVariableRef(start, start, NewSyntax(start, start, ""), "")
 	}
-	
+
 	// For unquoted identifiers, we don't have an explicit $ prefix
 	// So we create a VariableRef with an empty open syntax
 	open := NewSyntax(start, start, "")

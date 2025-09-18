@@ -44,6 +44,53 @@ func TestParseCST_SelectMessage(t *testing.T) {
 	assert.Len(t, select_.Variants(), 2)
 }
 
+func TestParseCST_SelectMessage_SimpleVariables(t *testing.T) {
+	// Test the new variable parsing without $ prefix
+	source := ".match {count} one {{one item}} * {{many items}}"
+	msg := ParseCST(source, false)
+
+	assert.Equal(t, "select", msg.Type())
+
+	select_, ok := msg.(*SelectMessage)
+	assert.True(t, ok)
+	assert.Len(t, select_.Selectors(), 1)
+	assert.Len(t, select_.Variants(), 2)
+
+	// Check selector name
+	selector := select_.Selectors()[0]
+	assert.Equal(t, "count", selector.Name())
+}
+
+func TestParseCST_SelectMessage_MultipleSelectors(t *testing.T) {
+	// Test multiple selectors with new syntax
+	source := ".match {gender} {count} male one {{He has one item}} female * {{She has many items}} * * {{They have items}}"
+	msg := ParseCST(source, false)
+
+	assert.Equal(t, "select", msg.Type())
+
+	select_, ok := msg.(*SelectMessage)
+	assert.True(t, ok)
+	assert.Len(t, select_.Selectors(), 2)
+	assert.Len(t, select_.Variants(), 3)
+
+	// Check selector names
+	assert.Equal(t, "gender", select_.Selectors()[0].Name())
+	assert.Equal(t, "count", select_.Selectors()[1].Name())
+}
+
+func TestParseCST_SelectMessage_WithFunctions(t *testing.T) {
+	// Test selectors with function calls
+	source := ".match {count :integer select=cardinal} 0 {{no items}} 1 {{one item}} * {{many items}}"
+	msg := ParseCST(source, false)
+
+	assert.Equal(t, "select", msg.Type())
+
+	select_, ok := msg.(*SelectMessage)
+	assert.True(t, ok)
+	assert.Len(t, select_.Selectors(), 1)
+	assert.Len(t, select_.Variants(), 3)
+}
+
 func TestParseCST_WithDeclarations(t *testing.T) {
 	source := ".input {$count :number} .local $formatted = {$count :number} {{You have {$formatted} items}}"
 	msg := ParseCST(source, false)

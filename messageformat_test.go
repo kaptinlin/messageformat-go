@@ -831,3 +831,245 @@ func TestBidiIsolationOptions(t *testing.T) {
 		})
 	}
 }
+
+// Tests for Fixed Functionality
+// These tests verify the fixes implemented for pattern selection, local declarations, and missing variable handling
+
+// TestPatternSelectionFixes tests the fixes for .match statement functionality
+func TestPatternSelectionFixes(t *testing.T) {
+	tests := []struct {
+		name     string
+		source   string
+		values   map[string]interface{}
+		expected string
+	}{
+		{
+			name:     "simple variable selector without $",
+			source:   ".match {status}\nactive {{User is active}}\ninactive {{User is inactive}}\n* {{Unknown status}}",
+			values:   map[string]interface{}{"status": "active"},
+			expected: "User is active",
+		},
+		{
+			name:     "simple variable selector with fallback",
+			source:   ".match {status}\nactive {{User is active}}\ninactive {{User is inactive}}\n* {{Unknown status}}",
+			values:   map[string]interface{}{"status": "other"},
+			expected: "Unknown status",
+		},
+		{
+			name:     "function-annotated selector",
+			source:   ".match {count :integer select=cardinal}\n0 {{You have no items}}\n1 {{You have one item}}\n* {{You have {count} items}}",
+			values:   map[string]interface{}{"count": 0},
+			expected: "You have no items",
+		},
+		{
+			name:     "function-annotated selector with variables",
+			source:   ".match {count :integer select=cardinal}\n0 {{You have no items}}\n1 {{You have one item}}\n* {{You have {count} items}}",
+			values:   map[string]interface{}{"count": 5},
+			expected: "You have 5 items",
+		},
+		{
+			name:     "multiple selectors",
+			source:   ".match {gender :string} {count :integer select=cardinal}\nmale 0 {{He has no items}}\nmale 1 {{He has one item}}\nmale * {{He has {count} items}}\nfemale 0 {{She has no items}}\nfemale 1 {{She has one item}}\nfemale * {{She has {count} items}}\n* * {{They have {count} items}}",
+			values:   map[string]interface{}{"gender": "male", "count": 0},
+			expected: "He has no items",
+		},
+		{
+			name:     "multiple selectors with fallback",
+			source:   ".match {gender :string} {count :integer select=cardinal}\nmale 0 {{He has no items}}\nmale 1 {{He has one item}}\nmale * {{He has {count} items}}\nfemale 0 {{She has no items}}\nfemale 1 {{She has one item}}\nfemale * {{She has {count} items}}\n* * {{They have {count} items}}",
+			values:   map[string]interface{}{"gender": "other", "count": 5},
+			expected: "They have 5 items",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mf, err := New("en", tt.source)
+			require.NoError(t, err, "Failed to create MessageFormat for test: %s", tt.name)
+
+			result, err := mf.Format(tt.values)
+			require.NoError(t, err, "Failed to format message for test: %s", tt.name)
+
+			assert.Equal(t, tt.expected, result, "Unexpected result for test: %s", tt.name)
+		})
+	}
+}
+
+// TestLocalDeclarationsFixes tests the fixes for .input and .local declarations
+func TestLocalDeclarationsFixes(t *testing.T) {
+	tests := []struct {
+		name     string
+		source   string
+		values   map[string]interface{}
+		expected string
+	}{
+		{
+			name:     "input declaration basic",
+			source:   ".input {$count :integer}\n{{You have {$count} items}}",
+			values:   map[string]interface{}{"count": 5},
+			expected: "You have 5 items",
+		},
+		{
+			name:     "local declaration referencing input",
+			source:   ".input {$price :number}\n.local $tax = {$price :number}\n{{Price: {$price}, Tax: {$tax}}}",
+			values:   map[string]interface{}{"price": 100.0},
+			expected: "Price: 100, Tax: 100",
+		},
+		{
+			name:     "local declaration in selector",
+			source:   ".input {$count :integer}\n.local $status = {$count :string}\n.match {$status}\n0 {{No items}}\n* {{Some items: {$count}}}",
+			values:   map[string]interface{}{"count": 0},
+			expected: "No items",
+		},
+		{
+			name:     "local declaration in selector non-zero",
+			source:   ".input {$count :integer}\n.local $status = {$count :string}\n.match {$status}\n0 {{No items}}\n* {{Some items: {$count}}}",
+			values:   map[string]interface{}{"count": 5},
+			expected: "Some items: 5",
+		},
+		{
+			name:     "multiple local declarations",
+			source:   ".input {$base :integer}\n.local $doubled = {$base :integer}\n.local $result = {$doubled :integer}\n{{Base: {$base}, Result: {$result}}}",
+			values:   map[string]interface{}{"base": 10},
+			expected: "Base: 10, Result: 10",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mf, err := New("en", tt.source)
+			require.NoError(t, err, "Failed to create MessageFormat for test: %s", tt.name)
+
+			result, err := mf.Format(tt.values)
+			require.NoError(t, err, "Failed to format message for test: %s", tt.name)
+
+			assert.Equal(t, tt.expected, result, "Unexpected result for test: %s", tt.name)
+		})
+	}
+}
+
+// TestMissingVariableHandlingFixes tests the standardized missing variable behavior
+func TestMissingVariableHandlingFixes(t *testing.T) {
+	tests := []struct {
+		name     string
+		source   string
+		values   map[string]interface{}
+		expected string
+	}{
+		{
+			name:     "simple missing variable",
+			source:   "Hello {name}!",
+			values:   map[string]interface{}{}, // missing 'name'
+			expected: "Hello {$name}!",
+		},
+		{
+			name:     "null variable value",
+			source:   "Hello {name}!",
+			values:   map[string]interface{}{"name": nil},
+			expected: "Hello {$name}!",
+		},
+		{
+			name:     "missing variable with function",
+			source:   "Count: {count :integer}",
+			values:   map[string]interface{}{}, // missing 'count'
+			expected: "Count: {$count}",
+		},
+		{
+			name:     "missing variable in selector falls back to catchall",
+			source:   ".match {status}\nactive {{User is active}}\n* {{Unknown status}}",
+			values:   map[string]interface{}{}, // missing 'status'
+			expected: "Unknown status",
+		},
+		{
+			name:     "missing local variable reference",
+			source:   ".local $missing = {$undefined :string}\n{{Result: {$missing}}}",
+			values:   map[string]interface{}{}, // missing 'undefined'
+			expected: "Result: ",               // Local variable with missing dependency resolves to empty
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mf, err := New("en", tt.source)
+			require.NoError(t, err, "Failed to create MessageFormat for test: %s", tt.name)
+
+			// Use error callback to suppress warnings during testing
+			result, err := mf.Format(tt.values, func(error) {
+				// Suppress warnings for missing variables in tests
+			})
+			require.NoError(t, err, "Failed to format message for test: %s", tt.name)
+
+			assert.Equal(t, tt.expected, result, "Unexpected result for test: %s", tt.name)
+		})
+	}
+}
+
+// TestExpressionParsingFixes tests the fixes for variable expression parsing
+func TestExpressionParsingFixes(t *testing.T) {
+	tests := []struct {
+		name     string
+		source   string
+		values   map[string]interface{}
+		expected string
+	}{
+		{
+			name:     "simple variable reference",
+			source:   "{name}",
+			values:   map[string]interface{}{"name": "Alice"},
+			expected: "Alice",
+		},
+		{
+			name:     "variable with underscore",
+			source:   "{user_name}",
+			values:   map[string]interface{}{"user_name": "john_doe"},
+			expected: "john_doe",
+		},
+		{
+			name:     "variable with number",
+			source:   "{item1}",
+			values:   map[string]interface{}{"item1": "First Item"},
+			expected: "First Item",
+		},
+		{
+			name:     "explicit variable reference",
+			source:   "{$name}",
+			values:   map[string]interface{}{"name": "Bob"},
+			expected: "Bob",
+		},
+		{
+			name:     "quoted literal",
+			source:   "{|literal text|}",
+			values:   map[string]interface{}{},
+			expected: "literal text",
+		},
+		{
+			name:     "numeric literal",
+			source:   "{123}",
+			values:   map[string]interface{}{},
+			expected: "123",
+		},
+		{
+			name:     "function call on variable",
+			source:   "{count :integer}",
+			values:   map[string]interface{}{"count": 42},
+			expected: "42",
+		},
+		{
+			name:     "function call on explicit variable",
+			source:   "{$count :integer}",
+			values:   map[string]interface{}{"count": 42},
+			expected: "42",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mf, err := New("en", tt.source)
+			require.NoError(t, err, "Failed to create MessageFormat for test: %s", tt.name)
+
+			result, err := mf.Format(tt.values)
+			require.NoError(t, err, "Failed to format message for test: %s", tt.name)
+
+			assert.Equal(t, tt.expected, result, "Unexpected result for test: %s", tt.name)
+		})
+	}
+}

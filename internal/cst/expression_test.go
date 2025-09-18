@@ -10,59 +10,59 @@ import (
 // TestParseExpression_VariableReferences tests basic variable reference parsing
 func TestParseExpression_VariableReferences(t *testing.T) {
 	tests := []struct {
-		name           string
-		source         string
-		expectedType   string // "variable" or "literal"
-		expectedValue  string
-		shouldError    bool
+		name          string
+		source        string
+		expectedType  string // "variable" or "literal"
+		expectedValue string
+		shouldError   bool
 	}{
 		{
-			name:         "simple variable reference",
-			source:       "{name}",
-			expectedType: "variable",
+			name:          "simple variable reference",
+			source:        "{name}",
+			expectedType:  "variable",
 			expectedValue: "name",
 		},
 		{
-			name:         "variable with underscore",
-			source:       "{user_name}",
-			expectedType: "variable", 
+			name:          "variable with underscore",
+			source:        "{user_name}",
+			expectedType:  "variable",
 			expectedValue: "user_name",
 		},
 		{
-			name:         "variable with number",
-			source:       "{count123}",
-			expectedType: "variable",
+			name:          "variable with number",
+			source:        "{count123}",
+			expectedType:  "variable",
 			expectedValue: "count123",
 		},
 		{
-			name:         "explicit variable reference",
-			source:       "{$name}",
-			expectedType: "variable",
+			name:          "explicit variable reference",
+			source:        "{$name}",
+			expectedType:  "variable",
 			expectedValue: "name",
 		},
 		{
-			name:         "quoted literal",
-			source:       "{|literal text|}",
-			expectedType: "literal",
+			name:          "quoted literal",
+			source:        "{|literal text|}",
+			expectedType:  "literal",
 			expectedValue: "literal text",
 		},
 		// Note: MessageFormat 2.0 spec only supports |quoted| literals, not "double quotes"
 		{
-			name:         "numeric literal positive",
-			source:       "{123}",
-			expectedType: "literal",
+			name:          "numeric literal positive",
+			source:        "{123}",
+			expectedType:  "literal",
 			expectedValue: "123",
 		},
 		{
-			name:         "numeric literal negative",
-			source:       "{-456}",
-			expectedType: "literal",
+			name:          "numeric literal negative",
+			source:        "{-456}",
+			expectedType:  "literal",
 			expectedValue: "-456",
 		},
 		{
-			name:         "numeric literal with plus",
-			source:       "{+789}",
-			expectedType: "literal",
+			name:          "numeric literal with plus",
+			source:        "{+789}",
+			expectedType:  "literal",
 			expectedValue: "+789",
 		},
 	}
@@ -104,10 +104,10 @@ func TestParseExpression_VariableReferences(t *testing.T) {
 // TestParseExpression_FunctionCalls tests function call parsing
 func TestParseExpression_FunctionCalls(t *testing.T) {
 	tests := []struct {
-		name           string
-		source         string
-		expectedVar    string
-		expectedFunc   string
+		name         string
+		source       string
+		expectedVar  string
+		expectedFunc string
 	}{
 		{
 			name:         "integer function",
@@ -118,7 +118,7 @@ func TestParseExpression_FunctionCalls(t *testing.T) {
 		{
 			name:         "number function",
 			source:       "{price :number}",
-			expectedVar:  "price", 
+			expectedVar:  "price",
 			expectedFunc: "number",
 		},
 		{
@@ -146,7 +146,7 @@ func TestParseExpression_FunctionCalls(t *testing.T) {
 			// Check the argument (variable)
 			arg := result.Arg()
 			require.NotNil(t, arg, "Expression argument should not be nil")
-			
+
 			varRef, ok := arg.(*VariableRef)
 			require.True(t, ok, "Expected VariableRef, got %T", arg)
 			assert.Equal(t, tt.expectedVar, varRef.Name(), "Variable name mismatch")
@@ -154,7 +154,7 @@ func TestParseExpression_FunctionCalls(t *testing.T) {
 			// Check the function reference
 			funcRef := result.FunctionRef()
 			require.NotNil(t, funcRef, "Function reference should not be nil")
-			
+
 			if fr, ok := funcRef.(*FunctionRef); ok {
 				require.True(t, len(fr.Name()) > 0, "Function name should not be empty")
 				// Get function name from identifier parts
@@ -173,20 +173,20 @@ func TestParseExpression_FunctionCalls(t *testing.T) {
 // TestParseExpression_ComplexCases tests more complex parsing scenarios
 func TestParseExpression_ComplexCases(t *testing.T) {
 	tests := []struct {
-		name           string
-		source         string
-		expectedType   string
-		shouldError    bool
+		name         string
+		source       string
+		expectedType string
+		shouldError  bool
 	}{
 		{
-			name:         "empty expression should error",
-			source:       "{}",
-			shouldError:  true,
+			name:        "empty expression should error",
+			source:      "{}",
+			shouldError: true,
 		},
 		{
-			name:         "malformed expression", 
-			source:       "{",
-			shouldError:  true,
+			name:        "malformed expression",
+			source:      "{",
+			shouldError: true,
 		},
 		{
 			name:         "variable with whitespace",
@@ -238,21 +238,21 @@ func TestHelperFunctions(t *testing.T) {
 		assert.True(t, isIdentifierStart('a'))
 		assert.True(t, isIdentifierStart('A'))
 		assert.True(t, isIdentifierStart('_'))
-		assert.False(t, isIdentifierStart('0'))  // digits cannot start identifiers
-		assert.False(t, isIdentifierStart('-'))  // - cannot start identifiers  
-		assert.False(t, isIdentifierStart('.'))  // . cannot start identifiers
+		assert.False(t, isIdentifierStart('0')) // digits cannot start identifiers
+		assert.False(t, isIdentifierStart('-')) // - cannot start identifiers
+		assert.False(t, isIdentifierStart('.')) // . cannot start identifiers
 	})
 }
 
 // TestParseVariableRef tests the new parseVariableRef function
 func TestParseVariableRef(t *testing.T) {
 	tests := []struct {
-		name          string
-		source        string
-		start         int
-		expectedName  string
-		expectedEnd   int
-		shouldError   bool
+		name         string
+		source       string
+		start        int
+		expectedName string
+		expectedEnd  int
+		shouldError  bool
 	}{
 		{
 			name:         "simple name",
@@ -272,14 +272,14 @@ func TestParseVariableRef(t *testing.T) {
 			name:         "name in middle of string",
 			source:       "hello name world",
 			start:        6,
-			expectedName: "name", 
+			expectedName: "name",
 			expectedEnd:  10,
 		},
 		{
-			name:         "empty name should error",
-			source:       "",
-			start:        0,
-			shouldError:  true,
+			name:        "empty name should error",
+			source:      "",
+			start:       0,
+			shouldError: true,
 		},
 	}
 

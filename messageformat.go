@@ -478,10 +478,22 @@ func (mf *MessageFormat) addDeclarationsToScope(
 			}
 		case *datamodel.LocalDeclaration:
 			// For local declarations, create an unresolved expression
-			// that will be resolved without external parameters
+			// that will be resolved with access to the current scope (including message parameters)
 			expr := d.Value()
 			if localExpr, ok := expr.(*datamodel.Expression); ok {
-				scope[d.Name()] = resolve.NewUnresolvedExpression(localExpr, nil)
+				// Create a combined scope that includes both message parameters and the current scope
+				combinedScope := make(map[string]interface{})
+				// Add message parameters first
+				for k, v := range msgParams {
+					combinedScope[k] = v
+				}
+				// Add current scope variables (but don't overwrite message parameters)
+				for k, v := range scope {
+					if _, exists := combinedScope[k]; !exists {
+						combinedScope[k] = v
+					}
+				}
+				scope[d.Name()] = resolve.NewUnresolvedExpression(localExpr, combinedScope)
 			}
 		}
 	}

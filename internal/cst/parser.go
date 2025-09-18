@@ -204,18 +204,49 @@ func parseSelectMessage(
 	pos = ws.End
 
 	var selectors []VariableRef
-	for pos < len(ctx.source) && ctx.source[pos] == '$' {
-		sel := ParseVariable(ctx, pos)
-		selectors = append(selectors, *sel)
-		pos = sel.End()
+	for pos < len(ctx.source) {
+		ch := ctx.source[pos]
+		switch ch {
+		case '{':
+			// Parse expression as potential variable reference
+			expr := parseExpression(ctx, pos)
+			pos = expr.End()
+
+			// Check if expression contains a variable reference
+			if arg := expr.Arg(); arg != nil {
+				if varRef, ok := arg.(*VariableRef); ok {
+					selectors = append(selectors, *varRef)
+				} else {
+					ctx.OnError("bad-selector", expr.Start(), expr.End())
+				}
+			} else {
+				ctx.OnError("bad-selector", expr.Start(), expr.End())
+			}
+		case '$':
+			// Legacy: explicit $ prefix variables
+			sel := ParseVariable(ctx, pos)
+			selectors = append(selectors, *sel)
+			pos = sel.End()
+		default:
+			// No more selectors
+			goto selectorsEnd
+		}
 
 		ws = Whitespaces(ctx.source, pos)
 		if !ws.HasWS {
-			ctx.OnError("missing-syntax", pos, " ")
+			// Check if we're at the end or at a variant key - need whitespace between selectors
+			if pos < len(ctx.source) && ctx.source[pos] != '*' {
+				// Check if this looks like the start of a variant key
+				nameValue := ParseNameValue(ctx.source, pos)
+				if nameValue == nil {
+					ctx.OnError("missing-syntax", pos, " ")
+				}
+			}
 		}
 		pos = ws.End
 	}
 
+selectorsEnd:
 	if len(selectors) == 0 {
 		ctx.OnError("empty-token", pos, pos+1)
 	}
