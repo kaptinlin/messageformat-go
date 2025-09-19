@@ -807,7 +807,7 @@ func TestBidirectionalTextSupport(t *testing.T) {
 			values:          map[string]interface{}{"name": "أحمد"},
 			expectedDir:     messageformat.DirRTL,
 			expectedBidi:    messageformat.BidiDefault, // Auto-enabled for RTL locales to match TypeScript reference
-			containsIsolate: true,        // Isolation auto-enabled for RTL locales
+			containsIsolate: true,                      // Isolation auto-enabled for RTL locales
 		},
 		{
 			name:    "hebrew_rtl",

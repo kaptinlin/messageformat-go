@@ -122,7 +122,7 @@ func (tv *testValue) ToString() (string, error) {
 	if tv.failsFormat {
 		return "", ErrFormattingFailed
 	}
-	
+
 	// If there's a bad option, return special value
 	// This happens when formatting is attempted despite a bad option
 	if tv.badOption {
@@ -216,7 +216,7 @@ func createTestValue(ctx functions.MessageFunctionContext, options map[string]in
 	// Handle operand that might be another test value (like TypeScript valueOf)
 	// We need to check both direct *testValue and MessageValue interface wrapping
 	var inheritedTestValue *testValue
-	
+
 	// First try to get test value from MessageValue interface (most common case)
 	if msgVal, ok := operand.(messagevalue.MessageValue); ok {
 		// Check if it's a test value wrapped in MessageValue interface
@@ -250,14 +250,14 @@ func createTestValue(ctx functions.MessageFunctionContext, options map[string]in
 			tv.input = input
 		}
 	}
-	
+
 	// If we have an inherited test value, inherit its properties
 	if inheritedTestValue != nil {
 		// Always inherit the badOption state - this is critical for error propagation
 		tv.badOption = inheritedTestValue.badOption
 		tv.failsFormat = inheritedTestValue.failsFormat
 		tv.failsSelect = inheritedTestValue.failsSelect
-		
+
 		// Only inherit decimalPlaces if not explicitly set in current options
 		if _, hasDecimalPlaces := options["decimalPlaces"]; !hasDecimalPlaces {
 			tv.decimalPlaces = inheritedTestValue.decimalPlaces
@@ -287,7 +287,7 @@ func createTestValue(ctx functions.MessageFunctionContext, options map[string]in
 			ctx.OnError(ErrInvalidDecimalPlaces)
 		}
 	}
-	
+
 	// If we have a badOption state (either inherited or from current options), propagate the error
 	if tv.badOption {
 		ctx.OnError(ErrBadOption)

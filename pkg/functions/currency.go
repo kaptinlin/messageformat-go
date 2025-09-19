@@ -103,7 +103,7 @@ func CurrencyFunction(
 
 	// Start with operand options and set currency style
 	mergedOptions := make(map[string]interface{})
-	
+
 	// Copy existing options from the operand if any
 	// According to the spec and tests, numbers from :number and :integer CAN be reformatted as currency
 	// Only check if it already has a conflicting style (like "percent")
@@ -112,7 +112,7 @@ func CurrencyFunction(
 		for k, v := range numericOperand.Options {
 			mergedOptions[k] = v
 		}
-		
+
 		// Check if it has a style already set that conflicts
 		if existingStyle, hasStyle := numericOperand.Options["style"]; hasStyle {
 			// It has a style - can only reuse if same style or if converting from basic number formatting

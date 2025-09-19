@@ -102,7 +102,7 @@ func validateMessage(msg Message, onError func(string, interface{})) *Validation
 			Variables: []string{},
 		}
 	}
-	
+
 	selectorCount := 0
 	var missingFallback interface{}
 
@@ -116,10 +116,10 @@ func validateMessage(msg Message, onError func(string, interface{})) *Validation
 	localVars := make(map[string]bool)
 	variables := make(map[string]bool)
 	variants := make(map[string]bool)
-	
+
 	// Visit all declarations first and check for cyclic/forward references
 	// TypeScript: visit(msg, { declaration(decl) { ... } })
-	
+
 	// Process declarations in order and check for invalid references
 	for i, decl := range msg.Declarations() {
 		// Skip all ReservedStatement
@@ -140,7 +140,7 @@ func validateMessage(msg Message, onError func(string, interface{})) *Validation
 						}
 					}
 				}
-				
+
 				// Check for forward references in local declarations
 				// A local variable can only reference variables declared before it
 				if localDecl.value.Arg() != nil {
@@ -161,7 +161,7 @@ func validateMessage(msg Message, onError func(string, interface{})) *Validation
 						}
 					}
 				}
-				
+
 				// Check for forward references in function options
 				if localDecl.value.FunctionRef() != nil && localDecl.value.FunctionRef().Options() != nil {
 					for _, optValue := range localDecl.value.FunctionRef().Options() {
@@ -475,8 +475,6 @@ func visitPattern(pattern Pattern, functions, variables map[string]bool, onError
 		}
 	}
 }
-
-
 
 // checkDuplicateOptions checks for duplicate option names in a function reference
 func checkDuplicateOptions(funcRef *FunctionRef, onError func(string, interface{})) {

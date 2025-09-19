@@ -194,7 +194,7 @@ func TestParseExpression_ComplexCases(t *testing.T) {
 			expectedType: "literal",
 		},
 		{
-			name:         "function on literal with whitespace", 
+			name:         "function on literal with whitespace",
 			source:       "{ count :integer }",
 			expectedType: "literal",
 		},
@@ -215,7 +215,7 @@ func TestParseExpression_ComplexCases(t *testing.T) {
 
 			arg := result.Arg()
 			require.NotNil(t, arg, "Expression argument should not be nil")
-			
+
 			switch tt.expectedType {
 			case "variable":
 				_, ok := arg.(*VariableRef)
