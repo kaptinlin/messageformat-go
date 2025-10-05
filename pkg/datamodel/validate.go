@@ -1,10 +1,12 @@
 package datamodel
 
 import (
-	"encoding/json"
+	"errors"
+
+	"github.com/go-json-experiment/json"
 
 	"github.com/kaptinlin/messageformat-go/internal/cst"
-	"github.com/kaptinlin/messageformat-go/pkg/errors"
+	pkgerrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -41,27 +43,27 @@ func ValidateMessage(msg Message, onError func(string, interface{})) (*Validatio
 		end := 1
 		switch errType {
 		case "key-mismatch":
-			err = errors.NewMessageSyntaxError(errors.ErrorTypeKeyMismatch, 0, &end, nil)
+			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeKeyMismatch, 0, &end, nil)
 		case "missing-fallback":
 			// Try to use convenience constructor if node implements Node interface
-			if nodeImpl, ok := node.(errors.Node); ok {
-				err = errors.NewMissingFallbackError(nodeImpl)
+			if nodeImpl, ok := node.(pkgerrors.Node); ok {
+				err = pkgerrors.NewMissingFallbackError(nodeImpl)
 			} else {
-				err = errors.NewMessageSyntaxError(errors.ErrorTypeMissingFallback, 0, &end, nil)
+				err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeMissingFallback, 0, &end, nil)
 			}
 		case "missing-selector-annotation":
-			err = errors.NewMessageSyntaxError(errors.ErrorTypeMissingSelectorAnnotation, 0, &end, nil)
+			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeMissingSelectorAnnotation, 0, &end, nil)
 		case "duplicate-declaration":
 			// Try to use convenience constructor if node implements Node interface
-			if nodeImpl, ok := node.(errors.Node); ok {
-				err = errors.NewDuplicateDeclarationError(nodeImpl)
+			if nodeImpl, ok := node.(pkgerrors.Node); ok {
+				err = pkgerrors.NewDuplicateDeclarationError(nodeImpl)
 			} else {
-				err = errors.NewMessageSyntaxError(errors.ErrorTypeDuplicateDeclaration, 0, &end, nil)
+				err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeDuplicateDeclaration, 0, &end, nil)
 			}
 		case "duplicate-variant":
-			err = errors.NewMessageSyntaxError(errors.ErrorTypeDuplicateVariant, 0, &end, nil)
+			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeDuplicateVariant, 0, &end, nil)
 		default:
-			err = errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
+			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeParseError, 0, &end, nil)
 		}
 		validationErrors = append(validationErrors, err)
 		onError(errType, node)
@@ -70,7 +72,7 @@ func ValidateMessage(msg Message, onError func(string, interface{})) (*Validatio
 	result := validateMessage(msg, errorHandler)
 
 	if len(validationErrors) > 0 {
-		return result, validationErrors[0] // Return first error
+		return result, errors.Join(validationErrors...) // Return all errors
 	}
 
 	return result, nil
@@ -235,9 +237,9 @@ func validateMessage(msg Message, onError func(string, interface{})) *Validation
 				hasAnnotation = true
 			}
 
-			// For now, allow selectors without explicit annotation
-			// This is a more lenient interpretation that supports basic usage
-			// TODO: Consider making this more strict based on implementation feedback
+			// Lenient interpretation: allow selectors without explicit annotation
+			// This supports basic usage patterns like {$count :integer} in .match
+			// Note: Strict mode would require onError("missing-selector-annotation", selector)
 			_ = hasAnnotation // Suppress staticcheck SA9003 warning
 		}
 
@@ -326,7 +328,7 @@ func validateMessage(msg Message, onError func(string, interface{})) *Validation
 		delete(variables, localVar)
 	}
 
-	// Convert sets to slices
+	// Convert sets to slices with pre-allocated capacity
 	functionList := make([]string, 0, len(functions))
 	for fn := range functions {
 		functionList = append(functionList, fn)

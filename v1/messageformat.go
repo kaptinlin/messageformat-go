@@ -983,10 +983,8 @@ func getPooledParamMap() map[string]interface{} {
 
 // putPooledParamMap returns a parameter map to the pool after clearing it
 func putPooledParamMap(paramMap map[string]interface{}) {
-	// Clear the map for reuse
-	for k := range paramMap {
-		delete(paramMap, k)
-	}
+	// Clear the map for reuse (Go 1.21+ built-in)
+	clear(paramMap)
 	paramMapPool.Put(paramMap)
 }
 
@@ -1434,9 +1432,8 @@ func (mf *MessageFormat) numberFormatter(locale string, value interface{}, offse
 	result := num - float64(offset)
 
 	// Format using locale-aware formatting
-	// For now, simplified implementation - real implementation would use golang.org/x/text
-	// TODO: Use locale parameter for proper locale-specific number formatting
-	_ = locale // Acknowledge unused parameter for now
+	// Note: v1 is maintenance-only. For full locale support, use v2 (MessageFormat 2.0)
+	_ = locale // locale parameter reserved for future enhancement if needed
 	if result == float64(int64(result)) {
 		// Integer formatting
 		return fmt.Sprintf("%.0f", result), nil

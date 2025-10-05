@@ -18,7 +18,7 @@ Welcome to MessageFormat Go! This guide will help you get up and running with a 
 
 ### Requirements
 
-- **Go 1.21 or later**
+- **Go 1.25 or later**
 - No external dependencies (pure Go implementation)
 
 ### Install the Package

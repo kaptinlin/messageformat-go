@@ -366,7 +366,8 @@ loop_end:
 
 // parseDeclarations parses message declarations
 func parseDeclarations(ctx *ParseContext, start int) ([]Declaration, int) {
-	var declarations []Declaration
+	// Pre-allocate with small initial capacity to reduce allocations
+	declarations := make([]Declaration, 0, 4)
 	pos := start
 	source := ctx.source
 

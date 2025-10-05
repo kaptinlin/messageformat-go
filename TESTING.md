@@ -24,7 +24,7 @@ git submodule update --init --recursive
 ls tests/messageformat-wg/test/tests/
 ```
 
-**Requirements**: Go 1.21+, Git
+**Requirements**: Go 1.25+, Git
 
 ### Running Tests
 

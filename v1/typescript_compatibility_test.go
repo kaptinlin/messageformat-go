@@ -49,7 +49,7 @@ func loadTypeScriptTestCases() TypeScriptTestSuite {
 
 		"CLDR locales": {
 			{
-				Locale: "cy", // Welsh - 复杂复数规则测试
+				Locale: "cy", // Welsh - Complex plural rules test
 				Src:    "{NUM, plural, zero{a} one{b} two{c} few{d} many{e} other{f} =42{omg42}}",
 				Exp: [][]interface{}{
 					{map[string]interface{}{"NUM": 0}, "a"},
@@ -189,7 +189,7 @@ func TestTypeScriptCompatibilityOfficial(t *testing.T) {
 							if len(exp) >= 2 {
 								if errMap, ok := exp[1].(map[string]interface{}); ok {
 									if errMap["error"] == true {
-										return // 期望的编译错误
+										return // Expected compilation error
 									}
 								}
 							}
@@ -259,7 +259,7 @@ func TestTypeScriptCompatibilityStaticMethods(t *testing.T) {
 			expected []string
 		}{
 			{[]string{"en", "fr", "de"}, []string{"en", "fr", "de"}},
-			{[]string{"en", "xx", "fr"}, []string{"en", "fr"}}, // 过滤无效locale
+			{[]string{"en", "xx", "fr"}, []string{"en", "fr"}}, // Filter invalid locales
 			{"en", []string{"en"}},
 		}
 

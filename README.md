@@ -38,7 +38,7 @@ This implementation passes the official MessageFormat 2.0 test suite from the Un
 go get github.com/kaptinlin/messageformat-go
 ```
 
-**Requirements**: Go 1.21 or later
+**Requirements**: Go 1.25 or later
 
 ### Basic Example
 
