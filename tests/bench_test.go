@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	messageformat "github.com/kaptinlin/messageformat-go"
+	"github.com/stretchr/testify/require"
 )
 
 func BenchmarkSimpleMessage(b *testing.B) {
 	mf, err := messageformat.New("en", "Hello, {$name}!")
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	data := map[string]interface{}{
 		"name": "World",
@@ -19,17 +18,13 @@ func BenchmarkSimpleMessage(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := mf.Format(data)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 	}
 }
 
 func BenchmarkNumberFormatting(b *testing.B) {
 	mf, err := messageformat.New("en", "You have {$count :number} messages")
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	data := map[string]interface{}{
 		"count": 42,
@@ -38,9 +33,7 @@ func BenchmarkNumberFormatting(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := mf.Format(data)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 	}
 }
 
@@ -52,9 +45,7 @@ func BenchmarkSelectMessage(b *testing.B) {
 one {{One item}}
 *   {{{$count} items}}
 `)
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	data := map[string]interface{}{
 		"count": 5,
@@ -63,9 +54,7 @@ one {{One item}}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := mf.Format(data)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 	}
 }
 
@@ -85,9 +74,7 @@ one *      {{{$userName} added one photo to their album.}}
 *   female {{{$userName} added {$photoCount} photos to her album.}}
 *   *      {{{$userName} added {$photoCount} photos to their album.}}
 `)
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	data := map[string]interface{}{
 		"userName":   "Alice",
@@ -98,17 +85,13 @@ one *      {{{$userName} added one photo to their album.}}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := mf.Format(data)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 	}
 }
 
 func BenchmarkFormatToParts(b *testing.B) {
 	mf, err := messageformat.New("en", "Hello, {$name}! You have {$count :number} messages.")
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	data := map[string]interface{}{
 		"name":  "World",
@@ -118,9 +101,7 @@ func BenchmarkFormatToParts(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := mf.FormatToParts(data)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 	}
 }
 
@@ -130,8 +111,6 @@ func BenchmarkMessageCreation(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := messageformat.New("en", pattern)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(b, err)
 	}
 }

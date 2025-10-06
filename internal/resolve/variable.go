@@ -112,10 +112,10 @@ func getValue(scope interface{}, name string) interface{} {
 			}
 		}
 
-		// TODO: Unicode normalization is temporarily disabled to avoid infinite recursion
-		// This needs to be handled at a higher level
-		// Normalized key lookup - matches TypeScript: key.normalize() === name
-		// Apply Unicode NFC normalization for proper comparison
+		// FIXME: Unicode normalization disabled - causes infinite recursion when getValue is called
+		// on already-resolved values. Requires architectural change to track normalization state.
+		// Spec requirement: key.normalize() === name (NFC normalization for proper comparison)
+		// See: https://github.com/unicode-org/message-format-wg/issues/xxx
 		// normalizedName := norm.NFC.String(name)
 		// for key, value := range m {
 		// 	normalizedKey := norm.NFC.String(key)

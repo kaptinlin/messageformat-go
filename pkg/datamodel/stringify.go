@@ -32,6 +32,15 @@ import (
 func StringifyMessage(msg Message) string {
 	var res strings.Builder
 
+	// Intelligent size estimation based on message complexity
+	estimatedSize := len(msg.Declarations()) * 50
+	if IsSelectMessage(msg) {
+		sm := msg.(*SelectMessage)
+		estimatedSize += len(sm.Selectors()) * 30
+		estimatedSize += len(sm.Variants()) * 100
+	}
+	res.Grow(estimatedSize)
+
 	// Stringify declarations
 	for _, decl := range msg.Declarations() {
 		res.WriteString(stringifyDeclaration(decl))

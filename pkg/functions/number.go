@@ -1,9 +1,9 @@
 package functions
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-json-experiment/json"
 	"math"
 	"math/big"
 

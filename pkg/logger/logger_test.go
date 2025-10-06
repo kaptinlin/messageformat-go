@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"log/slog"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBasicLogging(t *testing.T) {
@@ -31,14 +33,10 @@ func TestSetLogger(t *testing.T) {
 	SetLogger(customLogger)
 	Info("global test message")
 
-	if !bytes.Contains(buf.Bytes(), []byte("global test message")) {
-		t.Error("Expected global logger to be replaced")
-	}
+	assert.Contains(t, buf.String(), "global test message", "Expected global logger to be replaced")
 }
 
 func TestGetLogger(t *testing.T) {
 	logger := GetLogger()
-	if logger == nil {
-		t.Error("Expected logger to be available")
-	}
+	assert.NotNil(t, logger, "Expected logger to be available")
 }

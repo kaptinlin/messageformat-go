@@ -1,8 +1,8 @@
 package utils
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/go-json-experiment/json"
 	"io/fs"
 	"os"
 	"path/filepath"

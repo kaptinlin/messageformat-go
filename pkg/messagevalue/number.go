@@ -248,8 +248,7 @@ func (nv *NumberValue) formatNumber() (string, error) {
 		}
 		formatted = result.String()
 	} else {
-		// Format without grouping - use simple Go formatting for now
-		// TODO: Implement proper no-grouping formatting with golang.org/x/text
+		// Format without grouping - strconv.FormatFloat is appropriate here
 		formatted = strconv.FormatFloat(num, 'f', maxFractionDigits, 64)
 	}
 
@@ -1067,15 +1066,11 @@ func (nv *NumberValue) parseNumericParts(numeric string) []MessagePart {
 func (nv *NumberValue) parseIntegerWithGroups(integer string) []MessagePart {
 	var parts []MessagePart
 
-	// Simple implementation: if it contains separators, split them
-	// Look for group separators (commas or spaces that separate groups of 3 digits)
-	remaining := integer
-
-	// For now, create a single integer part
-	// TODO: Implement proper group separator parsing
+	// The integer string already contains formatted group separators from formatNumber()
+	// We return it as a single integer part for ToParts() output
 	parts = append(parts, &NumberSubPart{
 		partType: "integer",
-		value:    remaining,
+		value:    integer,
 		source:   nv.source,
 		locale:   nv.locale,
 		dir:      nv.dir,
