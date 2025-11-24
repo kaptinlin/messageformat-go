@@ -7,7 +7,7 @@ require (
 	github.com/dromara/carbon/v2 v2.6.12
 	github.com/go-json-experiment/json v0.0.0-20250910080747-cc2cfa0554c3
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/text v0.29.0
+	golang.org/x/text v0.31.0
 )
 
 require (
