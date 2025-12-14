@@ -19,7 +19,7 @@ func benchmarkHelper(b *testing.B, message string, params map[string]interface{}
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := compiled(params)
 		if err != nil {
 			b.Fatal(err)
@@ -60,7 +60,7 @@ func BenchmarkMessageFormatCompilation(b *testing.B) {
 	message := "{count, plural, one {# item} other {# items}} for {name}"
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := mf.Compile(message)
 		if err != nil {
 			b.Fatal(err)
@@ -70,7 +70,7 @@ func BenchmarkMessageFormatCompilation(b *testing.B) {
 
 func BenchmarkTypeSafeCreation(b *testing.B) {
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		mf, err := New("en", &MessageFormatOptions{
 			ReturnType: ReturnTypeString,
 			Currency:   "USD",
@@ -93,7 +93,7 @@ func BenchmarkTypeSafeOptionsAccess(b *testing.B) {
 	require.NoError(b, err)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		opts := mf.ResolvedOptions()
 		if opts.Locale == "" {
 			b.Fatal("Locale is empty")
@@ -103,7 +103,7 @@ func BenchmarkTypeSafeOptionsAccess(b *testing.B) {
 
 func BenchmarkTypeSafeSkeletonCreation(b *testing.B) {
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		skeleton := &Skeleton{
 			Group:        GroupThousands,
 			Sign:         SignAlways,
@@ -124,7 +124,7 @@ func BenchmarkTypeSafeSkeletonCreation(b *testing.B) {
 
 func BenchmarkStaticMethods(b *testing.B) {
 	b.Run("Escape", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			result := Escape("Hello {name}!", true)
 			if result == "" {
 				b.Fatal("Escape result is empty")
@@ -133,7 +133,7 @@ func BenchmarkStaticMethods(b *testing.B) {
 	})
 
 	b.Run("SupportedLocalesOf", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			result, err := SupportedLocalesOf([]string{"en", "fr", "de"})
 			if err != nil {
 				b.Fatal(err)

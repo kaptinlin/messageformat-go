@@ -16,7 +16,7 @@ func BenchmarkSimpleMessage(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := mf.Format(data)
 		require.NoError(b, err)
 	}
@@ -31,7 +31,7 @@ func BenchmarkNumberFormatting(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := mf.Format(data)
 		require.NoError(b, err)
 	}
@@ -52,7 +52,7 @@ one {{One item}}
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := mf.Format(data)
 		require.NoError(b, err)
 	}
@@ -83,7 +83,7 @@ one *      {{{$userName} added one photo to their album.}}
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := mf.Format(data)
 		require.NoError(b, err)
 	}
@@ -99,7 +99,7 @@ func BenchmarkFormatToParts(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := mf.FormatToParts(data)
 		require.NoError(b, err)
 	}
@@ -109,7 +109,7 @@ func BenchmarkMessageCreation(b *testing.B) {
 	pattern := "Hello, {$name}! You have {$count :number} messages."
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := messageformat.New("en", pattern)
 		require.NoError(b, err)
 	}
