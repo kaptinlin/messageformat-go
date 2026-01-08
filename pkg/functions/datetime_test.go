@@ -56,9 +56,9 @@ func TestDatetimeFunctionReturnsDateTimeValue(t *testing.T) {
 	expectedTime := time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC)
 	assert.Equal(t, expectedTime, val)
 
-	// Test the options
-	assert.Equal(t, "medium", dtv.Options()["dateStyle"])
-	assert.Equal(t, "short", dtv.Options()["timeStyle"])
+	// Verify that options contains new LDML 48 options
+	assert.Equal(t, "year-month-day", dtv.Options()["dateFields"], "Expected dateFields option")
+	// Note: dateStyle/timeStyle are now converted to dateFields/timePrecision
 
 	// Test string representation
 	str, err := dtv.ToString()
@@ -95,6 +95,6 @@ func TestDatetimeFunctionDefaultOptions(t *testing.T) {
 	require.True(t, ok)
 
 	options := dtv.Options()
-	assert.Equal(t, "medium", options["dateStyle"])
-	assert.Equal(t, "short", options["timeStyle"])
+	assert.Equal(t, "year-month-day", options["dateFields"], "Expected default dateFields")
+	// Note: Default behavior now uses dateFields instead of dateStyle/timeStyle
 }

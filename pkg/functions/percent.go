@@ -7,7 +7,22 @@ import (
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
-// PercentFunction implements the :percent function for percent value formatting
+// PercentFunction implements the :percent function for percent value formatting.
+//
+// Status: Stable (finalized in LDML 48)
+// Specification: https://unicode.org/reports/tr35/tr35-messageFormat.html#percent
+//
+// Important behavior:
+// - When formatting or selecting, the numeric value is multiplied by 100
+// - The resolved value retains the original value (not multiplied)
+// - Selection uses the multiplied value (e.g., 0.01 matches key "1", 1 matches key "100")
+//
+// Example:
+//
+//	{0.5 :percent}  // Formats as "50%"
+//	.match {$rate :percent}
+//	100 {{Full rate}}  // Matches when $rate is 1.0
+//
 // TypeScript original code:
 // export function percent(
 //

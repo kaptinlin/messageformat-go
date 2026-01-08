@@ -89,7 +89,9 @@ result, err := mf.Format(map[string]interface{}{
 ### 🌍 MessageFormat 2.0 Support
 - **Pattern Matching**: Advanced `.match` statements with exact number and plural category matching
 - **Variable Declarations**: `.input` and `.local` declarations with function annotations
-- **Standard Functions**: Built-in `:number`, `:integer`, `:string`, and `:datetime` formatting
+- **Standard Functions**: 
+  - **Stable** (LDML 48): `:number`, `:integer`, `:string`, `:datetime`, `:date`, `:time`, `:currency`, `:percent`, `:offset`
+  - **Draft**: `:unit`
 - **Custom Functions**: Extensible function system with locale awareness
 - **Markup Support**: `{#tag}`, `{/tag}`, `{#tag /}` syntax support
 - **Unicode Compliance**: Unicode normalization and bidirectional text handling

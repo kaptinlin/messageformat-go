@@ -1,6 +1,7 @@
 package messagevalue
 
 import (
+	"strings"
 	"time"
 
 	"github.com/dromara/carbon/v2"
@@ -110,6 +111,7 @@ func (dtv *DateTimeValue) SelectKeys(keys []string) ([]string, error) {
 }
 
 // formatDateTime formats the datetime according to the options
+// Supports both old (dateStyle/timeStyle) and new (dateFields/timePrecision) options
 func (dtv *DateTimeValue) formatDateTime() (string, error) {
 	// Create carbon instance
 	c := carbon.CreateFromStdTime(dtv.value)
@@ -122,7 +124,17 @@ func (dtv *DateTimeValue) formatDateTime() (string, error) {
 		}
 	}
 
-	// Extract formatting options
+	// Check for new-style options (dateFields, timePrecision)
+	_, hasDateFields := dtv.options["dateFields"]
+	_, hasTimePrecision := dtv.options["timePrecision"]
+
+	// Use new formatting if new options are present
+	if hasDateFields || hasTimePrecision {
+		formatStr := buildDateTimeFormat(dtv.options)
+		return c.Format(formatStr), nil
+	}
+
+	// Fall back to old style (dateStyle/timeStyle) for backward compatibility
 	dateStyle, hasDateStyle := dtv.options["dateStyle"].(string)
 	timeStyle, hasTimeStyle := dtv.options["timeStyle"].(string)
 
@@ -137,6 +149,97 @@ func (dtv *DateTimeValue) formatDateTime() (string, error) {
 	default:
 		// Default formatting
 		return c.ToDateTimeString(), nil
+	}
+}
+
+// buildDateTimeFormat builds Carbon format string from new LDML 48 options
+func buildDateTimeFormat(options map[string]interface{}) string {
+	var parts []string
+
+	// Date part (if dateFields is specified)
+	if dateFields, ok := options["dateFields"].(string); ok {
+		dateLength := "medium" // default
+		if dl, ok := options["dateLength"].(string); ok {
+			dateLength = dl
+		}
+		datePart := buildDateFormat(dateFields, dateLength)
+		if datePart != "" {
+			parts = append(parts, datePart)
+		}
+	}
+
+	// Time part (if timePrecision is specified)
+	if timePrecision, ok := options["timePrecision"].(string); ok {
+		timePart := buildTimeFormat(timePrecision)
+		if timePart != "" {
+			parts = append(parts, timePart)
+		}
+	}
+
+	// Timezone (if timeZoneStyle is specified)
+	if timeZoneStyle, ok := options["timeZoneStyle"].(string); ok {
+		switch timeZoneStyle {
+		case "long", "short":
+			parts = append(parts, "T") // Carbon: MST
+		}
+	}
+
+	if len(parts) == 0 {
+		return "Y-m-d H:i:s" // Default
+	}
+
+	return strings.Join(parts, " ")
+}
+
+// buildDateFormat creates Carbon format string for date portion
+func buildDateFormat(fields string, length string) string {
+	fieldSet := make(map[string]bool)
+	for _, f := range strings.Split(fields, "-") {
+		fieldSet[f] = true
+	}
+
+	var parts []string
+
+	if fieldSet["weekday"] {
+		if length == "long" {
+			parts = append(parts, "l") // Monday
+		} else {
+			parts = append(parts, "D") // Mon
+		}
+		parts = append(parts, ",")
+	}
+
+	if fieldSet["year"] {
+		parts = append(parts, "Y") // 2006
+	}
+
+	if fieldSet["month"] {
+		switch length {
+		case "long":
+			parts = append(parts, "F") // January
+		case "short":
+			parts = append(parts, "n") // 1
+		default: // medium
+			parts = append(parts, "M") // Jan
+		}
+	}
+
+	if fieldSet["day"] {
+		parts = append(parts, "j") // 2
+	}
+
+	return strings.Join(parts, " ")
+}
+
+// buildTimeFormat creates Carbon format string for time portion
+func buildTimeFormat(precision string) string {
+	switch precision {
+	case "hour":
+		return "g A" // 3 PM
+	case "second":
+		return "g:i:s A" // 3:04:05 PM
+	default: // minute
+		return "g:i A" // 3:04 PM
 	}
 }
 

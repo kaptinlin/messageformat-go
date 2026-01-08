@@ -4,308 +4,268 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dromara/carbon/v2"
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
-// DatetimeFunction implements the :datetime function (DRAFT)
-// datetime accepts a Date, number or string as its input
-// and formats it with the same options as Intl.DateTimeFormat.
-//
-// TypeScript original code:
-// export const datetime = (
-//
-//	ctx: MessageFunctionContext,
-//	options: Record<string, unknown>,
-//	operand?: unknown
-//
-// ): MessageDateTime =>
-//
-//	dateTimeImplementation(ctx, operand, res => {
-//	  let hasStyle = false;
-//	  let hasFields = false;
-//	  for (const [name, value] of Object.entries(options)) {
-//	    if (value === undefined) continue;
-//	    try {
-//	      switch (name) {
-//	        case 'locale':
-//	          break;
-//	        case 'fractionalSecondDigits':
-//	          res[name] = asPositiveInteger(value);
-//	          hasFields = true;
-//	          break;
-//	        case 'hour12':
-//	          res[name] = asBoolean(value);
-//	          break;
-//	        default:
-//	          res[name] = asString(value);
-//	          if (!hasStyle && styleOptions.has(name)) hasStyle = true;
-//	          if (!hasFields && fieldOptions.has(name)) hasFields = true;
-//	      }
-//	    } catch {
-//	      const msg = `Value ${value} is not valid for :datetime ${name} option`;
-//	      ctx.onError(new MessageResolutionError('bad-option', msg, ctx.source));
-//	    }
-//	  }
-//	  if (!hasStyle && !hasFields) {
-//	    res.dateStyle = 'medium';
-//	    res.timeStyle = 'short';
-//	  } else if (hasStyle && hasFields) {
-//	    const msg = 'Style and field options cannot be both set for :datetime';
-//	    throw new MessageResolutionError('bad-option', msg, ctx.source);
-//	  }
-//	});
+// Valid option values matching TypeScript datetime.ts:37-47
+var (
+	dateFieldsValues = map[string]bool{
+		"weekday":                true,
+		"day-weekday":            true,
+		"month-day":              true,
+		"month-day-weekday":      true,
+		"year-month-day":         true,
+		"year-month-day-weekday": true,
+	}
+
+	dateLengthValues = map[string]bool{
+		"long":   true,
+		"medium": true,
+		"short":  true,
+	}
+
+	timePrecisionValues = map[string]bool{
+		"hour":   true,
+		"minute": true,
+		"second": true,
+	}
+
+	timeZoneStyleValues = map[string]bool{
+		"long":  true,
+		"short": true,
+	}
+)
+
+// readStringOption reads and validates a string option
+// TypeScript reference: datetime.ts:244-261
+func readStringOption(
+	ctx MessageFunctionContext,
+	options map[string]interface{},
+	name string,
+	allowed map[string]bool,
+) string {
+	value, ok := options[name]
+	if !ok || value == nil {
+		return ""
+	}
+
+	strVal, err := asString(value)
+	if err != nil {
+		ctx.OnError(errors.NewBadOptionError("Invalid value for "+name+" option", ctx.Source()))
+		return ""
+	}
+
+	if allowed != nil && !allowed[strVal] {
+		ctx.OnError(errors.NewBadOptionError("Invalid value for "+name+" option", ctx.Source()))
+		return ""
+	}
+
+	return strVal
+}
+
+// dateTimeImplementation provides unified implementation for date, datetime, and time functions
+// This matches the TypeScript refactor in commit df3b997d
+// TypeScript reference: datetime.ts:84-242
+func dateTimeImplementation(
+	functionName string, // 'datetime' | 'date' | 'time'
+	ctx MessageFunctionContext,
+	exprOpt map[string]interface{},
+	operand interface{},
+) messagevalue.MessageValue {
+	source := ctx.Source()
+	locale := getFirstLocale(ctx.Locales())
+
+	// Parse datetime value (matches TypeScript lines 94-112)
+	dateTime, err := parseDateTimeValue(operand)
+	if err != nil {
+		ctx.OnError(errors.NewMessageFunctionError("bad-operand", "Input is not a valid date"))
+		return messagevalue.NewFallbackValue(source, locale)
+	}
+
+	// Build datetime format options (TS: line 90-92)
+	dtOptions := make(map[string]interface{})
+	dtOptions["localeMatcher"] = ctx.LocaleMatcher()
+
+	// Extract options from operand if present (TS: lines 95-101)
+	if opMap, ok := operand.(map[string]interface{}); ok {
+		if opts, hasOpts := opMap["options"]; hasOpts {
+			if optsMap, ok := opts.(map[string]interface{}); ok {
+				if cal, ok := optsMap["calendar"]; ok {
+					dtOptions["calendar"] = cal
+				}
+				if functionName != "date" {
+					if h12, ok := optsMap["hour12"]; ok {
+						dtOptions["hour12"] = h12
+					}
+				}
+				if tz, ok := optsMap["timeZone"]; ok {
+					dtOptions["timeZone"] = tz
+				}
+			}
+		}
+	}
+
+	// Override calendar option from expression (TS: lines 115-124)
+	if cal, ok := exprOpt["calendar"]; ok && cal != nil {
+		if strVal, err := asString(cal); err == nil {
+			dtOptions["calendar"] = strVal
+		} else {
+			ctx.OnError(errors.NewBadOptionError(
+				"Invalid :"+functionName+" calendar option value", source))
+		}
+	}
+
+	// Override hour12 option from expression (TS: lines 125-131)
+	// Only applies to datetime and time, not date
+	if h12, ok := exprOpt["hour12"]; ok && h12 != nil && functionName != "date" {
+		if boolVal, err := asBoolean(h12); err == nil {
+			dtOptions["hour12"] = boolVal
+		} else {
+			ctx.OnError(errors.NewBadOptionError(
+				"Invalid :"+functionName+" hour12 option value", source))
+		}
+	}
+
+	// Override timeZone option from expression (TS: lines 132-159)
+	if tz, ok := exprOpt["timeZone"]; ok && tz != nil {
+		if tzStr, err := asString(tz); err == nil {
+			if tzStr == "input" {
+				// Validate input timezone exists (TS: lines 142-148)
+				if _, hasInputTZ := dtOptions["timeZone"]; !hasInputTZ {
+					ctx.OnError(errors.NewBadOperandError(
+						"Missing input timeZone value for :"+functionName, source))
+				}
+			} else {
+				// Check for timezone conversion (TS: lines 150-157)
+				if existingTZ, hasTZ := dtOptions["timeZone"]; hasTZ {
+					if existingTZStr, ok := existingTZ.(string); ok && existingTZStr != tzStr {
+						ctx.OnError(errors.NewMessageFunctionError(
+							"bad-option", "Time zone conversion is not supported"))
+						return messagevalue.NewFallbackValue(source, locale)
+					}
+				}
+				dtOptions["timeZone"] = tzStr
+			}
+		} else {
+			ctx.OnError(errors.NewBadOptionError(
+				"Invalid :"+functionName+" timeZone option value", source))
+		}
+	}
+
+	// Date formatting options (TypeScript lines 161-184)
+	// Only applies to datetime and date, not time
+	if functionName != "time" {
+		// Option names depend on function type
+		// TypeScript: const dfName = functionName === 'date' ? 'fields' : 'dateFields'
+		fieldsName := "dateFields"
+		lengthName := "dateLength"
+		if functionName == "date" {
+			fieldsName = "fields"
+			lengthName = "length"
+		}
+
+		// Read dateFields with default value
+		// TypeScript: const dateFieldsValue = readStringOption(...) ?? 'year-month-day'
+		dateFields := readStringOption(ctx, exprOpt, fieldsName, dateFieldsValues)
+		if dateFields == "" {
+			dateFields = "year-month-day" // TypeScript default
+		}
+		dtOptions["dateFields"] = dateFields
+
+		// Read dateLength (optional, no default)
+		dateLength := readStringOption(ctx, exprOpt, lengthName, dateLengthValues)
+		if dateLength != "" {
+			dtOptions["dateLength"] = dateLength
+		}
+	}
+
+	// Time formatting options (TypeScript lines 186-209)
+	// Only applies to datetime and time, not date
+	if functionName != "date" {
+		// Option name depends on function type
+		// TypeScript: const tpName = functionName === 'time' ? 'precision' : 'timePrecision'
+		precisionName := "timePrecision"
+		if functionName == "time" {
+			precisionName = "precision"
+		}
+
+		// Read timePrecision (optional, defaults to 'minute' in formatting)
+		// TypeScript: switch (readStringOption(...))
+		timePrecision := readStringOption(ctx, exprOpt, precisionName, timePrecisionValues)
+		if timePrecision != "" {
+			dtOptions["timePrecision"] = timePrecision
+		}
+
+		// Read timeZoneStyle (optional)
+		// TypeScript: options.timeZoneName = readStringOption(...)
+		timeZoneStyle := readStringOption(ctx, exprOpt, "timeZoneStyle", timeZoneStyleValues)
+		if timeZoneStyle != "" {
+			dtOptions["timeZoneStyle"] = timeZoneStyle
+		}
+	}
+
+	// Return DateTimeValue with all options
+	// This will be formatted using the new helper functions
+	return messagevalue.NewDateTimeValue(dateTime, locale, source, dtOptions)
+}
+
+// parseDateTimeValue extracts time.Time from various operand types
+// Handles both plain values and operands with options/valueOf
+// TypeScript reference: datetime.ts:94-112
+func parseDateTimeValue(operand interface{}) (time.Time, error) {
+	var value = operand
+
+	// Check if operand is an object with options and/or valueOf
+	// TypeScript: if (typeof value === 'object' && value !== null)
+	if operand != nil {
+		if opMap, ok := operand.(map[string]interface{}); ok {
+			// Extract valueOf if present
+			// TypeScript: if (typeof value.valueOf === 'function') value = value.valueOf()
+			if valueOf, ok := opMap["valueOf"]; ok {
+				value = valueOf
+			}
+			// Note: We don't extract options from operand here
+			// because we build options from expression options instead
+		}
+	}
+
+	// Parse the value to time.Time
+	// TypeScript converts number/string to Date, then validates
+	return parseDateTime(value)
+}
+
+// DatetimeFunction implements the :datetime function
+// Formats both date and time portions
+// TypeScript reference: datetime.ts:55-59
 func DatetimeFunction(
 	ctx MessageFunctionContext,
 	options map[string]interface{},
 	operand interface{},
 ) messagevalue.MessageValue {
-	source := ctx.Source()
-
-	// Check for missing operand (nil or FallbackValue)
-	if operand == nil {
-		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
-	}
-
-	// Check if operand is already a fallback value
-	if mv, ok := operand.(messagevalue.MessageValue); ok && mv.Type() == "fallback" {
-		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
-	}
-
-	// Parse input to time.Time
-	dateTime, err := parseDateTime(operand)
-	if err != nil {
-		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
-	}
-
-	// Create carbon instance
-	c := carbon.CreateFromStdTime(dateTime)
-
-	// Set locale if available
-	locale := getFirstLocale(ctx.Locales())
-	if locale != "" {
-		_ = c.SetLocale(locale)
-		// Note: Carbon's SetLocale returns a new instance, but we continue using the original
-		// This is intentional as the locale setting affects the formatting behavior
-	}
-
-	// Process options to determine format
-	hasStyle := false
-	hasFields := false
-	dateStyle := ""
-	timeStyle := ""
-
-	for name, value := range options {
-		if value == nil {
-			continue
-		}
-
-		switch name {
-		case "locale":
-			// Already handled above
-			continue
-		case "dateStyle":
-			if strval, err := asString(value); err == nil {
-				dateStyle = strval
-				hasStyle = true
-			} else {
-				msg := "Value " + toString(value) + " is not valid for :datetime " + name + " option"
-				ctx.OnError(errors.NewBadOptionError(msg, source))
-			}
-		case "timeStyle":
-			if strval, err := asString(value); err == nil {
-				timeStyle = strval
-				hasStyle = true
-			} else {
-				msg := "Value " + toString(value) + " is not valid for :datetime " + name + " option"
-				ctx.OnError(errors.NewBadOptionError(msg, source))
-			}
-		case "fractionalSecondDigits":
-			if _, err := asPositiveInteger(value); err != nil {
-				msg := "Value " + toString(value) + " is not valid for :datetime " + name + " option"
-				ctx.OnError(errors.NewBadOptionError(msg, source))
-			}
-			hasFields = true
-		case "weekday", "era", "year", "month", "day", "hour", "minute", "second", "timeZoneName":
-			hasFields = true
-		case "hour12":
-			if _, err := asBoolean(value); err != nil {
-				msg := "Value " + toString(value) + " is not valid for :datetime " + name + " option"
-				ctx.OnError(errors.NewBadOptionError(msg, source))
-			}
-		default:
-			if _, err := asString(value); err != nil {
-				msg := "Value " + toString(value) + " is not valid for :datetime " + name + " option"
-				ctx.OnError(errors.NewBadOptionError(msg, source))
-			}
-		}
-	}
-
-	// Set default styles if no style or field options provided
-	if !hasStyle && !hasFields {
-		dateStyle = "medium"
-		timeStyle = "short"
-	} else if hasStyle && hasFields {
-		msg := "Style and field options cannot be both set for :datetime"
-		ctx.OnError(errors.NewBadOptionError(msg, source))
-		return messagevalue.NewFallbackValue(source, locale)
-	}
-
-	// Create options map for the DateTimeValue
-	dtOptions := make(map[string]interface{})
-	if dateStyle != "" {
-		dtOptions["dateStyle"] = dateStyle
-	}
-	if timeStyle != "" {
-		dtOptions["timeStyle"] = timeStyle
-	}
-
-	// Copy other relevant options
-	for name, value := range options {
-		switch name {
-		case "hour12", "calendar", "timeZone", "fractionalSecondDigits":
-			dtOptions[name] = value
-		}
-	}
-
-	return messagevalue.NewDateTimeValue(dateTime, locale, source, dtOptions)
+	return dateTimeImplementation("datetime", ctx, options, operand)
 }
 
-// DateFunction implements the :date function (DRAFT)
-// date accepts a Date, number or string as its input
-// and formats it according to a single "length" option.
+// DateFunction implements the :date function
+// Formats only the date portion
+// TypeScript reference: datetime.ts:66-70
 func DateFunction(
 	ctx MessageFunctionContext,
 	options map[string]interface{},
 	operand interface{},
 ) messagevalue.MessageValue {
-	source := ctx.Source()
-
-	// Check for missing operand (nil or FallbackValue)
-	if operand == nil {
-		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
-	}
-
-	// Check if operand is already a fallback value
-	if mv, ok := operand.(messagevalue.MessageValue); ok && mv.Type() == "fallback" {
-		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
-	}
-
-	// Parse input to time.Time
-	dateTime, err := parseDateTime(operand)
-	if err != nil {
-		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
-	}
-
-	// Create carbon instance
-	c := carbon.CreateFromStdTime(dateTime)
-
-	// Set locale if available
-	locale := getFirstLocale(ctx.Locales())
-	if locale != "" {
-		c = c.SetLocale(locale)
-	}
-
-	// Process options
-	length := "medium" // default (short, medium, long, full)
-	for name, value := range options {
-		if value == nil {
-			continue
-		}
-
-		switch name {
-		case "length":
-			if strval, err := asString(value); err == nil {
-				// Map length to style for FormatDateWithStyle
-				length = strval
-			} else {
-				msg := "Value " + toString(value) + " is not valid for :date " + name + " option"
-				ctx.OnError(errors.NewBadOptionError(msg, source))
-			}
-		case "calendar", "timeZone":
-			// These are valid options but not implemented yet
-		default:
-			// Unknown option - silently ignore to match TypeScript behavior
-		}
-	}
-
-	// Format the date using length (which maps to style)
-	formatted := messagevalue.FormatDateWithStyle(*c, length)
-	return messagevalue.NewStringValue(formatted, source, locale)
+	return dateTimeImplementation("date", ctx, options, operand)
 }
 
-// TimeFunction implements the :time function (DRAFT)
-// time accepts a Date, number or string as its input
-// and formats it according to a single "precision" option.
+// TimeFunction implements the :time function
+// Formats only the time portion
+// TypeScript reference: datetime.ts:78-82
 func TimeFunction(
 	ctx MessageFunctionContext,
 	options map[string]interface{},
 	operand interface{},
 ) messagevalue.MessageValue {
-	source := ctx.Source()
-
-	// Check for missing operand (nil or FallbackValue)
-	if operand == nil {
-		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
-	}
-
-	// Check if operand is already a fallback value
-	if mv, ok := operand.(messagevalue.MessageValue); ok && mv.Type() == "fallback" {
-		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
-	}
-
-	// Parse input to time.Time
-	dateTime, err := parseDateTime(operand)
-	if err != nil {
-		ctx.OnError(errors.NewBadOperandError("Input is not a date", source))
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
-	}
-
-	// Create carbon instance
-	c := carbon.CreateFromStdTime(dateTime)
-
-	// Set locale if available
-	locale := getFirstLocale(ctx.Locales())
-	if locale != "" {
-		c = c.SetLocale(locale)
-	}
-
-	// Process options
-	precision := "short" // default (second, minute, hour, or short/medium/long/full)
-	for name, value := range options {
-		if value == nil {
-			continue
-		}
-
-		switch name {
-		case "precision":
-			if strval, err := asString(value); err == nil {
-				// Map precision to style for FormatTimeWithStyle
-				// precision can be: second, minute, hour or short/medium/long/full
-				precision = strval
-			} else {
-				msg := "Value " + toString(value) + " is not valid for :time " + name + " option"
-				ctx.OnError(errors.NewBadOptionError(msg, source))
-			}
-		case "hour12", "calendar", "timeZone":
-			// These are valid options but not implemented yet
-		default:
-			// Unknown option - silently ignore to match TypeScript behavior
-		}
-	}
-
-	// Format the time using precision (which maps to style)
-	formatted := messagevalue.FormatTimeWithStyle(*c, precision)
-	return messagevalue.NewStringValue(formatted, source, locale)
+	return dateTimeImplementation("time", ctx, options, operand)
 }
 
 // parseDateTime converts various input types to time.Time

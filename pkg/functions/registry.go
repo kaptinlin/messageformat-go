@@ -4,7 +4,13 @@ import (
 	"sync"
 )
 
-// DefaultFunctions provides the built-in REQUIRED functions
+// DefaultFunctions provides the built-in REQUIRED functions as defined in
+// LDML 48 MessageFormat specification.
+// Reference: https://www.unicode.org/reports/tr35/tr35-76/tr35-messageFormat.html#contents-of-part-9-messageformat
+//
+// These functions are stable and covered by stability guarantees.
+// They include: :integer, :number, :offset, and :string
+//
 // TypeScript original code:
 //
 //	export let DefaultFunctions = {
@@ -25,7 +31,16 @@ var DefaultFunctions = map[string]MessageFunction{
 	"offset":  OffsetFunction,
 }
 
-// DraftFunctions provides the DRAFT functions (beta)
+// DraftFunctions provides functions classified as DRAFT by the
+// LDML 48 MessageFormat specification.
+// Reference: https://www.unicode.org/reports/tr35/tr35-76/tr35-messageFormat.html#contents-of-part-9-messageformat
+//
+// These functions are liable to change and are NOT covered by stability guarantees.
+//
+// Note: As of LDML 48, :currency and :percent have been finalized and are now stable.
+// However, they remain in this collection for backward compatibility.
+// The :unit function is still in DRAFT status.
+//
 // TypeScript original code:
 //
 //	export let DraftFunctions = {

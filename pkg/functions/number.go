@@ -3,9 +3,10 @@ package functions
 import (
 	"errors"
 	"fmt"
-	"github.com/go-json-experiment/json"
 	"math"
 	"math/big"
+
+	"github.com/go-json-experiment/json"
 
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	pkgErrors "github.com/kaptinlin/messageformat-go/pkg/errors"
@@ -140,7 +141,31 @@ func readNumericOperand(value interface{}, source string) (*NumericInput, error)
 	}, nil
 }
 
-// NumberFunction implements the :number function for decimal number formatting
+// NumberFunction implements the :number function for numeric value formatting and selection.
+//
+// Status: Stable (REQUIRED in LDML 48)
+// Specification: https://www.unicode.org/reports/tr35/tr35-76/tr35-messageFormat.html#the-number-function
+//
+// The :number function is a selector and formatter for numeric values.
+//
+// Operand Requirements:
+// - Must be a number, BigInt, or string representing a JSON number
+// - Can be an object with valueOf() method and optional options map
+//
+// Supported Options:
+// - select: 'exact' | 'plural' | 'ordinal' (controls selection behavior)
+// - minimumIntegerDigits, minimumFractionDigits, maximumFractionDigits (digit size options)
+// - minimumSignificantDigits, maximumSignificantDigits (digit size options)
+// - roundingMode, roundingPriority, roundingIncrement (rounding control)
+// - signDisplay, useGrouping, trailingZeroDisplay (formatting control)
+//
+// Selection Behavior:
+// - Exact numeric match is preferred over plural category
+// - Supports plural rules (zero, one, two, few, many, other)
+// - The select option must be set by a literal value, not a variable
+//
+// TypeScript Reference: .reference/messageformat/mf2/messageformat/src/functions/number.ts
+//
 // TypeScript original code:
 // export function number(
 //

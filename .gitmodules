@@ -1,3 +1,6 @@
 [submodule "tests/messageformat-wg"]
 	path = tests/messageformat-wg
 	url = https://github.com/unicode-org/message-format-wg.git
+[submodule ".reference/messageformat"]
+	path = .reference/messageformat
+	url = https://github.com/messageformat/messageformat.git

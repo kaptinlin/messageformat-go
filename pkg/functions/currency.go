@@ -5,9 +5,19 @@ import (
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
-// CurrencyFunction implements the :currency function (DRAFT)
-// currency accepts as input numerical values as well as
-// objects wrapping a numerical value that also include a currency property.
+// CurrencyFunction implements the :currency function for currency value formatting.
+//
+// Status: Stable (finalized in LDML 48)
+// Specification: https://unicode.org/reports/tr35/tr35-messageFormat.html#currency
+//
+// The :currency function formats numeric values as currency. It requires either:
+// - An operand containing both a numeric value and currency code
+// - A numeric operand with a currency option
+//
+// Example:
+//
+//	{$amount :currency currency=USD}
+//	{$price :currency currency=EUR fractionDigits=2}
 //
 // TypeScript original code:
 // export function currency(

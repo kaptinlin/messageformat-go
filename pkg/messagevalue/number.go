@@ -1084,6 +1084,7 @@ func (nv *NumberValue) ValueOf() (interface{}, error) {
 }
 
 // SelectKeys performs selection for the number value
+// TypeScript reference: getMessageNumber.selectKey (number.ts:116-134)
 func (nv *NumberValue) SelectKeys(keys []string) ([]string, error) {
 	if !nv.canSelect {
 		return nil, ErrNumberNotSelectable
@@ -1106,33 +1107,42 @@ func (nv *NumberValue) SelectKeys(keys []string) ([]string, error) {
 		return []string{}, nil
 	}
 
+	// TypeScript: if (options.style === 'percent') { numVal *= 100; }
+	// For percent style, multiply by 100 for selection (number.ts:119-122)
+	numVal := num
+	if style, hasStyle := nv.options["style"]; hasStyle {
+		if styleStr, ok := style.(string); ok && styleStr == "percent" {
+			numVal = num * 100
+		}
+	}
+
 	// TC39: "exact numeric match will be preferred over plural category"
 	// 1. Check for exact numeric match with =N syntax (e.g., =0, =1, =42)
 	for _, key := range keys {
 		if strings.HasPrefix(key, "=") {
-			if keyNum, err := strconv.ParseFloat(key[1:], 64); err == nil && keyNum == num {
+			if keyNum, err := strconv.ParseFloat(key[1:], 64); err == nil && keyNum == numVal {
 				return []string{key}, nil
 			}
 		}
 	}
 
-	// 2. Check for exact string match (legacy support)
-	valueStr := formatNumberForSelection(num)
+	// 2. Check for exact string match (TypeScript: if (keys.has(str)) return str)
+	valueStr := formatNumberForSelection(numVal)
 	for _, key := range keys {
 		if key == valueStr {
 			return []string{key}, nil
 		}
 	}
 
-	// 3. Check if select option is set to 'exact' only
+	// 3. Check if select option is set to 'exact' only (TypeScript: if (options.select === 'exact') return null)
 	if selectOpt, hasSelect := nv.options["select"]; hasSelect {
 		if selectStr, ok := selectOpt.(string); ok && selectStr == "exact" {
 			return []string{}, nil
 		}
 	}
 
-	// 4. Apply plural rules
-	pluralCategory := getPluralCategory(num, nv.options, nv.locale)
+	// 4. Apply plural rules (TypeScript: new Intl.PluralRules(...).select(Number(numVal)))
+	pluralCategory := getPluralCategory(numVal, nv.options, nv.locale)
 	for _, key := range keys {
 		if key == pluralCategory {
 			return []string{key}, nil
@@ -1151,6 +1161,8 @@ func formatNumberForSelection(num float64) string {
 }
 
 // getPluralCategory determines the plural category for a number
+// TypeScript reference: new Intl.PluralRules(locales, pluralOpt).select(Number(numVal))
+// Note: The percent multiplication (*100) is now handled by the caller (SelectKeys)
 func getPluralCategory(num float64, options map[string]interface{}, locale string) string {
 	// Check select option type (cardinal, ordinal, or default to cardinal)
 	selectType := "cardinal"
@@ -1160,22 +1172,13 @@ func getPluralCategory(num float64, options map[string]interface{}, locale strin
 		}
 	}
 
-	// For percent style, apply plural rules to the percentage value (value * 100)
-	// This matches the TypeScript behavior where plural selection for percent uses the display value
-	valueForPlural := num
-	if style, hasStyle := options["style"]; hasStyle {
-		if styleStr, ok := style.(string); ok && styleStr == "percent" {
-			valueForPlural = num * 100
-		}
-	}
-
 	if selectType == "ordinal" {
 		// Ordinal rules for English: 1st, 2nd, 3rd, 4th, etc.
-		switch int(valueForPlural) % 100 {
+		switch int(num) % 100 {
 		case 11, 12, 13:
 			return "other"
 		default:
-			switch int(valueForPlural) % 10 {
+			switch int(num) % 10 {
 			case 1:
 				return "one"
 			case 2:
@@ -1188,7 +1191,7 @@ func getPluralCategory(num float64, options map[string]interface{}, locale strin
 		}
 	} else {
 		// Cardinal rules for English: simplified implementation
-		if valueForPlural == 1 {
+		if num == 1 {
 			return "one"
 		}
 		return "other"
