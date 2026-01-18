@@ -7,6 +7,7 @@ import (
 
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
+	"github.com/kaptinlin/messageformat-go/pkg/logger"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
@@ -51,7 +52,6 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 	// matches TypeScript: if (options?.size)
 	if len(options) > 0 {
 		partOptions := make(map[string]interface{})
-		var partID string
 
 		// matches TypeScript: for (const [name, value] of options)
 		for name, value := range options {
@@ -79,7 +79,20 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 
 				// matches TypeScript: let rv = resolveValue(ctx, value);
 				if node, ok := value.(datamodel.Node); ok {
-					rv = resolveValue(ctx, node)
+					var err error
+					rv, err = resolveValue(ctx, node)
+					if err != nil {
+						// Log error and use nil as fallback value
+						logger.Error("failed to resolve value in markup", "error", err)
+						if ctx.OnError != nil {
+							ctx.OnError(errors.NewMessageResolutionError(
+								errors.ErrorTypeUnsupportedOperation,
+								err.Error(),
+								getValueSource(node),
+							))
+						}
+						rv = nil
+					}
 				} else {
 					rv = value
 				}
@@ -91,15 +104,8 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 					}
 				}
 
-				// matches TypeScript: if (name === 'u:id') part.id = String(rv);
-				if name == "u:id" {
-					partID = fmt.Sprintf("%v", rv)
-					// Also add to options so test code can extract it
-					partOptions[name] = rv
-				} else {
-					// matches TypeScript: else part.options[name] = rv;
-					partOptions[name] = rv
-				}
+				// matches TypeScript: if (name === 'u:id') part.id = String(rv); else part.options[name] = rv;
+				partOptions[name] = rv
 			}
 		}
 
@@ -110,9 +116,6 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 			"", // source
 			partOptions,
 		)
-
-		// Set ID if provided (this would need to be added to MarkupPart if needed)
-		_ = partID // For now, just acknowledge the ID
 	}
 
 	// matches TypeScript: return part;

@@ -449,11 +449,6 @@ func (nv *NumberValue) formatPercent(num float64, tag language.Tag, minFractionD
 			maxFractionDigits = 1 // Show one decimal place for non-integer percentages
 		}
 	}
-	// For percentages, default to 0 minimum fraction digits unless explicitly set
-	if minFractionDigits == 0 {
-		minFractionDigits = 0
-	}
-
 	// Format the number part
 	formatted := strconv.FormatFloat(percentNum, 'f', maxFractionDigits, 64)
 
@@ -980,8 +975,12 @@ func (nv *NumberValue) parseNumericParts(numeric string) []MessagePart {
 	// Handle sign
 	remaining := numeric
 	if strings.HasPrefix(remaining, "+") || strings.HasPrefix(remaining, "-") {
+		signType := "plusSign"
+		if remaining[0] == '-' {
+			signType = "minusSign"
+		}
 		parts = append(parts, &NumberSubPart{
-			partType: "plusSign",
+			partType: signType,
 			value:    remaining[:1],
 			source:   nv.source,
 			locale:   nv.locale,

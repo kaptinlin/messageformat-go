@@ -148,7 +148,7 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 			// matches TypeScript: selectKey = selector.selectKey.bind(selector);
 			selectKeyFunc = func(availableKeys map[string]bool) *string {
 				// Convert map to slice for selection
-				var keySlice []string
+				keySlice := make([]string, 0, len(availableKeys))
 				for key := range availableKeys {
 					keySlice = append(keySlice, key)
 				}
@@ -180,8 +180,6 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 		// matches TypeScript: return { selectKey, best: null as string | null, keys: null as Set<string> | null };
 		selectorCtxs[i] = &selectorContext{
 			selectKey: selectKeyFunc,
-			best:      nil,
-			keys:      nil,
 		}
 	}
 
@@ -232,8 +230,6 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 			// matches TypeScript: sc.best = sc.keys.size ? sc.selectKey(sc.keys) : null;
 			if len(sc.keys) > 0 {
 				sc.best = sc.selectKey(sc.keys)
-			} else {
-				sc.best = nil
 			}
 		}()
 

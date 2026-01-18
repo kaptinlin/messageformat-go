@@ -8,11 +8,8 @@ package datamodel
 //
 //	!!key && typeof key === 'object' && key.type === '*';
 func IsCatchallKey(key interface{}) bool {
-	if key == nil {
-		return false
-	}
-	ck, ok := key.(*CatchallKey)
-	return ok && ck.Type() == "*"
+	_, ok := key.(*CatchallKey)
+	return ok
 }
 
 // IsExpression checks if a pattern element is an expression
@@ -21,11 +18,8 @@ func IsCatchallKey(key interface{}) bool {
 //
 //	!!part && typeof part === 'object' && part.type === 'expression';
 func IsExpression(part interface{}) bool {
-	if part == nil {
-		return false
-	}
-	expr, ok := part.(*Expression)
-	return ok && expr.Type() == "expression"
+	_, ok := part.(*Expression)
+	return ok
 }
 
 // IsFunctionRef checks if a part is a function reference
@@ -34,11 +28,8 @@ func IsExpression(part interface{}) bool {
 //
 //	!!part && typeof part === 'object' && part.type === 'function';
 func IsFunctionRef(part interface{}) bool {
-	if part == nil {
-		return false
-	}
-	fr, ok := part.(*FunctionRef)
-	return ok && fr.Type() == "function"
+	_, ok := part.(*FunctionRef)
+	return ok
 }
 
 // IsLiteral checks if a part is a literal
@@ -47,11 +38,8 @@ func IsFunctionRef(part interface{}) bool {
 //
 //	!!part && typeof part === 'object' && part.type === 'literal';
 func IsLiteral(part interface{}) bool {
-	if part == nil {
-		return false
-	}
-	lit, ok := part.(*Literal)
-	return ok && lit.Type() == "literal"
+	_, ok := part.(*Literal)
+	return ok
 }
 
 // IsMarkup checks if a pattern element is markup
@@ -60,11 +48,8 @@ func IsLiteral(part interface{}) bool {
 //
 //	!!part && typeof part === 'object' && part.type === 'markup';
 func IsMarkup(part interface{}) bool {
-	if part == nil {
-		return false
-	}
-	markup, ok := part.(*Markup)
-	return ok && markup.Type() == "markup"
+	_, ok := part.(*Markup)
+	return ok
 }
 
 // IsMessage checks if an object is a message
@@ -115,11 +100,8 @@ func IsSelectMessage(msg Message) bool {
 //
 //	!!part && typeof part === 'object' && part.type === 'variable';
 func IsVariableRef(part interface{}) bool {
-	if part == nil {
-		return false
-	}
-	vr, ok := part.(*VariableRef)
-	return ok && vr.Type() == "variable"
+	_, ok := part.(*VariableRef)
+	return ok
 }
 
 // Additional type guards for Go-specific needs

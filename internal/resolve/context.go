@@ -3,6 +3,8 @@
 package resolve
 
 import (
+	"maps"
+
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
@@ -70,25 +72,13 @@ func NewContext(
 // Clone creates a copy of the context
 // TypeScript original code: { ...ctx } spread operator equivalent
 func (ctx *Context) Clone() *Context {
-	// Copy scope
-	newScope := make(map[string]interface{}, len(ctx.Scope))
-	for k, v := range ctx.Scope {
-		newScope[k] = v
-	}
-
-	// Copy local vars
-	newLocalVars := make(map[messagevalue.MessageValue]bool, len(ctx.LocalVars))
-	for k, v := range ctx.LocalVars {
-		newLocalVars[k] = v
-	}
-
 	return &Context{
 		Functions:     ctx.Functions, // Immutable, safe to share
 		OnError:       ctx.OnError,
 		LocaleMatcher: ctx.LocaleMatcher,
 		Locales:       ctx.Locales, // Immutable, safe to share
-		LocalVars:     newLocalVars,
-		Scope:         newScope,
+		LocalVars:     maps.Clone(ctx.LocalVars),
+		Scope:         maps.Clone(ctx.Scope),
 		ResolvingVars: ctx.ResolvingVars, // Share the resolving vars tracking
 	}
 }

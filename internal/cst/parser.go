@@ -154,17 +154,15 @@ func ParseCST(source string, resource bool) Message {
 		// matches TypeScript: return source.startsWith('.match', end) ? parseSelectMessage(...) : parsePatternMessage(...);
 		if strings.HasPrefix(source[end:], ".match") {
 			return parseSelectMessage(ctx, end, declarations)
-		} else {
-			return parsePatternMessage(ctx, end, declarations, true)
 		}
-	} else {
-		// matches TypeScript: return source.startsWith('{{', pos) ? parsePatternMessage(...) : parsePatternMessage(...);
-		if strings.HasPrefix(source[pos:], "{{") {
-			return parsePatternMessage(ctx, 0, []Declaration{}, true)
-		} else {
-			return parsePatternMessage(ctx, 0, []Declaration{}, false)
-		}
+		return parsePatternMessage(ctx, end, declarations, true)
 	}
+
+	// matches TypeScript: return source.startsWith('{{', pos) ? parsePatternMessage(...) : parsePatternMessage(...);
+	if strings.HasPrefix(source[pos:], "{{") {
+		return parsePatternMessage(ctx, 0, []Declaration{}, true)
+	}
+	return parsePatternMessage(ctx, 0, []Declaration{}, false)
 }
 
 // parsePatternMessage parses a simple or complex message
@@ -194,7 +192,7 @@ func parseSelectMessage(
 	start int,
 	declarations []Declaration,
 ) *SelectMessage {
-	pos := start + 6 // ".match"
+	pos := start + len(".match")
 	match := NewSyntax(start, pos, ".match")
 
 	ws := Whitespaces(ctx.source, pos)
@@ -395,7 +393,7 @@ func parseDeclarations(ctx *ParseContext, start int) ([]Declaration, int) {
 
 // parseInputDeclaration parses an input declaration
 func parseInputDeclaration(ctx *ParseContext, start int) *InputDeclaration {
-	pos := start + 6 // ".input"
+	pos := start + len(".input")
 	keyword := NewSyntax(start, pos, ".input")
 	pos = Whitespaces(ctx.source, pos).End
 
@@ -412,7 +410,7 @@ func parseInputDeclaration(ctx *ParseContext, start int) *InputDeclaration {
 // parseLocalDeclaration parses a local declaration
 func parseLocalDeclaration(ctx *ParseContext, start int) *LocalDeclaration {
 	source := ctx.source
-	pos := start + 6 // ".local"
+	pos := start + len(".local")
 	keyword := NewSyntax(start, pos, ".local")
 
 	ws := Whitespaces(source, pos)

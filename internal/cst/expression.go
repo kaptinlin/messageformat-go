@@ -3,6 +3,8 @@
 package cst
 
 import (
+	"strings"
+
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 )
 
@@ -297,11 +299,11 @@ func parseFunctionRefOrMarkup(ctx *ParseContext, start int, nodeType string) Nod
 
 // getOptionName extracts the full option name from identifier parts
 func getOptionName(identifier Identifier) string {
-	var name string
+	var sb strings.Builder
 	for _, part := range identifier {
-		name += part.Value()
+		sb.WriteString(part.Value())
 	}
-	return name
+	return sb.String()
 }
 
 // IdentifierResult represents the result of parsing an identifier

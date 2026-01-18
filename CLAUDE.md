@@ -273,6 +273,96 @@ result := mf.FormatSimple(map[string]interface{}{
 3. **Error Handling**: Use static error variables, never dynamic error creation
 4. **Testing**: >80% coverage required, use testify framework
 5. **Performance**: Run benchmarks for critical paths
+6. **Code Simplification**: Follow KISS principles, avoid unnecessary complexity
+
+### Performance Optimization Guidelines
+
+#### Pre-compile Regular Expressions
+```go
+// ❌ DON'T: Compile regex on every call
+func validate(text string) bool {
+    matched, _ := regexp.MatchString(`^pattern$`, text)
+    return matched
+}
+
+// ✅ DO: Pre-compile regex as package-level variable
+var validationPattern = regexp.MustCompile(`^pattern$`)
+
+func validate(text string) bool {
+    return validationPattern.MatchString(text)
+}
+```
+
+#### Simplify Type Checking Functions
+```go
+// ❌ DON'T: Add redundant nil checks for type assertions
+func IsExpression(part interface{}) bool {
+    if part == nil {
+        return false
+    }
+    expr, ok := part.(*Expression)
+    return ok && expr.Type() == "expression"
+}
+
+// ✅ DO: Type assertions handle nil correctly
+func IsExpression(part interface{}) bool {
+    _, ok := part.(*Expression)
+    return ok
+}
+```
+
+#### Avoid Unnecessary Variables
+```go
+// ❌ DON'T: Create intermediate variables without purpose
+fullMessage := message
+if !strings.Contains(message, errorType) {
+    fullMessage = fmt.Sprintf("%s: %s", errorType, message)
+}
+return fullMessage
+
+// ✅ DO: Modify the parameter directly
+if !strings.Contains(message, errorType) {
+    message = fmt.Sprintf("%s: %s", errorType, message)
+}
+return message
+```
+
+#### Use Short Variable Declarations
+```go
+// ❌ DON'T: Use var when := is more idiomatic
+var value = operand
+
+// ✅ DO: Use short variable declaration
+value := operand
+```
+
+#### Remove Redundant Code
+```go
+// ❌ DON'T: Include tautological assignments
+if minFractionDigits == 0 {
+    minFractionDigits = 0  // This does nothing
+}
+
+// ❌ DON'T: Explicit nil assignments (zero value is nil)
+return &Error{
+    Message: msg,
+    Cause:   nil,  // Unnecessary
+}
+
+// ✅ DO: Remove redundant assignments and rely on zero values
+return &Error{
+    Message: msg,
+}
+```
+
+### Code Simplification Principles
+
+1. **Trust Go's Type System**: Type assertions return false for nil, no need for explicit checks
+2. **Leverage Zero Values**: Uninitialized fields are automatically nil/zero, no need to specify
+3. **Pre-compile Regex**: Package-level regex compilation improves performance significantly
+4. **Prefer Short Declarations**: Use `:=` over `var` for local variables
+5. **Eliminate Dead Code**: Remove redundant conditionals and tautological operations
+6. **Direct Parameter Modification**: Modify function parameters directly when safe (value types)
 
 ### Security Guidelines
 - Never commit sensitive data or API keys

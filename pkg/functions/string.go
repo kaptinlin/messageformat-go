@@ -74,8 +74,6 @@ func StringFunction(
 		dir = bidi.DirLTR
 	case "rtl":
 		dir = bidi.DirRTL
-	case "auto":
-		dir = bidi.DirAuto
 	default:
 		dir = bidi.DirAuto
 	}

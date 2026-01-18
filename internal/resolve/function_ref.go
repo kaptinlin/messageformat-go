@@ -96,7 +96,17 @@ func resolveFunctionRefInternal(
 	// matches TypeScript: const fnInput = operand ? [resolveValue(ctx, operand)] : [];
 	var fnInput []interface{}
 	if operand != nil {
-		fnInput = []interface{}{resolveValue(ctx, operand)}
+		resolved, err := resolveValue(ctx, operand)
+		if err != nil {
+			// Log error and return error as MessageValue would be invalid
+			logger.Error("failed to resolve operand", "error", err)
+			return nil, errors.NewMessageResolutionError(
+				errors.ErrorTypeBadOperand,
+				err.Error(),
+				source,
+			)
+		}
+		fnInput = []interface{}{resolved}
 	} else {
 		fnInput = []interface{}{}
 	}
@@ -167,8 +177,17 @@ func createMessageFunctionContext(
 		if dirOpt, exists := options["u:dir"]; exists {
 			// Convert interface{} to datamodel.Node if possible
 			if dirNode, ok := dirOpt.(datamodel.Node); ok {
-				dirValue := resolveValue(ctx, dirNode)
-				if dirStr, ok := dirValue.(string); ok {
+				dirValue, err := resolveValue(ctx, dirNode)
+				if err != nil {
+					logger.Error("failed to resolve u:dir option", "error", err)
+					if ctx.OnError != nil {
+						ctx.OnError(errors.NewMessageResolutionError(
+							errors.ErrorTypeBadOption,
+							err.Error(),
+							getValueSource(dirNode),
+						))
+					}
+				} else if dirStr, ok := dirValue.(string); ok {
 					switch dirStr {
 					case "ltr", "rtl", "auto":
 						dir = dirStr
@@ -201,8 +220,19 @@ func createMessageFunctionContext(
 
 		if idOpt, exists := options["u:id"]; exists {
 			if idNode, ok := idOpt.(datamodel.Node); ok {
-				idValue := resolveValue(ctx, idNode)
-				id = fmt.Sprintf("%v", idValue)
+				idValue, err := resolveValue(ctx, idNode)
+				if err != nil {
+					logger.Error("failed to resolve u:id option", "error", err)
+					if ctx.OnError != nil {
+						ctx.OnError(errors.NewMessageResolutionError(
+							errors.ErrorTypeBadOption,
+							err.Error(),
+							getValueSource(idNode),
+						))
+					}
+				} else {
+					id = fmt.Sprintf("%v", idValue)
+				}
 
 				// Mark as literal if it's a literal value
 				if _, isLiteral := idNode.(*datamodel.Literal); isLiteral {
@@ -249,7 +279,20 @@ func resolveOptions(ctx *Context, options map[string]interface{}) map[string]int
 
 			// Try to resolve as datamodel.Node first
 			if node, ok := value.(datamodel.Node); ok {
-				resolved = resolveValue(ctx, node)
+				var err error
+				resolved, err = resolveValue(ctx, node)
+				if err != nil {
+					logger.Error("failed to resolve option", "option", name, "error", err)
+					if ctx.OnError != nil {
+						ctx.OnError(errors.NewMessageResolutionError(
+							errors.ErrorTypeBadOption,
+							err.Error(),
+							getValueSource(node),
+						))
+					}
+					// Use nil as fallback
+					resolved = nil
+				}
 			} else {
 				// Use value directly if not a Node
 				resolved = value

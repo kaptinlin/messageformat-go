@@ -214,7 +214,7 @@ func dateTimeImplementation(
 // Handles both plain values and operands with options/valueOf
 // TypeScript reference: datetime.ts:94-112
 func parseDateTimeValue(operand interface{}) (time.Time, error) {
-	var value = operand
+	value := operand
 
 	// Check if operand is an object with options and/or valueOf
 	// TypeScript: if (typeof value === 'object' && value !== null)

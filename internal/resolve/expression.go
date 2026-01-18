@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
+	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/logger"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
@@ -67,12 +68,21 @@ func ResolveExpression(ctx *Context, expr *datamodel.Expression) messagevalue.Me
 	default:
 		// matches TypeScript: @ts-expect-error - should never happen
 		// matches TypeScript: throw new Error(`Unsupported expression: ${arg?.type}`);
+		var errMsg string
 		if node, ok := v.(datamodel.Node); ok {
+			errMsg = fmt.Sprintf("Unsupported expression: %s", node.Type())
 			logger.Error("unsupported expression type", "type", node.Type())
-			panic(fmt.Sprintf("Unsupported expression: %s", node.Type()))
 		} else {
+			errMsg = fmt.Sprintf("Unsupported expression: %T", v)
 			logger.Error("unsupported expression value", "type", fmt.Sprintf("%T", v))
-			panic(fmt.Sprintf("Unsupported expression: %T", v))
 		}
+		if ctx.OnError != nil {
+			ctx.OnError(errors.NewMessageResolutionError(
+				errors.ErrorTypeUnsupportedOperation,
+				errMsg,
+				"",
+			))
+		}
+		return messagevalue.NewFallbackValue("unknown", getFirstLocale(ctx.Locales))
 	}
 }

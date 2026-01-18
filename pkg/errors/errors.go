@@ -188,13 +188,12 @@ type MessageResolutionError struct {
 // TypeScript original code: MessageResolutionError constructor
 func NewMessageResolutionError(errorType, message, source string) *MessageResolutionError {
 	// Include error type in message for compatibility with tests
-	fullMessage := message
 	if !strings.Contains(message, errorType) {
-		fullMessage = fmt.Sprintf("%s: %s", errorType, message)
+		message = fmt.Sprintf("%s: %s", errorType, message)
 	}
 
 	return &MessageResolutionError{
-		MessageError: NewMessageError(errorType, fullMessage),
+		MessageError: NewMessageError(errorType, message),
 		Source:       source,
 	}
 }
@@ -267,7 +266,6 @@ func NewMessageFunctionError(errorType, message string) *MessageFunctionError {
 	return &MessageFunctionError{
 		MessageError: NewMessageError(errorType, message),
 		Source:       "�", // TypeScript default value
-		Cause:        nil,
 	}
 }
 

@@ -3,6 +3,8 @@
 package cst
 
 import (
+	"strings"
+
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 )
 
@@ -551,11 +553,11 @@ type Identifier []Syntax
 
 // String returns the string representation of the identifier
 func (i Identifier) String() string {
-	var result string
+	var sb strings.Builder
 	for _, part := range i {
-		result += part.Value()
+		sb.WriteString(part.Value())
 	}
-	return result
+	return sb.String()
 }
 
 // Namespace returns the namespace part if present

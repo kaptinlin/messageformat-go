@@ -126,6 +126,31 @@ func FunctionName(param Type) ReturnType {
 - Follow Go best practices and idioms
 - Prefer composition over inheritance
 
+### 6. Code Simplification (REQUIRED)
+
+- **Remove redundant nil checks**: Type assertions handle nil correctly
+- **Pre-compile regular expressions**: Use package-level variables for regex patterns
+- **Eliminate unnecessary variables**: Modify parameters directly when safe
+- **Use short declarations**: Prefer `:=` over `var` for local variables
+- **Rely on zero values**: Don't explicitly assign nil to struct fields
+- **Remove tautological code**: Delete assignments like `if x == 0 { x = 0 }`
+
+### 7. Performance Patterns (MANDATORY)
+
+```go
+// Pre-compile regex at package level
+var pattern = regexp.MustCompile(`^regex$`)
+
+// Simplify type checking (no nil check needed)
+func IsType(v interface{}) bool {
+    _, ok := v.(*Type)
+    return ok
+}
+
+// Use short variable declarations
+value := operand  // NOT: var value = operand
+```
+
 ## Type Mappings (TypeScript → Go)
 
 | TypeScript | Go | Notes |
@@ -175,6 +200,11 @@ make lint-all      # Lint both versions
 - Mix Chinese and English comments
 - Skip TypeScript original code in comments
 - Use non-testify testing patterns
+- Add redundant nil checks before type assertions
+- Compile regex patterns inside functions repeatedly
+- Create unnecessary intermediate variables
+- Explicitly assign nil to struct fields
+- Keep tautological or dead code
 
 ✅ **DO**:
 - Prefer v2 for all new work
@@ -182,6 +212,11 @@ make lint-all      # Lint both versions
 - Include complete TypeScript comments
 - Write comprehensive tests
 - Follow Go idioms while maintaining API compatibility
+- Pre-compile regex patterns at package level
+- Trust Go's type system and zero values
+- Use short variable declarations (`:=`)
+- Simplify code while preserving functionality
+- Remove redundant conditionals and assignments
 
 ## Resource References
 

@@ -15,6 +15,9 @@ var (
 	ErrNotString          = errors.New("not a string")
 )
 
+// Pre-compiled regex for positive integer validation
+var positiveIntegerRegex = regexp.MustCompile(`^(0|[1-9][0-9]*)$`)
+
 // asBoolean casts a value as a Boolean, unwrapping objects using their valueOf() methods
 // TypeScript original code:
 //
@@ -89,7 +92,7 @@ func asPositiveInteger(value interface{}) (int, error) {
 		}
 	case string:
 		// Check if string matches positive integer pattern
-		matched, _ := regexp.MatchString(`^(0|[1-9][0-9]*)$`, v)
+		matched := positiveIntegerRegex.MatchString(v)
 		if matched {
 			if intVal, err := strconv.Atoi(v); err == nil && intVal >= 0 {
 				return intVal, nil

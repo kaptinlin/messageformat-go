@@ -28,20 +28,20 @@ import (
 //	      throw new Error(`Unsupported value: ${value.type}`);
 //	  }
 //	}
-func resolveValue(ctx *Context, value datamodel.Node) interface{} {
+func resolveValue(ctx *Context, value datamodel.Node) (interface{}, error) {
 	if value == nil {
-		return nil
+		return nil, nil
 	}
 
 	switch v := value.(type) {
 	case *datamodel.Literal:
-		return v.Value()
+		return v.Value(), nil
 	case *datamodel.VariableRef:
-		return lookupVariableRef(ctx, v)
+		return lookupVariableRef(ctx, v), nil
 	default:
 		// Should never happen - matches TypeScript @ts-expect-error
 		logger.Error("unsupported value type", "type", v.Type())
-		panic(fmt.Sprintf("Unsupported value: %s", v.Type()))
+		return nil, fmt.Errorf("unsupported value: %s", v.Type())
 	}
 }
 

@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+// startsWithDotPattern is pre-compiled regex for checking if text starts with a dot
+var startsWithDotPattern = regexp.MustCompile(`^\s*\.`)
+
 // StringifyMessage converts a message back to its syntax representation
 // TypeScript original code:
 //
@@ -318,6 +321,8 @@ func stringifyAttribute(name string, value interface{}) string {
 	switch {
 	case value == true:
 		return "@" + name
+	case IsBooleanAttribute(value):
+		return "@" + name
 	case IsLiteral(value):
 		return fmt.Sprintf("@%s=%s", name, stringifyLiteral(value.(*Literal)))
 	default:
@@ -346,7 +351,7 @@ func stringifyPattern(pattern Pattern, quoted bool) string {
 	// Check if first element starts with dot (needs quoting)
 	if !quoted && len(pattern.Elements()) > 0 {
 		if textElem, ok := pattern.Elements()[0].(*TextElement); ok {
-			if matched, _ := regexp.MatchString(`^\s*\.`, textElem.Value()); matched {
+			if startsWithDotPattern.MatchString(textElem.Value()) {
 				quoted = true
 			}
 		}
