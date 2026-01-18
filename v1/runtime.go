@@ -12,6 +12,13 @@ import (
 	"golang.org/x/text/message"
 )
 
+// Safe integer range constants (JavaScript Number.MAX_SAFE_INTEGER/MIN_SAFE_INTEGER)
+// Integers outside this range may lose precision in JavaScript environments
+const (
+	maxSafeInteger = 1e15
+	minSafeInteger = -1e15
+)
+
 // Number formatters cache with sync.Map for better performance
 // TypeScript original code:
 // const _nf: Record<string, Intl.NumberFormat> = {};
@@ -36,7 +43,7 @@ func Number(lc string, value float64, offset float64) string {
 
 	// Use locale-specific formatting
 	printer := message.NewPrinter(tag)
-	if result == math.Trunc(result) && result >= -1e15 && result <= 1e15 {
+	if result == math.Trunc(result) && result >= minSafeInteger && result <= maxSafeInteger {
 		// Integer formatting
 		return printer.Sprintf("%.0f", result)
 	}
@@ -233,14 +240,14 @@ func toFloat64(value interface{}) (float64, error) {
 	case string:
 		return strconv.ParseFloat(v, 64)
 	default:
-		return 0, WrapUnsupportedType(fmt.Sprintf("cannot convert %T to float64", value))
+		return 0, WrapInvalidType(fmt.Sprintf("cannot convert %T to float64", value))
 	}
 }
 
 // formatExactKey formats a number as an exact key (e.g., "=1", "=0")
 func formatExactKey(value float64) string {
-	// Check if it's an integer value
-	if value == math.Trunc(value) && value >= -1e15 && value <= 1e15 {
+	// Check if it's an integer value within safe range
+	if value == math.Trunc(value) && value >= minSafeInteger && value <= maxSafeInteger {
 		return fmt.Sprintf("=%.0f", value)
 	}
 	// For non-integers, use a reasonable precision

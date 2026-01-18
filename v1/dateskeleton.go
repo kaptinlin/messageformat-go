@@ -455,7 +455,7 @@ func GetDateFormatterSource(locales interface{}, skeleton string, timeZone strin
 	case []string:
 		localesStr = fmt.Sprintf(`[%s]`, strings.Join(v, ","))
 	default:
-		return "", ErrUnsupportedType
+		return "", ErrInvalidType
 	}
 
 	// Generate JavaScript source (simplified)

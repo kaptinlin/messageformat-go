@@ -138,7 +138,7 @@ func GetPlural(locale interface{}) (PluralObject, error) {
 		}, nil
 
 	default:
-		return PluralObject{}, ErrUnsupportedType
+		return PluralObject{}, ErrInvalidType
 	}
 }
 
@@ -222,9 +222,18 @@ func getPluralRules(locale string) (PluralFunction, []PluralCategory, []PluralCa
 		// Parameters: i (integer), v (visible fraction digits), w (w/o trailing zeros), f (fraction), t (fraction w/o trailing zeros)
 		defer func() {
 			if r := recover(); r != nil {
-				// In case of panic, fall back to basic English-like rules
-				// Empty body is intentional - we just want to recover gracefully
-				_ = r
+				// Recover from potential panics in golang.org/x/text/feature/plural.MatchPlural.
+				// This can happen with:
+				// 1. Malformed locale tags that pass language.Parse but fail in plural rules
+				// 2. Edge cases in CLDR data processing
+				// 3. Unexpected number formats
+				//
+				// Fallback behavior: The function will return PluralOther (line 232),
+				// which matches the basic English-like plural rules.
+				//
+				// Note: If this occurs frequently, investigate the root cause rather than
+				// relying on panic recovery. Consider adding validation before calling MatchPlural.
+				_ = r // Explicitly acknowledge we're discarding the panic value
 			}
 		}()
 
@@ -319,6 +328,6 @@ func toNumber(value interface{}) (int64, error) {
 		}
 		return int64(num), nil
 	default:
-		return 0, WrapUnsupportedType(fmt.Sprintf("%T", value))
+		return 0, WrapInvalidType(fmt.Sprintf("%T", value))
 	}
 }

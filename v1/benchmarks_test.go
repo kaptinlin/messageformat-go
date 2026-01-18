@@ -111,7 +111,7 @@ func BenchmarkTypeSafeSkeletonCreation(b *testing.B) {
 			RoundingMode: RoundingHalfUp,
 			Unit: &UnitConfig{
 				Style:    UnitCurrency,
-				Currency: StringPtr("EUR"),
+				Currency: Ptr("EUR"),
 			},
 			Notation: &NotationConfig{
 				Style: NotationCompactShort,

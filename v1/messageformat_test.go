@@ -182,7 +182,7 @@ func TestNumberSkeletonTypeSafety(t *testing.T) {
 			RoundingMode: RoundingHalfUp,
 			Unit: &UnitConfig{
 				Style:    UnitCurrency,
-				Currency: StringPtr("EUR"),
+				Currency: Ptr("EUR"),
 			},
 			Notation: &NotationConfig{
 				Style: NotationCompactShort,
@@ -198,11 +198,11 @@ func TestNumberSkeletonTypeSafety(t *testing.T) {
 	})
 
 	t.Run("Helper Functions", func(t *testing.T) {
-		assert.Equal(t, "EUR", *StringPtr("EUR"))
-		assert.True(t, *BoolPtr(true))
-		assert.Equal(t, 2, *IntPtr(2))
-		assert.Equal(t, ReturnTypeValues, *ReturnTypePtr(ReturnTypeValues))
-		assert.Equal(t, SignAlways, *SignDisplayPtr(SignAlways))
+		assert.Equal(t, "EUR", *Ptr("EUR"))
+		assert.True(t, *Ptr(true))
+		assert.Equal(t, 2, *Ptr(2))
+		assert.Equal(t, ReturnTypeValues, *Ptr(ReturnTypeValues))
+		assert.Equal(t, SignAlways, *Ptr(SignAlways))
 	})
 }
 

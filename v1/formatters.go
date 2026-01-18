@@ -220,7 +220,7 @@ func DateFormatter(value interface{}, lc string, size string) (string, error) {
 	case time.Time:
 		t = v
 	default:
-		return "", WrapUnsupportedType(fmt.Sprintf("%T", value))
+		return "", WrapInvalidType(fmt.Sprintf("%T", value))
 	}
 
 	// Format based on size parameter - matching TypeScript behavior
@@ -274,7 +274,7 @@ func TimeFormatter(value interface{}, lc string, size string) (string, error) {
 	case time.Time:
 		t = v
 	default:
-		return "", WrapUnsupportedType(fmt.Sprintf("%T", value))
+		return "", WrapInvalidType(fmt.Sprintf("%T", value))
 	}
 
 	// Format based on size parameter

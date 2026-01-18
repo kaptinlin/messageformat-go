@@ -146,6 +146,13 @@ import (
 	"sync"
 )
 
+// Performance optimization constants
+const (
+	// estimatedValueCapacity is the estimated capacity for variable values in string building
+	// Based on typical variable value lengths in message formatting
+	estimatedValueCapacity = 20
+)
+
 // MessageFunction represents a compiled message function
 type MessageFunction func(param interface{}) (interface{}, error)
 
@@ -703,7 +710,7 @@ func (mf *MessageFormat) createSimpleInterpolationFastPath(tokens []Token) Messa
 			if info.isContent {
 				capacity += len(info.content)
 			} else {
-				capacity += 20 // Estimate for variable values
+				capacity += estimatedValueCapacity
 			}
 		}
 
@@ -1425,7 +1432,7 @@ func (mf *MessageFormat) numberFormatter(locale string, value interface{}, offse
 		}
 		num = parsed
 	default:
-		return "", WrapUnsupportedType(fmt.Sprintf("%T", value))
+		return "", WrapInvalidType(fmt.Sprintf("%T", value))
 	}
 
 	// Apply offset
