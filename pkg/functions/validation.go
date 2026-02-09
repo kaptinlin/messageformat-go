@@ -11,6 +11,19 @@ const MaxOptionKeyLength = 100
 // MaxOptionsCount defines the maximum number of options allowed to prevent DoS
 const MaxOptionsCount = 50
 
+// forbiddenOptionKeys contains key names that are forbidden for security reasons.
+// While Go doesn't have prototype pollution, we prevent confusion with
+// reserved keywords or internal fields from JavaScript-like environments.
+var forbiddenOptionKeys = map[string]struct{}{
+	"__proto__":           {},
+	"constructor":         {},
+	"prototype":           {},
+	"__definegetter__":    {},
+	"__definesetter__":    {},
+	"__lookupgetter__":    {},
+	"__lookupsetter__":    {},
+}
+
 // ValidateOptionKey validates an option key name to prevent security issues.
 // This function prevents potential injection attacks or malformed keys.
 //
@@ -40,24 +53,9 @@ func ValidateOptionKey(key string) error {
 		}
 	}
 
-	// Check for forbidden key names (similar to prototype pollution prevention)
-	// While Go doesn't have prototype pollution, we still want to prevent
-	// any potential confusion with reserved keywords or internal fields
-	forbiddenKeys := []string{
-		"__proto__",
-		"constructor",
-		"prototype",
-		"__defineGetter__",
-		"__defineSetter__",
-		"__lookupGetter__",
-		"__lookupSetter__",
-	}
-
-	lowerKey := strings.ToLower(key)
-	for _, forbidden := range forbiddenKeys {
-		if lowerKey == forbidden {
-			return fmt.Errorf("forbidden option key: '%s'", key)
-		}
+	// Check for forbidden key names
+	if _, ok := forbiddenOptionKeys[strings.ToLower(key)]; ok {
+		return fmt.Errorf("forbidden option key: '%s'", key)
 	}
 
 	return nil

@@ -1188,13 +1188,12 @@ func getPluralCategory(num float64, options map[string]interface{}, locale strin
 				return "other"
 			}
 		}
-	} else {
-		// Cardinal rules for English: simplified implementation
-		if num == 1 {
-			return "one"
-		}
-		return "other"
 	}
+	// Cardinal rules for English: simplified implementation
+	if num == 1 {
+		return "one"
+	}
+	return "other"
 }
 
 // NumberSubPart represents a sub-part of a number (like integer, decimal, etc.)

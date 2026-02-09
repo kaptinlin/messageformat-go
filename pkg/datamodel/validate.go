@@ -32,9 +32,7 @@ type ValidationResult struct {
 // )
 func ValidateMessage(msg Message, onError func(string, interface{})) (*ValidationResult, error) {
 	if onError == nil {
-		onError = func(errType string, node interface{}) {
-			// Default error handler - we'll collect errors instead of throwing
-		}
+		onError = func(string, interface{}) {}
 	}
 
 	var validationErrors []error

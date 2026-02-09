@@ -181,9 +181,8 @@ func parsePatternMessage(
 
 	if complex {
 		return NewComplexMessage(declarations, *pattern, ctx.errors)
-	} else {
-		return NewSimpleMessage(*pattern, ctx.errors)
 	}
+	return NewSimpleMessage(*pattern, ctx.errors)
 }
 
 // parseSelectMessage parses a select message
@@ -459,9 +458,8 @@ func parseLocalDeclaration(ctx *ParseContext, start int) *LocalDeclaration {
 func parseDeclarationValue(ctx *ParseContext, start int) Node {
 	if start < len(ctx.source) && ctx.source[start] == '{' {
 		return parseExpression(ctx, start)
-	} else {
-		return parseDeclarationJunk(ctx, start)
 	}
+	return parseDeclarationJunk(ctx, start)
 }
 
 // parseDeclarationJunk parses junk content in declarations

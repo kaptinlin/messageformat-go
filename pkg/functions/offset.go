@@ -61,7 +61,7 @@ func OffsetFunction(
 	value := numInput.Value
 
 	// Parse add option - matches TypeScript: add = 'add' in exprOpt ? asPositiveInteger(exprOpt.add) : -1;
-	var add = -1
+	add := -1
 	if addVal, hasAdd := options["add"]; hasAdd {
 		if addInt, err := asPositiveInteger(addVal); err == nil {
 			add = addInt
@@ -73,7 +73,7 @@ func OffsetFunction(
 	}
 
 	// Parse subtract option - matches TypeScript: sub = 'subtract' in exprOpt ? asPositiveInteger(exprOpt.subtract) : -1;
-	var sub = -1
+	sub := -1
 	if subVal, hasSubtract := options["subtract"]; hasSubtract {
 		if subInt, err := asPositiveInteger(subVal); err == nil {
 			sub = subInt

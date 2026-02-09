@@ -130,9 +130,8 @@ func ParseLiteral(ctx *ParseContext, start int, required bool) *Literal {
 			ctx.OnError("empty-token", start, start)
 			// Return an empty literal instead of nil when required
 			return NewLiteral(start, start, false, nil, "", nil)
-		} else {
-			return nil
 		}
+		return nil
 	}
 
 	end := start + len(value)

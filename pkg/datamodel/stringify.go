@@ -389,11 +389,8 @@ func isValidUnquotedLiteral(value string) bool {
 	}
 
 	// Check for special characters that require quoting
-	specialChars := []string{" ", "\t", "\n", "\r", "{", "}", "|", "\\", "=", "@", "$", ":", "#", "/"}
-	for _, char := range specialChars {
-		if strings.Contains(value, char) {
-			return false
-		}
+	if strings.ContainsAny(value, " \t\n\r{}|\\=@$:#/") {
+		return false
 	}
 
 	// Check if starts with dot

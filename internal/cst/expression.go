@@ -228,9 +228,8 @@ func parseExpression(ctx *ParseContext, start int) *Expression {
 	end := pos
 	if markup != nil {
 		return NewExpression(start, end, braces, nil, nil, markup, attributes)
-	} else {
-		return NewExpression(start, end, braces, arg, functionRef, nil, attributes)
 	}
+	return NewExpression(start, end, braces, arg, functionRef, nil, attributes)
 }
 
 // parseFunctionRefOrMarkup parses a function reference or markup
@@ -291,10 +290,9 @@ func parseFunctionRefOrMarkup(ctx *ParseContext, start int, nodeType string) Nod
 	if nodeType == "function" {
 		open := NewSyntax(start, start+1, ":")
 		return NewFunctionRef(start, pos, open, id.Parts, options)
-	} else {
-		open := NewSyntax(start, start+1, string(source[start]))
-		return NewMarkup(start, pos, open, id.Parts, options, close)
 	}
+	open := NewSyntax(start, start+1, string(source[start]))
+	return NewMarkup(start, pos, open, id.Parts, options, close)
 }
 
 // getOptionName extracts the full option name from identifier parts
@@ -374,12 +372,11 @@ func parseIdentifier(ctx *ParseContext, start int) *IdentifierResult {
 			Parts: Identifier{id0, sep, id1},
 			End:   name1.End,
 		}
-	} else {
-		ctx.OnError("empty-token", pos, pos+1)
-		return &IdentifierResult{
-			Parts: Identifier{id0, sep},
-			End:   pos,
-		}
+	}
+	ctx.OnError("empty-token", pos, pos+1)
+	return &IdentifierResult{
+		Parts: Identifier{id0, sep},
+		End:   pos,
 	}
 }
 
