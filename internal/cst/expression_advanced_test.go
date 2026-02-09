@@ -131,11 +131,11 @@ func TestParseAttribute_Accessors(t *testing.T) {
 
 func TestParseIdentifier_EdgeCases(t *testing.T) {
 	tests := []struct {
-		name         string
-		source       string
-		start        int
+		name          string
+		source        string
+		start         int
 		expectedParts int
-		shouldError  bool
+		shouldError   bool
 	}{
 		{
 			name:          "simple identifier",

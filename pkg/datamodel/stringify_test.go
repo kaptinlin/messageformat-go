@@ -163,8 +163,8 @@ func TestStringifyExpression(t *testing.T) {
 			expected: "{42}",
 		},
 		{
-			name: "quoted literal with spaces",
-			expr: NewExpression(NewLiteral("hello world"), nil, nil),
+			name:     "quoted literal with spaces",
+			expr:     NewExpression(NewLiteral("hello world"), nil, nil),
 			expected: "{|hello world|}",
 		},
 		{
@@ -357,8 +357,8 @@ func TestStringifyPattern(t *testing.T) {
 			expected: "Hello",
 		},
 		{
-			name:     "text with expression",
-			pattern:  NewPattern([]PatternElement{
+			name: "text with expression",
+			pattern: NewPattern([]PatternElement{
 				NewTextElement("Count: "),
 				NewExpression(NewVariableRef("count"), nil, nil),
 			}),
@@ -390,8 +390,8 @@ func TestStringifyPattern(t *testing.T) {
 			expected: "Path: C:\\\\folder",
 		},
 		{
-			name:     "pattern with markup",
-			pattern:  NewPattern([]PatternElement{
+			name: "pattern with markup",
+			pattern: NewPattern([]PatternElement{
 				NewTextElement("Text with "),
 				NewMarkup("open", "b", nil, nil),
 				NewTextElement("bold"),

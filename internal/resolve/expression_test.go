@@ -304,7 +304,7 @@ func TestResolveExpression_WithAnnotations(t *testing.T) {
 // mockUnsupportedNode is a mock implementation of an unsupported node type
 type mockUnsupportedNode struct{}
 
-func (m *mockUnsupportedNode) Type() string { return "unsupported" }
+func (m *mockUnsupportedNode) Type() string     { return "unsupported" }
 func (m *mockUnsupportedNode) CST() interface{} { return nil }
 
 // TestResolveExpression_LocaleHandling tests locale handling in expression resolution

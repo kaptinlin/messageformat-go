@@ -293,11 +293,11 @@ func TestParseDeclarationJunk(t *testing.T) {
 
 func TestParseCST_EdgeCases(t *testing.T) {
 	tests := []struct {
-		name        string
-		source      string
-		resource    bool
+		name         string
+		source       string
+		resource     bool
 		expectedType string
-		shouldError bool
+		shouldError  bool
 	}{
 		{
 			name:         "empty string",

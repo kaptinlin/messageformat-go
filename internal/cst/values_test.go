@@ -411,11 +411,11 @@ func TestParseEscape_AllSequences(t *testing.T) {
 			expectedLen:   1,
 		},
 		{
-			name:          "escape tab (non-resource)",
-			source:        "\\t",
-			start:         0,
-			resource:      false,
-			shouldBeNil:   true,
+			name:        "escape tab (non-resource)",
+			source:      "\\t",
+			start:       0,
+			resource:    false,
+			shouldBeNil: true,
 		},
 		{
 			name:          "escape space (resource)",

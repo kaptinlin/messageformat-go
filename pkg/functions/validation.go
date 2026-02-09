@@ -15,13 +15,13 @@ const MaxOptionsCount = 50
 // While Go doesn't have prototype pollution, we prevent confusion with
 // reserved keywords or internal fields from JavaScript-like environments.
 var forbiddenOptionKeys = map[string]struct{}{
-	"__proto__":           {},
-	"constructor":         {},
-	"prototype":           {},
-	"__definegetter__":    {},
-	"__definesetter__":    {},
-	"__lookupgetter__":    {},
-	"__lookupsetter__":    {},
+	"__proto__":        {},
+	"constructor":      {},
+	"prototype":        {},
+	"__definegetter__": {},
+	"__definesetter__": {},
+	"__lookupgetter__": {},
+	"__lookupsetter__": {},
 }
 
 // ValidateOptionKey validates an option key name to prevent security issues.

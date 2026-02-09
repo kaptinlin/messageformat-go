@@ -205,10 +205,10 @@ one {{One}}
 
 func TestFromCSTExpressions(t *testing.T) {
 	tests := []struct {
-		name       string
-		input      string
-		checkFunc  func(t *testing.T, msg Message)
-		wantError  bool
+		name      string
+		input     string
+		checkFunc func(t *testing.T, msg Message)
+		wantError bool
 	}{
 		{
 			name:  "variable reference",
