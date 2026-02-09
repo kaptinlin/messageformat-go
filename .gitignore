@@ -55,3 +55,6 @@ temp/
 
 # Build output
 bin/
+
+# ralphy configuration
+.ralphy/
