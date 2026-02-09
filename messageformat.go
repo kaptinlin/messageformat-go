@@ -211,8 +211,12 @@ func New(
 		// Check if it's nil (traditional way of passing no options)
 		if options[0] == nil {
 			opts = &MessageFormatOptions{}
-		} else if structOpts, ok := options[0].(*MessageFormatOptions); ok && structOpts != nil {
-			opts = structOpts
+		} else if structOpts, ok := options[0].(*MessageFormatOptions); ok {
+			if structOpts != nil {
+				opts = structOpts
+			} else {
+				opts = &MessageFormatOptions{}
+			}
 		} else if optFunc, ok := options[0].(Option); ok {
 			// Single functional option
 			opts = applyOptions(optFunc)
