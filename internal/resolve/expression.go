@@ -68,14 +68,11 @@ func ResolveExpression(ctx *Context, expr *datamodel.Expression) messagevalue.Me
 	default:
 		// matches TypeScript: @ts-expect-error - should never happen
 		// matches TypeScript: throw new Error(`Unsupported expression: ${arg?.type}`);
-		var errMsg string
+		errMsg := fmt.Sprintf("unsupported expression: %T", v)
 		if node, ok := v.(datamodel.Node); ok {
-			errMsg = fmt.Sprintf("Unsupported expression: %s", node.Type())
-			logger.Error("unsupported expression type", "type", node.Type())
-		} else {
-			errMsg = fmt.Sprintf("Unsupported expression: %T", v)
-			logger.Error("unsupported expression value", "type", fmt.Sprintf("%T", v))
+			errMsg = fmt.Sprintf("unsupported expression: %s", node.Type())
 		}
+		logger.Error("unsupported expression", "type", errMsg)
 		if ctx.OnError != nil {
 			ctx.OnError(errors.NewMessageResolutionError(
 				errors.ErrorTypeUnsupportedOperation,

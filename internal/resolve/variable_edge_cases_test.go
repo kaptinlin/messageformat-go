@@ -47,7 +47,7 @@ func TestResolveVariableRef_CircularReference(t *testing.T) {
 		// Should return fallback due to circular reference
 		assert.Equal(t, "fallback", result.Type())
 		assert.True(t, errorCalled)
-		assert.Contains(t, errorMsg, "Circular reference")
+		assert.Contains(t, errorMsg, "circular reference")
 	})
 
 	t.Run("indirect circular reference A->B->A", func(t *testing.T) {
@@ -236,7 +236,7 @@ func TestResolveVariableRef_MissingVariables(t *testing.T) {
 		var resErr *errors.MessageResolutionError
 		if e, ok := err.(*errors.MessageResolutionError); ok {
 			resErr = e
-			errorType = resErr.GetType()
+			errorType = resErr.ErrorType()
 		}
 	}
 

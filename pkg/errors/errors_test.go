@@ -31,9 +31,9 @@ func TestMessageError(t *testing.T) {
 		assert.Equal(t, "test message", err.Error())
 	})
 
-	t.Run("GetType returns error type", func(t *testing.T) {
+	t.Run("ErrorType returns error type", func(t *testing.T) {
 		err := NewMessageError(ErrorTypeUnknownFunction, "test message")
-		assert.Equal(t, ErrorTypeUnknownFunction, err.GetType())
+		assert.Equal(t, ErrorTypeUnknownFunction, err.ErrorType())
 	})
 
 	t.Run("Is returns true for same error type", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestMessageSyntaxError(t *testing.T) {
 		expected := "closing brace"
 		err := NewMessageSyntaxError(ErrorTypeMissingSyntax, 10, nil, &expected)
 		require.NotNil(t, err)
-		assert.Contains(t, err.Error(), "Missing closing brace")
+		assert.Contains(t, err.Error(), "missing closing brace")
 		assert.Contains(t, err.Error(), "at 10")
 	})
 
@@ -246,7 +246,7 @@ func TestConvenienceConstructors(t *testing.T) {
 		err := NewUnknownFunctionError("datetime", "source text")
 		require.NotNil(t, err)
 		assert.Equal(t, ErrorTypeUnknownFunction, err.Type)
-		assert.Contains(t, err.Error(), "Unknown function :datetime")
+		assert.Contains(t, err.Error(), "unknown function :datetime")
 		assert.Equal(t, "source text", err.Source)
 	})
 
@@ -254,7 +254,7 @@ func TestConvenienceConstructors(t *testing.T) {
 		err := NewUnresolvedVariableError("count", "source text")
 		require.NotNil(t, err)
 		assert.Equal(t, ErrorTypeUnresolvedVariable, err.Type)
-		assert.Contains(t, err.Error(), "Unresolved variable $count")
+		assert.Contains(t, err.Error(), "unresolved variable $count")
 		assert.Equal(t, "source text", err.Source)
 	})
 

@@ -205,17 +205,17 @@ func tests(tc utils.Test) func(*testing.T) {
 
 							// Check if the part has ID, dir, or locale options
 							if withOptions, ok := part.(interface {
-								GetID() string
-								GetDir() string
-								GetLocale() string
+								ID() string
+								PartDir() string
+								PartLocale() string
 							}); ok {
-								if id := withOptions.GetID(); id != "" {
+								if id := withOptions.ID(); id != "" {
 									partMap["id"] = id
 								}
-								if dir := withOptions.GetDir(); dir != "" && dir != "auto" {
+								if dir := withOptions.PartDir(); dir != "" && dir != "auto" {
 									partMap["dir"] = dir
 								}
-								if locale := withOptions.GetLocale(); locale != "" {
+								if locale := withOptions.PartLocale(); locale != "" {
 									partMap["locale"] = locale
 								}
 							}

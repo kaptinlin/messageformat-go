@@ -44,7 +44,7 @@ func TestSelectPattern_NoMatchingVariant(t *testing.T) {
 		var selErr *errors.MessageSelectionError
 		if e, ok := err.(*errors.MessageSelectionError); ok {
 			selErr = e
-			errorType = selErr.GetType()
+			errorType = selErr.ErrorType()
 		}
 	}
 

@@ -78,11 +78,7 @@ func ResolveFunctionRef(
 			ctx.OnError(err)
 		}
 		// Return fallback value
-		locale := "en"
-		if len(ctx.Locales) > 0 {
-			locale = ctx.Locales[0]
-		}
-		return functions.FallbackFunction(source, locale)
+		return functions.FallbackFunction(source, getFirstLocale(ctx.Locales))
 	}
 	return result
 }
@@ -118,7 +114,7 @@ func resolveFunctionRefInternal(
 		logger.Error("unknown function", "function", functionRef.Name(), "source", source)
 		return nil, errors.NewMessageResolutionError(
 			errors.ErrorTypeUnknownFunction,
-			fmt.Sprintf("Unknown function :%s", functionRef.Name()),
+			fmt.Sprintf("unknown function :%s", functionRef.Name()),
 			source,
 		)
 	}
@@ -142,7 +138,7 @@ func resolveFunctionRefInternal(
 		logger.Error("function returned nil result", "function", functionRef.Name(), "source", source)
 		return nil, errors.NewMessageResolutionError(
 			errors.ErrorTypeBadFunctionResult,
-			fmt.Sprintf("Function :%s did not return a MessageValue", functionRef.Name()),
+			fmt.Sprintf("function :%s did not return a MessageValue", functionRef.Name()),
 			source,
 		)
 	}
@@ -198,7 +194,7 @@ func createMessageFunctionContext(
 						if ctx.OnError != nil {
 							ctx.OnError(errors.NewMessageResolutionError(
 								errors.ErrorTypeBadOption,
-								"Unsupported value for u:dir option",
+								"unsupported value for u:dir option",
 								getValueSource(dirNode),
 							))
 						}
@@ -426,8 +422,8 @@ func (mv *messageValueWithOptions) HasBidiIsolate() bool {
 	return mv.bidiIsolate
 }
 
-// GetID returns the ID for this value
-func (mv *messageValueWithOptions) GetID() string {
+// ID returns the ID for this value.
+func (mv *messageValueWithOptions) ID() string {
 	return mv.id
 }
 
@@ -460,17 +456,17 @@ func (p *partWithOptions) Dir() bidi.Direction {
 	return p.wrapped.Dir()
 }
 
-// GetID returns the ID for this part
-func (p *partWithOptions) GetID() string {
+// ID returns the ID for this part.
+func (p *partWithOptions) ID() string {
 	return p.id
 }
 
-// GetDir returns the dir for this part
-func (p *partWithOptions) GetDir() string {
+// PartDir returns the dir for this part.
+func (p *partWithOptions) PartDir() string {
 	return p.dir
 }
 
-// GetLocale returns the locale for this part
-func (p *partWithOptions) GetLocale() string {
+// PartLocale returns the locale for this part.
+func (p *partWithOptions) PartLocale() string {
 	return p.locale
 }

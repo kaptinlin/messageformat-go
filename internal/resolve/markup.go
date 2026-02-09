@@ -58,7 +58,7 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 			// matches TypeScript: if (name === 'u:dir')
 			if name == "u:dir" {
 				// matches TypeScript: const msg = `The option ${name} is not valid for markup`;
-				msg := fmt.Sprintf("The option %s is not valid for markup", name)
+				msg := fmt.Sprintf("option %s is not valid for markup", name)
 				// matches TypeScript: const optSource = getValueSource(value);
 				var optSource string
 				if node, ok := value.(datamodel.Node); ok {

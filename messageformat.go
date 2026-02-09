@@ -4,6 +4,7 @@ package messageformat
 import (
 	"fmt"
 	"log/slog"
+	"maps"
 	"strings"
 
 	"github.com/kaptinlin/messageformat-go/internal/cst"
@@ -210,13 +211,8 @@ func New(
 		// Check if it's nil (traditional way of passing no options)
 		if options[0] == nil {
 			opts = &MessageFormatOptions{}
-		} else if structOpts, ok := options[0].(*MessageFormatOptions); ok {
-			// Traditional options struct - check if the pointer itself is nil
-			if structOpts == nil {
-				opts = &MessageFormatOptions{}
-			} else {
-				opts = structOpts
-			}
+		} else if structOpts, ok := options[0].(*MessageFormatOptions); ok && structOpts != nil {
+			opts = structOpts
 		} else if optFunc, ok := options[0].(Option); ok {
 			// Single functional option
 			opts = applyOptions(optFunc)
@@ -290,11 +286,9 @@ func New(
 	}
 
 	// Set up logger - use instance logger if provided, otherwise use global logger
-	var instanceLogger *slog.Logger
+	instanceLogger := logger.GetLogger()
 	if opts.Logger != nil {
 		instanceLogger = opts.Logger
-	} else {
-		instanceLogger = logger.GetLogger()
 	}
 
 	mf := &MessageFormat{
@@ -371,58 +365,9 @@ func (mf *MessageFormat) FormatToParts(
 	options ...interface{}, // func(error) or ...FormatOption
 ) ([]messagevalue.MessagePart, error) {
 	// Parse options - support both traditional callback and functional options
-	var onError func(error)
-
-	switch len(options) {
-	case 0:
-		// Default error handler that emits warnings (matches TypeScript behavior)
-		// TypeScript: process.emitWarning(error) or console.warn(error)
-		onError = func(err error) {
-			// Default: emit warning using logger (matches TypeScript behavior)
-			mf.logger.Warn("MessageFormat error", "error", err)
-		}
-	case 1:
-		// Check if it's nil (traditional way of passing no error handler)
-		if options[0] == nil {
-			onError = func(err error) {
-				mf.logger.Warn("MessageFormat error", "error", err)
-			}
-		} else if errorFunc, ok := options[0].(func(error)); ok {
-			// Traditional error callback
-			onError = errorFunc
-		} else if formatOpt, ok := options[0].(FormatOption); ok {
-			// Single functional option
-			formatOpts := applyFormatOptions(formatOpt)
-			if formatOpts.OnError != nil {
-				onError = formatOpts.OnError
-			} else {
-				onError = func(err error) {
-					mf.logger.Warn("MessageFormat error", "error", err)
-				}
-			}
-		} else {
-			end := 1
-			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
-		}
-	default:
-		// Multiple functional options
-		var funcOpts []FormatOption
-		for _, opt := range options {
-			if formatOpt, ok := opt.(FormatOption); ok {
-				funcOpts = append(funcOpts, formatOpt)
-			} else {
-				end := 1
-				return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
-			}
-		}
-		formatOpts := applyFormatOptions(funcOpts...)
-		if formatOpts.OnError != nil {
-			onError = formatOpts.OnError
-		} else {
-			onError = func(err error) {
-				mf.logger.Warn("MessageFormat error", "error", err)
-			}
-		}
+	onError, err := mf.parseFormatOptions(options)
+	if err != nil {
+		return nil, err
 	}
 
 	// Create resolution context with provided values
@@ -433,6 +378,50 @@ func (mf *MessageFormat) FormatToParts(
 
 	// Format the selected pattern
 	return mf.formatPattern(ctx, pattern)
+}
+
+// parseFormatOptions parses variadic format options into an error handler function.
+// Supports both traditional func(error) callback and functional FormatOption pattern.
+func (mf *MessageFormat) parseFormatOptions(options []interface{}) (func(error), error) {
+	defaultOnError := func(err error) {
+		mf.logger.Warn("MessageFormat error", "error", err)
+	}
+
+	switch len(options) {
+	case 0:
+		return defaultOnError, nil
+	case 1:
+		if options[0] == nil {
+			return defaultOnError, nil
+		}
+		if errorFunc, ok := options[0].(func(error)); ok {
+			return errorFunc, nil
+		}
+		if formatOpt, ok := options[0].(FormatOption); ok {
+			formatOpts := applyFormatOptions(formatOpt)
+			if formatOpts.OnError != nil {
+				return formatOpts.OnError, nil
+			}
+			return defaultOnError, nil
+		}
+		end := 1
+		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
+	default:
+		funcOpts := make([]FormatOption, 0, len(options))
+		for _, opt := range options {
+			formatOpt, ok := opt.(FormatOption)
+			if !ok {
+				end := 1
+				return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
+			}
+			funcOpts = append(funcOpts, formatOpt)
+		}
+		formatOpts := applyFormatOptions(funcOpts...)
+		if formatOpts.OnError != nil {
+			return formatOpts.OnError, nil
+		}
+		return defaultOnError, nil
+	}
 }
 
 // createContext creates a resolution context with the given values and error handler
@@ -592,21 +581,17 @@ func (mf *MessageFormat) shouldApplyBidiIsolation(value messagevalue.MessageValu
 		return false
 	}
 
-	// Apply isolation if:
-	// 1. Message direction is not LTR, OR
-	// 2. Value direction is not LTR, OR
-	// 3. Value has BIDI_ISOLATE flag set
-	valueDir := value.Dir()
-
-	// Check if value needs isolation based on TypeScript logic
-	needsIsolation := mf.dir != "ltr" || valueDir != bidi.DirLTR
+	// Apply isolation if message or value direction is not LTR
+	if mf.dir != "ltr" || value.Dir() != bidi.DirLTR {
+		return true
+	}
 
 	// Check for BIDI_ISOLATE flag - matches TypeScript: mv[BIDI_ISOLATE]
 	if hasIsolateFlag, ok := value.(interface{ HasBidiIsolate() bool }); ok {
-		needsIsolation = needsIsolation || hasIsolateFlag.HasBidiIsolate()
+		return hasIsolateFlag.HasBidiIsolate()
 	}
 
-	return needsIsolation
+	return false
 }
 
 // getBidiIsolationStart returns the appropriate bidi isolation start character
@@ -633,21 +618,12 @@ func (mf *MessageFormat) BidiIsolation() bool {
 	return mf.bidiIsolation
 }
 
-// addDefaultFunctions adds default and draft functions to the function map
+// addDefaultFunctions adds default and draft functions to the function map.
 // TypeScript original code:
 // this.#functions = options?.functions ? Object.assign(Object.create(null), DefaultFunctions, options.functions) : DefaultFunctions;
 func addDefaultFunctions(functionMap map[string]functions.MessageFunction) {
-	// Add default functions first
-	defaults := functions.DefaultFunctions
-	for name, fn := range defaults {
-		functionMap[name] = fn
-	}
-
-	// Add draft functions (beta functions like math, currency, etc.)
-	drafts := functions.DraftFunctions
-	for name, fn := range drafts {
-		functionMap[name] = fn
-	}
+	maps.Copy(functionMap, functions.DefaultFunctions)
+	maps.Copy(functionMap, functions.DraftFunctions)
 }
 
 // getFirstLocale returns the first locale from a list, or "en" as fallback

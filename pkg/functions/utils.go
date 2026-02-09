@@ -8,12 +8,14 @@ import (
 	"strings"
 )
 
-// Static errors to avoid dynamic error creation
-var (
-	ErrNotBoolean         = errors.New("not a boolean")
-	ErrNotPositiveInteger = errors.New("not a positive integer")
-	ErrNotString          = errors.New("not a string")
-)
+// ErrNotBoolean indicates the value cannot be converted to a boolean.
+var ErrNotBoolean = errors.New("not a boolean")
+
+// ErrNotPositiveInteger indicates the value cannot be converted to a non-negative integer.
+var ErrNotPositiveInteger = errors.New("not a positive integer")
+
+// ErrNotString indicates the value cannot be converted to a string.
+var ErrNotString = errors.New("not a string")
 
 // Pre-compiled regex for positive integer validation
 var positiveIntegerRegex = regexp.MustCompile(`^(0|[1-9][0-9]*)$`)

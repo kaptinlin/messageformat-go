@@ -32,8 +32,8 @@ func (e *MessageError) Error() string {
 	return e.Message
 }
 
-// GetType returns the error type
-func (e *MessageError) GetType() string {
+// ErrorType returns the error type classification.
+func (e *MessageError) ErrorType() string {
 	return e.Type
 }
 
@@ -97,7 +97,7 @@ type MessageSyntaxError struct {
 func NewMessageSyntaxError(errorType string, start int, end *int, expected *string) *MessageSyntaxError {
 	var message string
 	if expected != nil {
-		message = fmt.Sprintf("Missing %s", *expected)
+		message = fmt.Sprintf("missing %s", *expected)
 	} else {
 		message = errorType
 	}
@@ -330,7 +330,7 @@ const (
 func NewUnknownFunctionError(functionName, source string) *MessageResolutionError {
 	return NewMessageResolutionError(
 		ErrorTypeUnknownFunction,
-		fmt.Sprintf("Unknown function :%s", functionName),
+		fmt.Sprintf("unknown function :%s", functionName),
 		source,
 	)
 }
@@ -339,7 +339,7 @@ func NewUnknownFunctionError(functionName, source string) *MessageResolutionErro
 func NewUnresolvedVariableError(variableName, source string) *MessageResolutionError {
 	return NewMessageResolutionError(
 		ErrorTypeUnresolvedVariable,
-		fmt.Sprintf("Unresolved variable $%s", variableName),
+		fmt.Sprintf("unresolved variable $%s", variableName),
 		source,
 	)
 }

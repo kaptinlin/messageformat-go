@@ -143,7 +143,7 @@ func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) interface{} {
 
 	if value == nil {
 		source := "$" + name
-		msg := fmt.Sprintf("Variable not available: %s", source)
+		msg := fmt.Sprintf("variable not available: %s", source)
 		if ctx.OnError != nil {
 			ctx.OnError(errors.NewMessageResolutionError(
 				errors.ErrorTypeUnresolvedVariable,
@@ -200,7 +200,7 @@ func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) interface{} {
 			if ctx.OnError != nil {
 				ctx.OnError(errors.NewMessageResolutionError(
 					errors.ErrorTypeUnresolvedVariable,
-					fmt.Sprintf("Circular reference detected for variable: %s", source),
+					fmt.Sprintf("circular reference detected for variable: %s", source),
 					source,
 				))
 			}

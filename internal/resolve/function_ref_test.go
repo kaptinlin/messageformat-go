@@ -579,7 +579,7 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 			// Check if it's a resolution error with unknown-function type
 			var resErr *pkgErrors.MessageResolutionError
 			if errors.As(err, &resErr) {
-				errorType = resErr.GetType()
+				errorType = resErr.ErrorType()
 			}
 		}
 
