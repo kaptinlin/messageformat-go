@@ -397,8 +397,7 @@ func (p *Parser) parseSelect(argToken *LexerToken, inPlural bool, ctx Context, s
 		case TokenCase:
 			err := p.checkSelectKey(lt, selectType, lt.Value)
 			if err != nil {
-				var parseErr *ParseError
-				if errors.As(err, &parseErr) {
+				if parseErr, ok := errors.AsType[*ParseError](err); ok {
 					parseErr.Token = lt
 				}
 				return nil, err

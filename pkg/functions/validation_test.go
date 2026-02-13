@@ -116,7 +116,7 @@ func TestValidateOptions(t *testing.T) {
 
 	t.Run("too many options", func(t *testing.T) {
 		options := make(map[string]interface{})
-		for i := 0; i < MaxOptionsCount+1; i++ {
+		for i := range MaxOptionsCount + 1 {
 			options[string(rune('a'+i))] = i
 		}
 		err := ValidateOptions(options)
@@ -191,7 +191,7 @@ func TestIsValidOptionKeyChar(t *testing.T) {
 // Benchmark tests
 func BenchmarkValidateOptionKey(b *testing.B) {
 	key := "minimumFractionDigits"
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = ValidateOptionKey(key)
 	}
 }
@@ -203,7 +203,7 @@ func BenchmarkValidateOptions(b *testing.B) {
 		"signDisplay":           "always",
 		"useGrouping":           "auto",
 	}
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = ValidateOptions(options)
 	}
 }

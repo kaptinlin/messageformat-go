@@ -577,8 +577,7 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 		onError := func(err error) {
 			errorCalled = true
 			// Check if it's a resolution error with unknown-function type
-			var resErr *pkgErrors.MessageResolutionError
-			if errors.As(err, &resErr) {
+			if resErr, ok := errors.AsType[*pkgErrors.MessageResolutionError](err); ok {
 				errorType = resErr.ErrorType()
 			}
 		}
