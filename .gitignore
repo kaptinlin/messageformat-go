@@ -1,60 +1,71 @@
-# Embedded git repositories
-ts/docs/
-
-# Go specific
+# Binaries for programs and plugins
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+
+# Test binary, built with `go test -c`
 *.test
-*.out
-go.work
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Logs
+# Log files
 *.log
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
+# Output of the go coverage tool
+*.out
 
 # Dependency directories
-node_modules/
-vendor/
+# vendor/
 
-# Optional npm cache directory
-.npm
+# Go workspace file
+go.work
+go.work.sum
 
-# Optional eslint cache
-.eslintcache
+# IntelliJ files
+.idea/
 
-# Temporary folders
-tmp/
-temp/
+# Coverage files
+cover.out
+cover.html
 
-# Build output
+# Local binary folder
 bin/
 
-# ralphy configuration
+# Local build folder
+build/
+
+# Mac OS files
+**/.DS_Store
+
+# .ralphy
+.ralphy/deferred.json
+.ralphy/*.txt
+
+# todo files
+.todo
+TODO.md
+
+# Project-specific
+*.pid
+*.pid.lock
+*.seed
+*.swo
+*.swp
+*~
+.DS_Store
+.DS_Store?
+.Spotlight-V100
+.Trashes
+._*
+.eslintcache
+.npm
 .ralphy/
+.vscode/
+Thumbs.db
+coverage/
+ehthumbs.db
+node_modules/
+pids
+temp/
+tmp/
+ts/docs/

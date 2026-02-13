@@ -89,7 +89,7 @@ make bench
 ```
 
 ### Prerequisites
-- Go 1.25+ required 
+- Go 1.26+ required 
 - Initialize git submodules for official tests: `git submodule update --init --recursive`
 - The official test suite is located in `tests/messageformat-wg/` (git submodule)
 
@@ -553,7 +553,7 @@ A:
 #### "GitHub Actions failing"
 - Check workflow logs in `.github/workflows/`
 - Ensure cross-platform compatibility (Windows, macOS, Linux)
-- Verify Go version compatibility (Go 1.25+)
+- Verify Go version compatibility (Go 1.26+)
 
 #### "Security scan failures"
 - Review security policy in `.github/workflows/`
