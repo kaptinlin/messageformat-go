@@ -608,7 +608,7 @@ func TestAPIEdgeCases(t *testing.T) {
 	t.Run("extremely long patterns", func(t *testing.T) {
 		// Test with very long pattern
 		longPattern := "Long message: "
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			longPattern += "{$var" + fmt.Sprintf("%d", i) + "} "
 		}
 
@@ -616,7 +616,7 @@ func TestAPIEdgeCases(t *testing.T) {
 		require.NoError(t, err)
 
 		values := make(map[string]interface{})
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			values[fmt.Sprintf("var%d", i)] = fmt.Sprintf("val%d", i)
 		}
 
