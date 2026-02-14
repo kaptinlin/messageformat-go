@@ -35,7 +35,7 @@ func TestResolveVariableRef_CircularReference(t *testing.T) {
 		ctx := NewContext(
 			[]string{"en"},
 			functions.DefaultFunctions,
-			map[string]interface{}{
+			map[string]any{
 				"a": NewUnresolvedExpression(expr, nil),
 			},
 			onError,
@@ -68,7 +68,7 @@ func TestResolveVariableRef_CircularReference(t *testing.T) {
 			nil,
 		)
 
-		scope := map[string]interface{}{
+		scope := map[string]any{
 			"a": NewUnresolvedExpression(exprA, nil),
 			"b": NewUnresolvedExpression(exprB, nil),
 		}
@@ -97,7 +97,7 @@ func TestResolveVariableRef_CircularReference(t *testing.T) {
 			nil,
 		)
 
-		scope := map[string]interface{}{
+		scope := map[string]any{
 			"a": NewUnresolvedExpression(exprA, nil),
 			"b": "concrete value",
 		}
@@ -125,15 +125,15 @@ func TestResolveVariableRef_NestedPaths(t *testing.T) {
 	tests := []struct {
 		name         string
 		variablePath string
-		scope        map[string]interface{}
+		scope        map[string]any
 		expectedType string
 		expectedVal  string
 	}{
 		{
 			name:         "one level deep - a.b",
 			variablePath: "a.b",
-			scope: map[string]interface{}{
-				"a": map[string]interface{}{
+			scope: map[string]any{
+				"a": map[string]any{
 					"b": "value",
 				},
 			},
@@ -143,9 +143,9 @@ func TestResolveVariableRef_NestedPaths(t *testing.T) {
 		{
 			name:         "two levels deep - a.b.c",
 			variablePath: "a.b.c",
-			scope: map[string]interface{}{
-				"a": map[string]interface{}{
-					"b": map[string]interface{}{
+			scope: map[string]any{
+				"a": map[string]any{
+					"b": map[string]any{
 						"c": 42,
 					},
 				},
@@ -156,9 +156,9 @@ func TestResolveVariableRef_NestedPaths(t *testing.T) {
 		{
 			name:         "three levels deep - user.profile.name",
 			variablePath: "user.profile.name",
-			scope: map[string]interface{}{
-				"user": map[string]interface{}{
-					"profile": map[string]interface{}{
+			scope: map[string]any{
+				"user": map[string]any{
+					"profile": map[string]any{
 						"name": "Alice",
 					},
 				},
@@ -169,9 +169,9 @@ func TestResolveVariableRef_NestedPaths(t *testing.T) {
 		{
 			name:         "partial path exists as key - user.name when 'user.name' key exists",
 			variablePath: "user.name",
-			scope: map[string]interface{}{
+			scope: map[string]any{
 				"user.name": "direct",
-				"user": map[string]interface{}{
+				"user": map[string]any{
 					"name": "nested",
 				},
 			},
@@ -181,8 +181,8 @@ func TestResolveVariableRef_NestedPaths(t *testing.T) {
 		{
 			name:         "missing nested path",
 			variablePath: "a.b.c",
-			scope: map[string]interface{}{
-				"a": map[string]interface{}{
+			scope: map[string]any{
+				"a": map[string]any{
 					"x": "value",
 				},
 			},
@@ -192,8 +192,8 @@ func TestResolveVariableRef_NestedPaths(t *testing.T) {
 		{
 			name:         "path with numeric value at intermediate level",
 			variablePath: "a.b.c",
-			scope: map[string]interface{}{
-				"a": map[string]interface{}{
+			scope: map[string]any{
+				"a": map[string]any{
 					"b": 42, // b is a number, not an object
 				},
 			},
@@ -243,7 +243,7 @@ func TestResolveVariableRef_MissingVariables(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
 		functions.DefaultFunctions,
-		map[string]interface{}{},
+		map[string]any{},
 		onError,
 	)
 
@@ -269,7 +269,7 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 		ctx := NewContext(
 			[]string{"en"},
 			functions.DefaultFunctions,
-			map[string]interface{}{
+			map[string]any{
 				"x": NewUnresolvedExpression(expr, nil),
 			},
 			nil,
@@ -293,14 +293,14 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 			nil,
 		)
 
-		customScope := map[string]interface{}{
+		customScope := map[string]any{
 			"y": "scoped value",
 		}
 
 		ctx := NewContext(
 			[]string{"en"},
 			functions.DefaultFunctions,
-			map[string]interface{}{
+			map[string]any{
 				"x": NewUnresolvedExpression(expr, customScope),
 				"y": "outer value", // This should be ignored
 			},
@@ -332,14 +332,14 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 			nil,
 		)
 
-		scopeWithParam := map[string]interface{}{
+		scopeWithParam := map[string]any{
 			"param": "original value",
 		}
 
 		ctx := NewContext(
 			[]string{"en"},
 			functions.DefaultFunctions,
-			map[string]interface{}{
+			map[string]any{
 				"local": NewUnresolvedExpression(expr, scopeWithParam),
 			},
 			nil,
@@ -357,9 +357,9 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 func TestGetValue_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name     string
-		scope    interface{}
+		scope    any
 		varName  string
-		expected interface{}
+		expected any
 	}{
 		{
 			name:     "nil scope",
@@ -381,13 +381,13 @@ func TestGetValue_EdgeCases(t *testing.T) {
 		},
 		{
 			name:     "empty map",
-			scope:    map[string]interface{}{},
+			scope:    map[string]any{},
 			varName:  "test",
 			expected: nil,
 		},
 		{
 			name: "map[interface{}]interface{}",
-			scope: map[interface{}]interface{}{
+			scope: map[any]any{
 				"key": "value",
 			},
 			varName:  "key",
@@ -395,7 +395,7 @@ func TestGetValue_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "dotted key with no match",
-			scope: map[string]interface{}{
+			scope: map[string]any{
 				"a": "value",
 			},
 			varName:  "a.b.c",
@@ -403,7 +403,7 @@ func TestGetValue_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "dotted key with partial match only",
-			scope: map[string]interface{}{
+			scope: map[string]any{
 				"a.b": "partial",
 			},
 			varName:  "a.b.c",
@@ -411,8 +411,8 @@ func TestGetValue_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "complex nested path resolution",
-			scope: map[string]interface{}{
-				"a.b": map[string]interface{}{
+			scope: map[string]any{
+				"a.b": map[string]any{
 					"c": "found",
 				},
 			},
@@ -433,12 +433,12 @@ func TestGetValue_EdgeCases(t *testing.T) {
 func TestIsScope_AllTypes(t *testing.T) {
 	tests := []struct {
 		name     string
-		value    interface{}
+		value    any
 		expected bool
 	}{
 		// Valid scopes
-		{name: "map[string]interface{}", value: map[string]interface{}{}, expected: true},
-		{name: "map[interface{}]interface{}", value: map[interface{}]interface{}{}, expected: true},
+		{name: "map[string]interface{}", value: map[string]any{}, expected: true},
+		{name: "map[interface{}]interface{}", value: map[any]any{}, expected: true},
 		{name: "struct", value: struct{}{}, expected: true},
 		{name: "pointer to struct", value: &struct{}{}, expected: true},
 		{name: "function", value: func() {}, expected: true},
@@ -465,7 +465,7 @@ func TestIsScope_AllTypes(t *testing.T) {
 func TestGetValueType(t *testing.T) {
 	tests := []struct {
 		name     string
-		value    interface{}
+		value    any
 		expected string
 	}{
 		{name: "nil", value: nil, expected: "undefined"},
@@ -474,8 +474,8 @@ func TestGetValueType(t *testing.T) {
 		{name: "int64", value: int64(42), expected: "number"},
 		{name: "float64", value: 3.14, expected: "number"},
 		{name: "string", value: "test", expected: "string"},
-		{name: "function", value: func(...interface{}) interface{} { return nil }, expected: "function"},
-		{name: "map", value: map[string]interface{}{}, expected: "object"},
+		{name: "function", value: func(...any) any { return nil }, expected: "function"},
+		{name: "map", value: map[string]any{}, expected: "object"},
 		{name: "struct", value: struct{}{}, expected: "object"},
 		{name: "slice", value: []string{}, expected: "object"},
 	}
@@ -495,7 +495,7 @@ func TestResolveVariableRef_PointerTypes(t *testing.T) {
 		ctx := NewContext(
 			[]string{"en"},
 			functions.DefaultFunctions,
-			map[string]interface{}{
+			map[string]any{
 				"val": &value,
 			},
 			nil,
@@ -515,7 +515,7 @@ func TestResolveVariableRef_PointerTypes(t *testing.T) {
 		ctx := NewContext(
 			[]string{"en"},
 			functions.DefaultFunctions,
-			map[string]interface{}{
+			map[string]any{
 				"val": &value,
 			},
 			nil,
@@ -540,7 +540,7 @@ func TestResolveVariableRef_LocalVarsTracking(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
 		functions.DefaultFunctions,
-		map[string]interface{}{
+		map[string]any{
 			"local": NewUnresolvedExpression(expr, nil),
 		},
 		nil,
@@ -567,7 +567,7 @@ func TestResolveVariableRef_FallbackType(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
 		functions.DefaultFunctions,
-		map[string]interface{}{
+		map[string]any{
 			"val": fallbackValue,
 		},
 		nil,
@@ -586,7 +586,7 @@ func TestResolveVariableRef_NoErrorHandler(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
 		functions.DefaultFunctions,
-		map[string]interface{}{},
+		map[string]any{},
 		nil, // No error handler
 	)
 
@@ -613,7 +613,7 @@ func TestResolveVariableRef_ComplexObject(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
 		functions.DefaultFunctions,
-		map[string]interface{}{
+		map[string]any{
 			"obj": customObj,
 		},
 		nil,

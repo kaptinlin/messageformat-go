@@ -188,15 +188,16 @@ func stringifyExpression(expr *Expression) string {
 //	  return res;
 //	}
 func stringifyFunctionRef(fr *FunctionRef) string {
-	result := ":" + fr.Name()
+	var result strings.Builder
+	result.WriteString(":" + fr.Name())
 
 	if fr.Options() != nil {
 		for name, value := range fr.Options() {
-			result += " " + stringifyOption(name, value)
+			result.WriteString(" " + stringifyOption(name, value))
 		}
 	}
 
-	return result
+	return result.String()
 }
 
 // stringifyMarkup converts a markup element to its string representation
@@ -296,7 +297,7 @@ func stringifyVariableRef(vr *VariableRef) string {
 //	    : stringifyLiteral(value);
 //	  return `${name}=${valueStr}`;
 //	}
-func stringifyOption(name string, value interface{}) string {
+func stringifyOption(name string, value any) string {
 	var valueStr string
 
 	switch {
@@ -317,7 +318,7 @@ func stringifyOption(name string, value interface{}) string {
 //	function stringifyAttribute(name: string, value: true | Literal) {
 //	  return value === true ? `@${name}` : `@${name}=${stringifyLiteral(value)}`;
 //	}
-func stringifyAttribute(name string, value interface{}) string {
+func stringifyAttribute(name string, value any) string {
 	switch {
 	case value == true:
 		return "@" + name

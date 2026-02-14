@@ -76,7 +76,7 @@ func TestNumberValue(t *testing.T) {
 func TestNumberValueTypes(t *testing.T) {
 	tests := []struct {
 		name     string
-		value    interface{}
+		value    any
 		expected string
 	}{
 		{"int", 42, "42"},
@@ -98,7 +98,7 @@ func TestNumberValueTypes(t *testing.T) {
 func TestNumberValueSelectKeys(t *testing.T) {
 	tests := []struct {
 		name     string
-		value    interface{}
+		value    any
 		keys     []string
 		expected []string
 	}{
@@ -172,7 +172,7 @@ func TestBidiIsolationPart(t *testing.T) {
 }
 
 func TestMarkupPart(t *testing.T) {
-	options := map[string]interface{}{"class": "bold"}
+	options := map[string]any{"class": "bold"}
 	mp := NewMarkupPart("open", "b", "<b>", options)
 
 	assert.Equal(t, "markup", mp.Type())

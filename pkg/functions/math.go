@@ -2,6 +2,7 @@ package functions
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
@@ -42,8 +43,8 @@ import (
 //	}
 func MathFunction(
 	ctx MessageFunctionContext,
-	options map[string]interface{},
-	operand interface{},
+	options map[string]any,
+	operand any,
 ) messagevalue.MessageValue {
 	source := ctx.Source()
 
@@ -96,7 +97,7 @@ func MathFunction(
 	}
 
 	// Apply delta to value
-	var newValue interface{}
+	var newValue any
 	switch v := value.(type) {
 	case int:
 		newValue = v + delta
@@ -118,17 +119,15 @@ func MathFunction(
 
 	// Delegate to number function with the new value and merged options
 	// Merge the original operand options with any new options
-	mergedOptions := make(map[string]interface{})
-	for k, v := range operandOptions {
-		mergedOptions[k] = v
-	}
+	mergedOptions := make(map[string]any)
+	maps.Copy(mergedOptions, operandOptions)
 
 	// Delegate to number function with the new value
 	return NumberFunction(ctx, mergedOptions, newValue)
 }
 
 // convertToFloat64 attempts to convert various numeric types to float64
-func convertToFloat64(value interface{}) (float64, bool) {
+func convertToFloat64(value any) (float64, bool) {
 	switch v := value.(type) {
 	case int:
 		return float64(v), true

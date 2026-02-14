@@ -20,7 +20,7 @@ func TestPatternMatching(t *testing.T) {
 	tests := []struct {
 		name     string
 		message  string
-		values   map[string]interface{}
+		values   map[string]any
 		expected string
 	}{
 		{
@@ -30,7 +30,7 @@ func TestPatternMatching(t *testing.T) {
 0   {{You have no new notifications}}
 one {{You have {$count} new notification}}
 *   {{You have {$count} new notifications}}`,
-			values:   map[string]interface{}{"count": 0},
+			values:   map[string]any{"count": 0},
 			expected: "You have no new notifications",
 		},
 		{
@@ -40,7 +40,7 @@ one {{You have {$count} new notification}}
 0   {{You have no new notifications}}
 one {{You have {$count} new notification}}
 *   {{You have {$count} new notifications}}`,
-			values:   map[string]interface{}{"count": 1},
+			values:   map[string]any{"count": 1},
 			expected: "You have 1 new notification",
 		},
 		{
@@ -50,7 +50,7 @@ one {{You have {$count} new notification}}
 0   {{You have no new notifications}}
 one {{You have {$count} new notification}}
 *   {{You have {$count} new notifications}}`,
-			values:   map[string]interface{}{"count": 5},
+			values:   map[string]any{"count": 5},
 			expected: "You have 5 new notifications",
 		},
 	}
@@ -72,21 +72,21 @@ func TestInputDeclarations(t *testing.T) {
 	tests := []struct {
 		name     string
 		message  string
-		values   map[string]interface{}
+		values   map[string]any
 		expected string
 	}{
 		{
 			name: "currency_input",
 			message: `.input {$amount :number style=currency currency=EUR}
 {{Your balance is {$amount}}}`,
-			values:   map[string]interface{}{"amount": 42.50},
+			values:   map[string]any{"amount": 42.50},
 			expected: "Your balance is €42.50",
 		},
 		{
 			name: "decimal_input",
 			message: `.input {$price :number style=decimal}
 {{Price: {$price}}}`,
-			values:   map[string]interface{}{"price": 123.456},
+			values:   map[string]any{"price": 123.456},
 			expected: "Price: 123.456",
 		},
 	}
@@ -108,7 +108,7 @@ func TestLocalVariables(t *testing.T) {
 	tests := []struct {
 		name     string
 		message  string
-		values   map[string]interface{}
+		values   map[string]any
 		expected string
 	}{
 		{
@@ -118,7 +118,7 @@ func TestLocalVariables(t *testing.T) {
 .local $tax = {$taxRate :number style=percent}
 .local $total = {$price :number style=currency currency=USD}
 {{Item: {$total} (includes {$tax} tax)}}`,
-			values: map[string]interface{}{
+			values: map[string]any{
 				"price":   100.0,
 				"taxRate": 0.15,
 			},
@@ -130,7 +130,7 @@ func TestLocalVariables(t *testing.T) {
 .local $doubled = {$base :number}
 .local $tripled = {$base :number}
 {{Base: {$base}, Doubled: {$doubled}, Tripled: {$tripled}}}`,
-			values:   map[string]interface{}{"base": 10},
+			values:   map[string]any{"base": 10},
 			expected: "Base: 10, Doubled: 10, Tripled: 10",
 		},
 	}
@@ -170,7 +170,7 @@ func TestCurrencyFormatting(t *testing.T) {
 			mf, err := messageformat.New(tc.locale, message, nil)
 			require.NoError(t, err)
 
-			result, err := mf.Format(map[string]interface{}{"amount": tc.amount})
+			result, err := mf.Format(map[string]any{"amount": tc.amount})
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -200,7 +200,7 @@ func TestPercentageFormatting(t *testing.T) {
 			mf, err := messageformat.New("en", message, nil)
 			require.NoError(t, err)
 
-			result, err := mf.Format(map[string]interface{}{"rate": tc.value})
+			result, err := mf.Format(map[string]any{"rate": tc.value})
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -229,7 +229,7 @@ one {{You have {$count} item.}}
 			mf, err := messageformat.New("en", message, nil)
 			require.NoError(t, err)
 
-			result, err := mf.Format(map[string]interface{}{"count": tc.count})
+			result, err := mf.Format(map[string]any{"count": tc.count})
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -265,7 +265,7 @@ one {{plural one}}
 		mf, err := messageformat.New("en", priorityMessage, nil)
 		require.NoError(t, err)
 
-		result, err := mf.Format(map[string]interface{}{"count": 1})
+		result, err := mf.Format(map[string]any{"count": 1})
 		require.NoError(t, err)
 		assert.Equal(t, "exactly one", result, "exact match should have priority over plural category")
 	})
@@ -275,7 +275,7 @@ one {{plural one}}
 			mf, err := messageformat.New("en", message, nil)
 			require.NoError(t, err)
 
-			result, err := mf.Format(map[string]interface{}{"count": tc.count})
+			result, err := mf.Format(map[string]any{"count": tc.count})
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -318,7 +318,7 @@ user      {{👤 User}}
 			mf, err := messageformat.New("en", tc.message, nil)
 			require.NoError(t, err)
 
-			result, err := mf.Format(map[string]interface{}{tc.key: tc.value})
+			result, err := mf.Format(map[string]any{tc.key: tc.value})
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -333,8 +333,8 @@ func TestCustomFunctions(t *testing.T) {
 	createUppercaseFunc := func() functions.MessageFunction {
 		return func(
 			ctx functions.MessageFunctionContext,
-			options map[string]interface{},
-			input interface{},
+			options map[string]any,
+			input any,
 		) messagevalue.MessageValue {
 			inputStr := fmt.Sprintf("%v", input)
 			upperStr := strings.ToUpper(inputStr)
@@ -350,8 +350,8 @@ func TestCustomFunctions(t *testing.T) {
 	createReverseFunc := func() functions.MessageFunction {
 		return func(
 			ctx functions.MessageFunctionContext,
-			options map[string]interface{},
-			input interface{},
+			options map[string]any,
+			input any,
 		) messagevalue.MessageValue {
 			inputStr := fmt.Sprintf("%v", input)
 			runes := []rune(inputStr)
@@ -370,14 +370,14 @@ func TestCustomFunctions(t *testing.T) {
 	tests := []struct {
 		name      string
 		message   string
-		values    map[string]interface{}
+		values    map[string]any
 		functions map[string]functions.MessageFunction
 		expected  string
 	}{
 		{
 			name:    "uppercase_function",
 			message: "Hello {$name :uppercase}!",
-			values:  map[string]interface{}{"name": "world"},
+			values:  map[string]any{"name": "world"},
 			functions: map[string]functions.MessageFunction{
 				"uppercase": createUppercaseFunc(),
 			},
@@ -386,7 +386,7 @@ func TestCustomFunctions(t *testing.T) {
 		{
 			name:    "reverse_function",
 			message: "Reversed: {$text :reverse}",
-			values:  map[string]interface{}{"text": "hello"},
+			values:  map[string]any{"text": "hello"},
 			functions: map[string]functions.MessageFunction{
 				"reverse": createReverseFunc(),
 			},
@@ -395,7 +395,7 @@ func TestCustomFunctions(t *testing.T) {
 		{
 			name:    "multiple_functions",
 			message: "Name: {$first :uppercase} {$last :reverse}",
-			values:  map[string]interface{}{"first": "john", "last": "doe"},
+			values:  map[string]any{"first": "john", "last": "doe"},
 			functions: map[string]functions.MessageFunction{
 				"uppercase": createUppercaseFunc(),
 				"reverse":   createReverseFunc(),
@@ -424,7 +424,7 @@ func TestEscapeSequences(t *testing.T) {
 	tests := []struct {
 		name     string
 		message  string
-		values   map[string]interface{}
+		values   map[string]any
 		expected string
 	}{
 		{
@@ -448,7 +448,7 @@ func TestEscapeSequences(t *testing.T) {
 		{
 			name:     "escaped_with_variable",
 			message:  "Object: {{ key: {$key} }}",
-			values:   map[string]interface{}{"key": "name"},
+			values:   map[string]any{"key": "name"},
 			expected: "Object: { key: name }",
 		},
 	}
@@ -636,7 +636,7 @@ func TestErrorHandling(t *testing.T) {
 	tests := []struct {
 		name           string
 		message        string
-		values         map[string]interface{}
+		values         map[string]any
 		expectedResult string
 		expectError    bool
 		errorCallback  bool
@@ -644,7 +644,7 @@ func TestErrorHandling(t *testing.T) {
 		{
 			name:           "missing_variable_fallback",
 			message:        "Hello {$missing}!",
-			values:         map[string]interface{}{},
+			values:         map[string]any{},
 			expectedResult: "Hello {$missing}!",
 			expectError:    false,
 			errorCallback:  false,
@@ -652,7 +652,7 @@ func TestErrorHandling(t *testing.T) {
 		{
 			name:           "unknown_function_fallback",
 			message:        "Value: {$value :unknown}",
-			values:         map[string]interface{}{"value": "test"},
+			values:         map[string]any{"value": "test"},
 			expectedResult: "Value: {$value}",
 			expectError:    false,
 			errorCallback:  false,
@@ -660,7 +660,7 @@ func TestErrorHandling(t *testing.T) {
 		{
 			name:           "normal_case",
 			message:        "Hello {$name}!",
-			values:         map[string]interface{}{"name": "World"},
+			values:         map[string]any{"name": "World"},
 			expectedResult: "Hello World!",
 			expectError:    false,
 			errorCallback:  false,
@@ -707,7 +707,7 @@ func TestErrorHandling(t *testing.T) {
 		mf, err := messageformat.New("en", "Hello {$name}!", nil)
 		require.NoError(t, err)
 
-		result, err := mf.Format(map[string]interface{}{"name": "World"}, onError)
+		result, err := mf.Format(map[string]any{"name": "World"}, onError)
 		require.NoError(t, err)
 		assert.Equal(t, "Hello World!", result)
 		assert.Empty(t, errors, "no errors should be captured for valid formatting")
@@ -719,7 +719,7 @@ func TestMessageDataInterface(t *testing.T) {
 	tests := []struct {
 		name     string
 		message  datamodel.Message
-		values   map[string]interface{}
+		values   map[string]any
 		expected string
 	}{
 		{
@@ -794,7 +794,7 @@ func TestBidirectionalTextSupport(t *testing.T) {
 		locale          string
 		message         string
 		options         *messageformat.MessageFormatOptions
-		values          map[string]interface{}
+		values          map[string]any
 		expectedDir     messageformat.Direction
 		expectedBidi    messageformat.BidiIsolation
 		containsIsolate bool
@@ -804,7 +804,7 @@ func TestBidirectionalTextSupport(t *testing.T) {
 			locale:          "ar",
 			message:         "مرحبا {$name}!",
 			options:         nil,
-			values:          map[string]interface{}{"name": "أحمد"},
+			values:          map[string]any{"name": "أحمد"},
 			expectedDir:     messageformat.DirRTL,
 			expectedBidi:    messageformat.BidiDefault, // Auto-enabled for RTL locales to match TypeScript reference
 			containsIsolate: true,                      // Isolation auto-enabled for RTL locales
@@ -816,7 +816,7 @@ func TestBidirectionalTextSupport(t *testing.T) {
 			options: &messageformat.MessageFormatOptions{
 				BidiIsolation: messageformat.BidiDefault,
 			},
-			values:          map[string]interface{}{"name": "דוד"},
+			values:          map[string]any{"name": "דוד"},
 			expectedDir:     messageformat.DirRTL,
 			expectedBidi:    messageformat.BidiDefault,
 			containsIsolate: true,
@@ -829,7 +829,7 @@ func TestBidirectionalTextSupport(t *testing.T) {
 				Dir:           messageformat.DirRTL,
 				BidiIsolation: messageformat.BidiDefault,
 			},
-			values:          map[string]interface{}{"name": "World"},
+			values:          map[string]any{"name": "World"},
 			expectedDir:     messageformat.DirRTL,
 			expectedBidi:    messageformat.BidiDefault,
 			containsIsolate: true,
@@ -841,7 +841,7 @@ func TestBidirectionalTextSupport(t *testing.T) {
 			options: &messageformat.MessageFormatOptions{
 				BidiIsolation: messageformat.BidiNone,
 			},
-			values:          map[string]interface{}{"name": "أحمد"},
+			values:          map[string]any{"name": "أحمد"},
 			expectedDir:     messageformat.DirRTL,
 			expectedBidi:    messageformat.BidiNone,
 			containsIsolate: false,
@@ -853,7 +853,7 @@ func TestBidirectionalTextSupport(t *testing.T) {
 			options: &messageformat.MessageFormatOptions{
 				BidiIsolation: messageformat.BidiDefault,
 			},
-			values: map[string]interface{}{
+			values: map[string]any{
 				"email": "user@example.com",
 				"name":  "أحمد",
 			},
@@ -895,10 +895,10 @@ func TestBidirectionalTextSupport(t *testing.T) {
 func TestLocaleNegotiation(t *testing.T) {
 	tests := []struct {
 		name          string
-		locales       interface{}
+		locales       any
 		message       string
 		options       *messageformat.MessageFormatOptions
-		values        map[string]interface{}
+		values        map[string]any
 		expectedDir   messageformat.Direction
 		expectedMatch messageformat.LocaleMatcher
 	}{
@@ -909,7 +909,7 @@ func TestLocaleNegotiation(t *testing.T) {
 			options: &messageformat.MessageFormatOptions{
 				LocaleMatcher: messageformat.LocaleBestFit,
 			},
-			values:        map[string]interface{}{"name": "World"},
+			values:        map[string]any{"name": "World"},
 			expectedDir:   messageformat.DirLTR,
 			expectedMatch: messageformat.LocaleBestFit,
 		},
@@ -920,7 +920,7 @@ func TestLocaleNegotiation(t *testing.T) {
 			options: &messageformat.MessageFormatOptions{
 				LocaleMatcher: messageformat.LocaleLookup,
 			},
-			values:        map[string]interface{}{"name": "世界"},
+			values:        map[string]any{"name": "世界"},
 			expectedDir:   messageformat.DirLTR,
 			expectedMatch: messageformat.LocaleLookup,
 		},
@@ -931,7 +931,7 @@ func TestLocaleNegotiation(t *testing.T) {
 			options: &messageformat.MessageFormatOptions{
 				LocaleMatcher: messageformat.LocaleBestFit,
 			},
-			values:        map[string]interface{}{"name": "أحمد"},
+			values:        map[string]any{"name": "أحمد"},
 			expectedDir:   messageformat.DirRTL,
 			expectedMatch: messageformat.LocaleBestFit,
 		},
@@ -943,7 +943,7 @@ func TestLocaleNegotiation(t *testing.T) {
 				Dir:           messageformat.DirRTL,
 				LocaleMatcher: messageformat.LocaleLookup,
 			},
-			values:        map[string]interface{}{"name": "World"},
+			values:        map[string]any{"name": "World"},
 			expectedDir:   messageformat.DirRTL,
 			expectedMatch: messageformat.LocaleLookup,
 		},
@@ -975,19 +975,19 @@ func TestFormatToParts(t *testing.T) {
 	tests := []struct {
 		name     string
 		message  string
-		values   map[string]interface{}
+		values   map[string]any
 		expected int // Expected number of parts
 	}{
 		{
 			name:     "simple_message_with_variable",
 			message:  "Hello {$name}!",
-			values:   map[string]interface{}{"name": "World"},
+			values:   map[string]any{"name": "World"},
 			expected: 3, // Changed: "Hello ", "World", "!" (no bidi isolation by default)
 		},
 		{
 			name:     "currency_formatting",
 			message:  "Price: {$amount :number style=currency currency=USD}",
-			values:   map[string]interface{}{"amount": 42.50},
+			values:   map[string]any{"amount": 42.50},
 			expected: 2, // "Price: ", "$42.50"
 		},
 		{
@@ -1041,7 +1041,7 @@ func TestEdgeCases(t *testing.T) {
 	tests := []struct {
 		name        string
 		message     string
-		values      map[string]interface{}
+		values      map[string]any
 		expected    string
 		shouldError bool
 	}{
@@ -1055,7 +1055,7 @@ func TestEdgeCases(t *testing.T) {
 		{
 			name:        "missing_variable_fallback",
 			message:     "Hello {$missing}!",
-			values:      map[string]interface{}{},
+			values:      map[string]any{},
 			expected:    "Hello {$missing}!",
 			shouldError: false,
 		},
@@ -1090,35 +1090,35 @@ func TestEdgeCases(t *testing.T) {
 		{
 			name:        "null_value",
 			message:     "Value: {$value}",
-			values:      map[string]interface{}{"value": nil},
+			values:      map[string]any{"value": nil},
 			expected:    "Value: {$value}",
 			shouldError: false,
 		},
 		{
 			name:        "zero_value",
 			message:     "Count: {$count}",
-			values:      map[string]interface{}{"count": 0},
+			values:      map[string]any{"count": 0},
 			expected:    "Count: 0",
 			shouldError: false,
 		},
 		{
 			name:        "empty_string",
 			message:     "Text: {$text}",
-			values:      map[string]interface{}{"text": ""},
+			values:      map[string]any{"text": ""},
 			expected:    "Text: ",
 			shouldError: false,
 		},
 		{
 			name:        "boolean_false",
 			message:     "Flag: {$flag}",
-			values:      map[string]interface{}{"flag": false},
+			values:      map[string]any{"flag": false},
 			expected:    "Flag: false",
 			shouldError: false,
 		},
 		{
 			name:        "boolean_true",
 			message:     "Flag: {$flag}",
-			values:      map[string]interface{}{"flag": true},
+			values:      map[string]any{"flag": true},
 			expected:    "Flag: true",
 			shouldError: false,
 		},
@@ -1132,7 +1132,7 @@ func TestEdgeCases(t *testing.T) {
 		{
 			name:        "multiple_variables",
 			message:     "{$a} {$b} {$c}",
-			values:      map[string]interface{}{"a": "A", "b": "B", "c": "C"},
+			values:      map[string]any{"a": "A", "b": "B", "c": "C"},
 			expected:    "A B C",
 			shouldError: false,
 		},
@@ -1170,10 +1170,10 @@ func TestConcurrentAccess(t *testing.T) {
 
 	results := make(chan string, numGoroutines*numIterations)
 
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(id int) {
-			for j := 0; j < numIterations; j++ {
-				result, err := mf.Format(map[string]interface{}{
+			for j := range numIterations {
+				result, err := mf.Format(map[string]any{
 					"name": fmt.Sprintf("User%d-%d", id, j),
 				})
 				if err == nil {
@@ -1185,7 +1185,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 	// Collect results
 	var collectedResults []string
-	for i := 0; i < numGoroutines*numIterations; i++ {
+	for range numGoroutines * numIterations {
 		result := <-results
 		collectedResults = append(collectedResults, result)
 	}
@@ -1206,8 +1206,8 @@ func TestComplexScenarios(t *testing.T) {
 	createUppercaseFunc := func() functions.MessageFunction {
 		return func(
 			ctx functions.MessageFunctionContext,
-			options map[string]interface{},
-			input interface{},
+			options map[string]any,
+			input any,
 		) messagevalue.MessageValue {
 			inputStr := fmt.Sprintf("%v", input)
 			upperStr := strings.ToUpper(inputStr)
@@ -1222,8 +1222,8 @@ func TestComplexScenarios(t *testing.T) {
 	createReverseFunc := func() functions.MessageFunction {
 		return func(
 			ctx functions.MessageFunctionContext,
-			options map[string]interface{},
-			input interface{},
+			options map[string]any,
+			input any,
 		) messagevalue.MessageValue {
 			inputStr := fmt.Sprintf("%v", input)
 			runes := []rune(inputStr)
@@ -1242,7 +1242,7 @@ func TestComplexScenarios(t *testing.T) {
 	tests := []struct {
 		name      string
 		message   string
-		values    map[string]interface{}
+		values    map[string]any
 		expected  string
 		functions map[string]functions.MessageFunction
 	}{
@@ -1253,25 +1253,25 @@ func TestComplexScenarios(t *testing.T) {
 0        {{No items found}}
 1        {{Found one item}}
 *        {{Found {$count} items}}`,
-			values:   map[string]interface{}{"count": 5},
+			values:   map[string]any{"count": 5},
 			expected: "Found 5 items",
 		},
 		{
 			name:     "currency_with_markup",
 			message:  "Price: {#b}{$amount :number style=currency currency=USD}{/b}",
-			values:   map[string]interface{}{"amount": 99.99},
+			values:   map[string]any{"amount": 99.99},
 			expected: "Price: $99.99",
 		},
 		{
 			name:     "multiple_currencies",
 			message:  "USD: {$usd :number style=currency currency=USD}, EUR: {$eur :number style=currency currency=EUR}",
-			values:   map[string]interface{}{"usd": 100.50, "eur": 85.75},
+			values:   map[string]any{"usd": 100.50, "eur": 85.75},
 			expected: "USD: $100.50, EUR: €85.75",
 		},
 		{
 			name:     "percentage_with_custom_function",
 			message:  "Progress: {$rate :number style=percent} - Status: {$status :uppercase}",
-			values:   map[string]interface{}{"rate": 0.75, "status": "completed"},
+			values:   map[string]any{"rate": 0.75, "status": "completed"},
 			expected: "Progress: 75% - Status: COMPLETED",
 			functions: map[string]functions.MessageFunction{
 				"uppercase": createUppercaseFunc(),
@@ -1280,31 +1280,31 @@ func TestComplexScenarios(t *testing.T) {
 		{
 			name:     "nested_markup_with_variables",
 			message:  "Welcome {#strong}{$name}{/strong}! You have {#em}{$count :number}{/em} new messages.",
-			values:   map[string]interface{}{"name": "Alice", "count": 5},
+			values:   map[string]any{"name": "Alice", "count": 5},
 			expected: "Welcome Alice! You have 5 new messages.",
 		},
 		{
 			name:     "mixed_content_with_formatToParts",
 			message:  "Order #{$id}: {$amount :number style=currency currency=USD} for {$items :number} items",
-			values:   map[string]interface{}{"id": "12345", "amount": 299.99, "items": 3},
+			values:   map[string]any{"id": "12345", "amount": 299.99, "items": 3},
 			expected: "Order #12345: $299.99 for 3 items",
 		},
 		{
 			name:     "escape_sequences_with_variables",
 			message:  "Config: {{ \"key\": \"{$value}\" }}",
-			values:   map[string]interface{}{"value": "test"},
+			values:   map[string]any{"value": "test"},
 			expected: "Config: { \"key\": \"test\" }",
 		},
 		{
 			name:     "complex_number_formatting",
 			message:  "Stats: {$big :number}, {$decimal :number}, {$percent :number style=percent}",
-			values:   map[string]interface{}{"big": 1234567, "decimal": 123.456, "percent": 0.85},
+			values:   map[string]any{"big": 1234567, "decimal": 123.456, "percent": 0.85},
 			expected: "Stats: 1,234,567, 123.456, 85%",
 		},
 		{
 			name:     "multiple_custom_functions",
 			message:  "Name: {$first :uppercase} {$last :reverse}, Email: {$email}",
-			values:   map[string]interface{}{"first": "john", "last": "doe", "email": "john@example.com"},
+			values:   map[string]any{"first": "john", "last": "doe", "email": "john@example.com"},
 			expected: "Name: JOHN eod, Email: john@example.com",
 			functions: map[string]functions.MessageFunction{
 				"uppercase": createUppercaseFunc(),

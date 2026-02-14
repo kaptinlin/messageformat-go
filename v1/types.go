@@ -224,6 +224,8 @@ const (
 //	    ReturnType: Ptr(ReturnTypeValues),
 //	    Strict:     Ptr(true),
 //	}
+//
+//go:fix inline
 func Ptr[T any](v T) *T {
-	return &v
+	return new(v)
 }

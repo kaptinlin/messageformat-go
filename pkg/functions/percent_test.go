@@ -71,7 +71,7 @@ func TestPercentSelectionMultiplies(t *testing.T) {
 			)
 
 			// Create percent value
-			options := make(map[string]interface{})
+			options := make(map[string]any)
 			nv := PercentFunction(ctx, options, tt.value)
 
 			// Verify it's a number value
@@ -109,7 +109,7 @@ func TestPercentResolvedValueNotMultiplied(t *testing.T) {
 	)
 
 	value := 0.5
-	options := make(map[string]interface{})
+	options := make(map[string]any)
 	nv := PercentFunction(ctx, options, value)
 
 	// Get the resolved value
@@ -138,7 +138,7 @@ func TestCurrencyCannotSelect(t *testing.T) {
 	)
 
 	value := 42.0
-	options := map[string]interface{}{
+	options := map[string]any{
 		"currency": "USD",
 	}
 	nv := CurrencyFunction(ctx, options, value)

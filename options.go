@@ -3,6 +3,7 @@ package messageformat
 
 import (
 	"log/slog"
+	"maps"
 
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 )
@@ -110,9 +111,7 @@ func WithFunctions(funcs map[string]functions.MessageFunction) Option {
 		if opts.Functions == nil {
 			opts.Functions = make(map[string]functions.MessageFunction)
 		}
-		for name, fn := range funcs {
-			opts.Functions[name] = fn
-		}
+		maps.Copy(opts.Functions, funcs)
 	}
 }
 

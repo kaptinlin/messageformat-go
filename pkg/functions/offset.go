@@ -48,8 +48,8 @@ import (
 //	}
 func OffsetFunction(
 	ctx MessageFunctionContext,
-	options map[string]interface{},
-	operand interface{},
+	options map[string]any,
+	operand any,
 ) messagevalue.MessageValue {
 	// Read numeric operand - matches TypeScript: let { value, options } = readNumericOperand(operand);
 	numInput, err := readNumericOperand(operand, ctx.Source())
@@ -125,10 +125,10 @@ func OffsetFunction(
 
 	// Return number function result - matches TypeScript: return number(ctx, {}, { valueOf: () => value, options });
 	// Create a value object that can be processed by NumberFunction
-	valueObj := map[string]interface{}{
+	valueObj := map[string]any{
 		"valueOf": value,
 		"options": numInput.Options,
 	}
 
-	return NumberFunction(ctx, map[string]interface{}{}, valueObj)
+	return NumberFunction(ctx, map[string]any{}, valueObj)
 }

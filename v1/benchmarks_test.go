@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func benchmarkHelper(b *testing.B, message string, params map[string]interface{}, opts *MessageFormatOptions) {
+func benchmarkHelper(b *testing.B, message string, params map[string]any, opts *MessageFormatOptions) {
 	b.Helper()
 	mf, err := New("en", opts)
 	if err != nil {
@@ -28,17 +28,17 @@ func benchmarkHelper(b *testing.B, message string, params map[string]interface{}
 }
 
 func BenchmarkMessageFormatSimple(b *testing.B) {
-	benchmarkHelper(b, "Hello {name}!", map[string]interface{}{"name": "World"}, nil)
+	benchmarkHelper(b, "Hello {name}!", map[string]any{"name": "World"}, nil)
 }
 
 func BenchmarkMessageFormatPlural(b *testing.B) {
 	benchmarkHelper(b, "{count, plural, one {# item} other {# items}}",
-		map[string]interface{}{"count": 42}, nil)
+		map[string]any{"count": 42}, nil)
 }
 
 func BenchmarkMessageFormatSelect(b *testing.B) {
 	benchmarkHelper(b, "{gender, select, male {He} female {She} other {They}} went to the store.",
-		map[string]interface{}{"gender": "female"}, nil)
+		map[string]any{"gender": "female"}, nil)
 }
 
 func BenchmarkMessageFormatComplex(b *testing.B) {
@@ -47,7 +47,7 @@ func BenchmarkMessageFormatComplex(b *testing.B) {
 		female {{count, plural, one {She has # item} other {She has # items}}}
 		other {{count, plural, one {They have # item} other {They have # items}}}
 	} in the cart for a total of {total, number, currency}.`
-	benchmarkHelper(b, message, map[string]interface{}{
+	benchmarkHelper(b, message, map[string]any{
 		"gender": "male", "count": 3, "total": 29.99,
 	}, nil)
 }
@@ -111,7 +111,7 @@ func BenchmarkTypeSafeSkeletonCreation(b *testing.B) {
 			RoundingMode: RoundingHalfUp,
 			Unit: &UnitConfig{
 				Style:    UnitCurrency,
-				Currency: Ptr("EUR"),
+				Currency: new("EUR"),
 			},
 			Notation: &NotationConfig{
 				Style: NotationCompactShort,

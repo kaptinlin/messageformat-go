@@ -74,7 +74,7 @@ func isValidOptionKeyChar(ch rune) bool {
 // This prevents DoS attacks through excessive options and validates all keys.
 //
 // Reference: Based on security best practices from TypeScript implementation
-func ValidateOptions(options map[string]interface{}) error {
+func ValidateOptions(options map[string]any) error {
 	// Check options count to prevent DoS
 	if len(options) > MaxOptionsCount {
 		return fmt.Errorf("too many options: %d (max: %d)", len(options), MaxOptionsCount)
@@ -94,12 +94,12 @@ func ValidateOptions(options map[string]interface{}) error {
 // This is useful when you want to be permissive but still protect against malicious input.
 //
 // Returns a new map containing only valid options.
-func SanitizeOptions(options map[string]interface{}) map[string]interface{} {
+func SanitizeOptions(options map[string]any) map[string]any {
 	if options == nil {
 		return nil
 	}
 
-	sanitized := make(map[string]interface{})
+	sanitized := make(map[string]any)
 	for key, value := range options {
 		if ValidateOptionKey(key) == nil {
 			sanitized[key] = value

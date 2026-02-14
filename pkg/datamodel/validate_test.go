@@ -232,7 +232,7 @@ func TestValidateMessage(t *testing.T) {
 				NewPattern([]PatternElement{
 					NewExpression(
 						NewVariableRef("count"),
-						NewFunctionRef("number", ConvertMapToOptions(map[string]interface{}{
+						NewFunctionRef("number", ConvertMapToOptions(map[string]any{
 							"minDigits": NewVariableRef("digits"),
 						})),
 						nil,
@@ -318,7 +318,7 @@ func TestValidateMessage(t *testing.T) {
 
 func TestValidateMessageWithCustomErrorHandler(t *testing.T) {
 	errorTypes := []string{}
-	errorHandler := func(errType string, node interface{}) {
+	errorHandler := func(errType string, node any) {
 		errorTypes = append(errorTypes, errType)
 	}
 
@@ -448,7 +448,7 @@ func TestValidateMarkup(t *testing.T) {
 			message: NewPatternMessage(
 				nil,
 				NewPattern([]PatternElement{
-					NewMarkup("open", "link", ConvertMapToOptions(map[string]interface{}{
+					NewMarkup("open", "link", ConvertMapToOptions(map[string]any{
 						"href": NewLiteral("https://example.com"),
 					}), nil),
 					NewTextElement("Click here"),
@@ -463,7 +463,7 @@ func TestValidateMarkup(t *testing.T) {
 			message: NewPatternMessage(
 				nil,
 				NewPattern([]PatternElement{
-					NewMarkup("open", "img", nil, ConvertMapToAttributes(map[string]interface{}{
+					NewMarkup("open", "img", nil, ConvertMapToAttributes(map[string]any{
 						"alt": NewLiteral("Image description"),
 					})),
 				}),

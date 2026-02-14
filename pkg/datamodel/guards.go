@@ -7,7 +7,7 @@ package datamodel
 // export const isCatchallKey = (key: any): key is CatchallKey =>
 //
 //	!!key && typeof key === 'object' && key.type === '*';
-func IsCatchallKey(key interface{}) bool {
+func IsCatchallKey(key any) bool {
 	_, ok := key.(*CatchallKey)
 	return ok
 }
@@ -17,7 +17,7 @@ func IsCatchallKey(key interface{}) bool {
 // export const isExpression = (part: any): part is Expression =>
 //
 //	!!part && typeof part === 'object' && part.type === 'expression';
-func IsExpression(part interface{}) bool {
+func IsExpression(part any) bool {
 	_, ok := part.(*Expression)
 	return ok
 }
@@ -27,7 +27,7 @@ func IsExpression(part interface{}) bool {
 // export const isFunctionRef = (part: any): part is FunctionRef =>
 //
 //	!!part && typeof part === 'object' && part.type === 'function';
-func IsFunctionRef(part interface{}) bool {
+func IsFunctionRef(part any) bool {
 	_, ok := part.(*FunctionRef)
 	return ok
 }
@@ -37,7 +37,7 @@ func IsFunctionRef(part interface{}) bool {
 // export const isLiteral = (part: any): part is Literal =>
 //
 //	!!part && typeof part === 'object' && part.type === 'literal';
-func IsLiteral(part interface{}) bool {
+func IsLiteral(part any) bool {
 	_, ok := part.(*Literal)
 	return ok
 }
@@ -47,7 +47,7 @@ func IsLiteral(part interface{}) bool {
 // export const isMarkup = (part: any): part is Markup =>
 //
 //	!!part && typeof part === 'object' && part.type === 'markup';
-func IsMarkup(part interface{}) bool {
+func IsMarkup(part any) bool {
 	_, ok := part.(*Markup)
 	return ok
 }
@@ -59,7 +59,7 @@ func IsMarkup(part interface{}) bool {
 //	!!msg &&
 //	typeof msg === 'object' &&
 //	(msg.type === 'message' || msg.type === 'select');
-func IsMessage(msg interface{}) bool {
+func IsMessage(msg any) bool {
 	if msg == nil {
 		return false
 	}
@@ -99,7 +99,7 @@ func IsSelectMessage(msg Message) bool {
 // export const isVariableRef = (part: any): part is VariableRef =>
 //
 //	!!part && typeof part === 'object' && part.type === 'variable';
-func IsVariableRef(part interface{}) bool {
+func IsVariableRef(part any) bool {
 	_, ok := part.(*VariableRef)
 	return ok
 }
@@ -135,13 +135,13 @@ func IsTextElement(elem PatternElement) bool {
 
 // IsVariantKey checks if an object is a valid variant key
 // TypeScript original code: Array<Literal | CatchallKey> element checking
-func IsVariantKey(key interface{}) bool {
+func IsVariantKey(key any) bool {
 	return IsLiteral(key) || IsCatchallKey(key)
 }
 
 // IsPatternElement checks if an object is a valid pattern element
 // TypeScript original code: Array<string | Expression | Markup> element checking
-func IsPatternElement(elem interface{}) bool {
+func IsPatternElement(elem any) bool {
 	if elem == nil {
 		return false
 	}
@@ -167,7 +167,7 @@ func IsPatternElement(elem interface{}) bool {
 //	| VariableRef
 //	| FunctionRef
 //	| Markup;
-func IsNode(obj interface{}) bool {
+func IsNode(obj any) bool {
 	if obj == nil {
 		return false
 	}
@@ -189,7 +189,7 @@ func IsNode(obj interface{}) bool {
 
 // IsBooleanAttribute checks if an attribute value is a boolean attribute
 // TypeScript original code: true type in Attributes
-func IsBooleanAttribute(attr interface{}) bool {
+func IsBooleanAttribute(attr any) bool {
 	if attr == nil {
 		return false
 	}
@@ -199,7 +199,7 @@ func IsBooleanAttribute(attr interface{}) bool {
 
 // IsVariableRefExpression checks if an expression is a VariableRefExpression
 // TypeScript original code: Expression<VariableRef> type checking
-func IsVariableRefExpression(expr interface{}) bool {
+func IsVariableRefExpression(expr any) bool {
 	if expr == nil {
 		return false
 	}

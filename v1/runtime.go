@@ -65,7 +65,7 @@ func Number(lc string, value float64, offset float64) string {
 //	  if (isNaN(n)) throw new Error('`' + name + '` or its offset is not a number');
 //	  return _nf(lc).format(n);
 //	}
-func StrictNumber(lc string, value interface{}, offset float64, name string) (string, error) {
+func StrictNumber(lc string, value any, offset float64, name string) (string, error) {
 	numValue, err := toFloat64(value)
 	if err != nil {
 		return "", WrapMissingParameter("`" + name + "` or its offset is not a number")
@@ -95,7 +95,7 @@ func StrictNumber(lc string, value interface{}, offset float64, name string) (st
 //	  const key = lcfunc(value, isOrdinal);
 //	  return key in data ? data[key] : data.other;
 //	}
-func Plural(value interface{}, offset float64, lcfunc PluralFunction, data map[string]interface{}, isOrdinal ...bool) interface{} {
+func Plural(value any, offset float64, lcfunc PluralFunction, data map[string]any, isOrdinal ...bool) any {
 	// Convert value to number
 	numValue, err := toFloat64(value)
 	if err != nil {
@@ -171,7 +171,7 @@ func Plural(value interface{}, offset float64, lcfunc PluralFunction, data map[s
 //	export function select(value: string, data: { [key: string]: unknown }) {
 //	  return {}.hasOwnProperty.call(data, value) ? data[value] : data.other;
 //	}
-func SelectValue(value string, data map[string]interface{}) interface{} {
+func SelectValue(value string, data map[string]any) any {
 	// Check if exact value exists in data
 	if selectedValue, exists := data[value]; exists {
 		return selectedValue
@@ -196,7 +196,7 @@ func SelectValue(value string, data map[string]interface{}) interface{} {
 //	    }
 //	  }
 //	}
-func ReqArgs(keys []string, data map[string]interface{}) error {
+func ReqArgs(keys []string, data map[string]any) error {
 	for _, key := range keys {
 		if data == nil {
 			return WrapMissingArgument(key)
@@ -211,7 +211,7 @@ func ReqArgs(keys []string, data map[string]interface{}) error {
 // Helper functions
 
 // toFloat64 converts various numeric types to float64
-func toFloat64(value interface{}) (float64, error) {
+func toFloat64(value any) (float64, error) {
 	switch v := value.(type) {
 	case float64:
 		return v, nil
@@ -258,7 +258,7 @@ func formatExactKey(value float64) string {
 // TypeScript original code (from compiler.ts):
 // const rep = token.type === 'plural' ? token : pluralToken;
 // if (rep) res = res.replace(/(^|[^\\])#/g, `$1${this.numbr(rep.arg)}`);
-func ReplaceOctothorpe(content string, argValue interface{}, locale string, offset float64) string {
+func ReplaceOctothorpe(content string, argValue any, locale string, offset float64) string {
 	if content == "" {
 		return content
 	}
@@ -278,7 +278,7 @@ func ReplaceOctothorpe(content string, argValue interface{}, locale string, offs
 }
 
 // ProcessPluralContent processes plural case content with octothorpe replacement
-func ProcessPluralContent(content interface{}, argValue interface{}, locale string, offset float64) string {
+func ProcessPluralContent(content any, argValue any, locale string, offset float64) string {
 	// Convert content to string
 	contentStr := fmt.Sprintf("%v", content)
 

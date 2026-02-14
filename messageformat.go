@@ -141,9 +141,9 @@ type MessageFormat struct {
 //	  this.#functions = options?.functions ? Object.assign(Object.create(null), DefaultFunctions, options.functions) : DefaultFunctions;
 //	}
 func New(
-	locales interface{}, // string | []string | nil
-	source interface{}, // string | datamodel.Message
-	options ...interface{}, // *MessageFormatOptions or ...Option
+	locales any, // string | []string | nil
+	source any, // string | datamodel.Message
+	options ...any, // *MessageFormatOptions or ...Option
 ) (*MessageFormat, error) {
 	// Parse locales parameter - matches TypeScript: string | string[] | undefined
 	var localeList []string
@@ -284,9 +284,7 @@ func New(
 
 	// Add custom functions (override defaults if provided)
 	if opts.Functions != nil {
-		for name, fn := range opts.Functions {
-			functionMap[name] = fn
-		}
+		maps.Copy(functionMap, opts.Functions)
 	}
 
 	// Set up logger - use instance logger if provided, otherwise use global logger
@@ -311,9 +309,9 @@ func New(
 // MustNew creates a new MessageFormat and panics if there's an error
 // This is a convenience function for cases where you're certain the input is valid
 func MustNew(
-	locales interface{}, // string | []string | nil
-	source interface{}, // string | datamodel.Message
-	options ...interface{}, // *MessageFormatOptions or ...Option
+	locales any, // string | []string | nil
+	source any, // string | datamodel.Message
+	options ...any, // *MessageFormatOptions or ...Option
 ) *MessageFormat {
 	mf, err := New(locales, source, options...)
 	if err != nil {
@@ -325,8 +323,8 @@ func MustNew(
 // Format formats the message with the given values and optional error handler
 // Supports both traditional onError callback and functional options pattern
 func (mf *MessageFormat) Format(
-	values map[string]interface{},
-	options ...interface{}, // func(error) or ...FormatOption
+	values map[string]any,
+	options ...any, // func(error) or ...FormatOption
 ) (string, error) {
 	parts, err := mf.FormatToParts(values, options...)
 	if err != nil {
@@ -365,8 +363,8 @@ func (mf *MessageFormat) Format(
 // FormatToParts formats the message and returns detailed parts
 // Supports both traditional onError callback and functional options pattern
 func (mf *MessageFormat) FormatToParts(
-	values map[string]interface{},
-	options ...interface{}, // func(error) or ...FormatOption
+	values map[string]any,
+	options ...any, // func(error) or ...FormatOption
 ) ([]messagevalue.MessagePart, error) {
 	// Parse options - support both traditional callback and functional options
 	onError, err := mf.parseFormatOptions(options)
@@ -386,7 +384,7 @@ func (mf *MessageFormat) FormatToParts(
 
 // parseFormatOptions parses variadic format options into an error handler function.
 // Supports both traditional func(error) callback and functional FormatOption pattern.
-func (mf *MessageFormat) parseFormatOptions(options []interface{}) (func(error), error) {
+func (mf *MessageFormat) parseFormatOptions(options []any) (func(error), error) {
 	defaultOnError := func(err error) {
 		mf.logger.Warn("MessageFormat error", "error", err)
 	}
@@ -450,16 +448,14 @@ func (mf *MessageFormat) parseFormatOptions(options []interface{}) (func(error),
 //	  return ctx;
 //	}
 func (mf *MessageFormat) createContext(
-	values map[string]interface{},
+	values map[string]any,
 	onError func(error),
 ) *resolve.Context {
 	// Start with base context scope
-	scope := make(map[string]interface{})
+	scope := make(map[string]any)
 
 	// Add provided values first
-	for k, v := range values {
-		scope[k] = v
-	}
+	maps.Copy(scope, values)
 
 	// Add message declarations
 	if err := mf.addDeclarationsToScope(scope, values); err != nil {
@@ -471,8 +467,8 @@ func (mf *MessageFormat) createContext(
 
 // addDeclarationsToScope adds message declarations to the scope
 func (mf *MessageFormat) addDeclarationsToScope(
-	scope map[string]interface{},
-	msgParams map[string]interface{},
+	scope map[string]any,
+	msgParams map[string]any,
 ) error {
 	declarations := mf.message.Declarations()
 
@@ -493,17 +489,13 @@ func (mf *MessageFormat) addDeclarationsToScope(
 			expr := d.Value()
 			if localExpr, ok := expr.(*datamodel.Expression); ok {
 				// Create a combined scope that includes both message parameters and the current scope
-				combinedScope := make(map[string]interface{})
+				combinedScope := make(map[string]any)
 				// Add message parameters first
-				for k, v := range msgParams {
-					combinedScope[k] = v
-				}
+				maps.Copy(combinedScope, msgParams)
 				// Add current scope variables, overwriting message parameters
 				// This is important: if a variable is defined via .input, we want to use
 				// the UnresolvedExpression from scope, not the raw parameter value
-				for k, v := range scope {
-					combinedScope[k] = v
-				}
+				maps.Copy(combinedScope, scope)
 				scope[d.Name()] = resolve.NewUnresolvedExpression(localExpr, combinedScope)
 			}
 		}
@@ -686,9 +678,7 @@ func (mf *MessageFormat) ResolvedOptions() ResolvedMessageFormatOptions {
 
 	// Create a copy of the functions map to avoid external modification
 	functionsCopy := make(map[string]functions.MessageFunction)
-	for k, v := range mf.functions {
-		functionsCopy[k] = v
-	}
+	maps.Copy(functionsCopy, mf.functions)
 
 	return ResolvedMessageFormatOptions{
 		BidiIsolation: bidiIsolation,

@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"maps"
 	"sync"
 )
 
@@ -80,9 +81,7 @@ func NewFunctionRegistry() *FunctionRegistry {
 	}
 
 	// Register default functions
-	for name, fn := range DefaultFunctions {
-		registry.functions[name] = fn
-	}
+	maps.Copy(registry.functions, DefaultFunctions)
 
 	return registry
 }
@@ -94,14 +93,10 @@ func NewFunctionRegistryWithDraft() *FunctionRegistry {
 	}
 
 	// Register default functions
-	for name, fn := range DefaultFunctions {
-		registry.functions[name] = fn
-	}
+	maps.Copy(registry.functions, DefaultFunctions)
 
 	// Register draft functions
-	for name, fn := range DraftFunctions {
-		registry.functions[name] = fn
-	}
+	maps.Copy(registry.functions, DraftFunctions)
 
 	return registry
 }
@@ -142,9 +137,7 @@ func (fr *FunctionRegistry) Clone() *FunctionRegistry {
 		functions: make(map[string]MessageFunction, len(fr.functions)),
 	}
 
-	for name, fn := range fr.functions {
-		newRegistry.functions[name] = fn
-	}
+	maps.Copy(newRegistry.functions, fr.functions)
 
 	return newRegistry
 }
@@ -157,7 +150,5 @@ func (fr *FunctionRegistry) Merge(other *FunctionRegistry) {
 	other.mu.RLock()
 	defer other.mu.RUnlock()
 
-	for name, fn := range other.functions {
-		fr.functions[name] = fn
-	}
+	maps.Copy(fr.functions, other.functions)
 }

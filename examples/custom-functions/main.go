@@ -12,7 +12,7 @@ import (
 
 // Custom function: uppercase
 // Converts input to uppercase
-func uppercaseFunction(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+func uppercaseFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 	var str string
 	if operand == nil {
 		str = ""
@@ -28,7 +28,7 @@ func uppercaseFunction(ctx functions.MessageFunctionContext, options map[string]
 
 // Custom function: reverse
 // Reverses the input string
-func reverseFunction(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+func reverseFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 	var str string
 	if operand == nil {
 		str = ""
@@ -50,7 +50,7 @@ func reverseFunction(ctx functions.MessageFunctionContext, options map[string]in
 
 // Custom function: emoji
 // Adds emoji based on the type option
-func emojiFunction(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+func emojiFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 	var str string
 	if operand == nil {
 		str = ""
@@ -88,7 +88,7 @@ func emojiFunction(ctx functions.MessageFunctionContext, options map[string]inte
 
 // Custom function: timeago
 // Formats time relative to now
-func timeAgoFunction(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+func timeAgoFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 	var hours int
 	if operand == nil {
 		hours = 0
@@ -126,7 +126,7 @@ func timeAgoFunction(ctx functions.MessageFunctionContext, options map[string]in
 
 // Custom function: format
 // Formats strings with padding and alignment
-func formatFunction(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+func formatFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 	var str string
 	if operand == nil {
 		str = ""
@@ -185,7 +185,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result1, err := mf1.Format(map[string]interface{}{
+	result1, err := mf1.Format(map[string]any{
 		"name": "world",
 	})
 	if err != nil {
@@ -205,7 +205,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result2, err := mf2.Format(map[string]interface{}{
+	result2, err := mf2.Format(map[string]any{
 		"text": "Hello",
 	})
 	if err != nil {
@@ -225,7 +225,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result3, err := mf3.Format(map[string]interface{}{
+	result3, err := mf3.Format(map[string]any{
 		"msg": "Great job!",
 	})
 	if err != nil {
@@ -247,7 +247,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		result, err := mf.Format(map[string]interface{}{
+		result, err := mf.Format(map[string]any{
 			"status": "Active",
 		})
 		if err != nil {
@@ -269,7 +269,7 @@ func main() {
 
 	timeTestCases := []int{0, 1, 3, 12, 25, 48, 168, 720, 8760}
 	for _, hours := range timeTestCases {
-		result, err := mf5.Format(map[string]interface{}{
+		result, err := mf5.Format(map[string]any{
 			"hours": hours,
 		})
 		if err != nil {
@@ -291,7 +291,7 @@ func main() {
 
 	names := []string{"Alice", "Bob", "Charlie", "Diana"}
 	for _, name := range names {
-		result, err := mf6.Format(map[string]interface{}{
+		result, err := mf6.Format(map[string]any{
 			"name": name,
 		})
 		if err != nil {
@@ -313,7 +313,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result7, err := mf7.Format(map[string]interface{}{
+	result7, err := mf7.Format(map[string]any{
 		"user":   "alice",
 		"status": "online",
 		"hours":  2,
@@ -335,7 +335,7 @@ func main() {
 	}
 
 	// Test with different value types
-	testValues := []interface{}{
+	testValues := []any{
 		"hello",
 		123,
 		true,
@@ -344,7 +344,7 @@ func main() {
 	}
 
 	for _, value := range testValues {
-		result, err := mf8.Format(map[string]interface{}{
+		result, err := mf8.Format(map[string]any{
 			"value": value,
 		})
 		if err != nil {

@@ -60,7 +60,7 @@ func (ns *NotificationService) CartMessage(itemCount int, customerGender string)
 		return "", err
 	}
 
-	result, err := msg(map[string]interface{}{
+	result, err := msg(map[string]any{
 		"gender":    customerGender,
 		"itemCount": itemCount,
 	})
@@ -88,7 +88,7 @@ func (ns *NotificationService) OrderStatusMessage(order Order) (string, error) {
 		return "", err
 	}
 
-	result, err := msg(map[string]interface{}{
+	result, err := msg(map[string]any{
 		"status":    order.Status,
 		"orderID":   order.ID,
 		"customer":  order.Customer,
@@ -115,7 +115,7 @@ func (ns *NotificationService) InventoryMessage(productName string, stockLevel i
 		return "", err
 	}
 
-	result, err := msg(map[string]interface{}{
+	result, err := msg(map[string]any{
 		"product": productName,
 		"stock":   stockLevel,
 	})

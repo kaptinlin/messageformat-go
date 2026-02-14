@@ -256,9 +256,9 @@ type Declaration interface {
 	Name() string
 	// Value returns the expression value - type varies by declaration type
 	// InputDeclaration: VariableRefExpression, LocalDeclaration: Expression
-	GetValue() interface{}
+	GetValue() any
 	// Value provides backward compatibility - returns interface{} to handle both types
-	Value() interface{}
+	Value() any
 }
 
 // InputDeclaration represents .input declarations
@@ -353,11 +353,11 @@ func (id *InputDeclaration) Name() string {
 	return id.name
 }
 
-func (id *InputDeclaration) Value() interface{} {
+func (id *InputDeclaration) Value() any {
 	return id.value
 }
 
-func (id *InputDeclaration) GetValue() interface{} {
+func (id *InputDeclaration) GetValue() any {
 	return id.value
 }
 
@@ -407,11 +407,11 @@ func (ld *LocalDeclaration) Name() string {
 	return ld.name
 }
 
-func (ld *LocalDeclaration) Value() interface{} {
+func (ld *LocalDeclaration) Value() any {
 	return ld.value
 }
 
-func (ld *LocalDeclaration) GetValue() interface{} {
+func (ld *LocalDeclaration) GetValue() any {
 	return ld.value
 }
 
@@ -633,14 +633,14 @@ func (te *TextElement) CST() cst.Node {
 //	? { arg: A; functionRef?: FunctionRef }
 //	: { arg?: never; functionRef: FunctionRef });
 type Expression struct {
-	arg         interface{} // Literal, VariableRef, or nil
+	arg         any // Literal, VariableRef, or nil
 	functionRef *FunctionRef
 	attributes  Attributes // Attributes instead of map[string]interface{}
 	cst         cst.Node   // [cstKey]?: CST.Expression
 }
 
 // NewExpression creates a new expression
-func NewExpression(arg interface{}, functionRef *FunctionRef, attributes Attributes) *Expression {
+func NewExpression(arg any, functionRef *FunctionRef, attributes Attributes) *Expression {
 	return &Expression{
 		arg:         arg,
 		functionRef: functionRef,
@@ -650,7 +650,7 @@ func NewExpression(arg interface{}, functionRef *FunctionRef, attributes Attribu
 }
 
 // NewExpressionWithCST creates a new expression with CST reference
-func NewExpressionWithCST(arg interface{}, functionRef *FunctionRef, attributes Attributes, cst cst.Node) *Expression {
+func NewExpressionWithCST(arg any, functionRef *FunctionRef, attributes Attributes, cst cst.Node) *Expression {
 	return &Expression{
 		arg:         arg,
 		functionRef: functionRef,
@@ -663,7 +663,7 @@ func (e *Expression) Type() string {
 	return "expression"
 }
 
-func (e *Expression) Arg() interface{} {
+func (e *Expression) Arg() any {
 	return e.arg
 }
 
@@ -919,7 +919,7 @@ func ConvertExpressionToVariableRefExpression(expr *Expression) *VariableRefExpr
 }
 
 // ConvertMapToOptions converts map[string]interface{} to Options
-func ConvertMapToOptions(m map[string]interface{}) Options {
+func ConvertMapToOptions(m map[string]any) Options {
 	if m == nil {
 		return nil
 	}
@@ -943,7 +943,7 @@ func ConvertMapToOptions(m map[string]interface{}) Options {
 }
 
 // ConvertMapToAttributes converts map[string]interface{} to Attributes
-func ConvertMapToAttributes(m map[string]interface{}) Attributes {
+func ConvertMapToAttributes(m map[string]any) Attributes {
 	if m == nil {
 		return nil
 	}

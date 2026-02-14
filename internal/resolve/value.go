@@ -28,7 +28,7 @@ import (
 //	      throw new Error(`Unsupported value: ${value.type}`);
 //	  }
 //	}
-func resolveValue(ctx *Context, value datamodel.Node) (interface{}, error) {
+func resolveValue(ctx *Context, value datamodel.Node) (any, error) {
 	if value == nil {
 		return nil, nil
 	}

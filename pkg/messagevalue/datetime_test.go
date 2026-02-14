@@ -14,7 +14,7 @@ func TestDateTimeValue(t *testing.T) {
 	testTime := time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC)
 
 	t.Run("basic datetime value", func(t *testing.T) {
-		options := map[string]interface{}{
+		options := map[string]any{
 			"dateStyle": "medium",
 			"timeStyle": "short",
 		}
@@ -34,7 +34,7 @@ func TestDateTimeValue(t *testing.T) {
 	})
 
 	t.Run("datetime value with explicit direction", func(t *testing.T) {
-		options := map[string]interface{}{
+		options := map[string]any{
 			"dateStyle": "long",
 		}
 
@@ -45,7 +45,7 @@ func TestDateTimeValue(t *testing.T) {
 	})
 
 	t.Run("toString formatting", func(t *testing.T) {
-		options := map[string]interface{}{
+		options := map[string]any{
 			"dateStyle": "medium",
 			"timeStyle": "short",
 		}
@@ -61,7 +61,7 @@ func TestDateTimeValue(t *testing.T) {
 	})
 
 	t.Run("toParts", func(t *testing.T) {
-		options := map[string]interface{}{
+		options := map[string]any{
 			"dateStyle": "short",
 		}
 

@@ -37,7 +37,7 @@ type Context struct {
 	LocalVars map[messagevalue.MessageValue]bool
 
 	// Variable scope
-	Scope map[string]interface{}
+	Scope map[string]any
 
 	// Track variables currently being resolved (for circular reference detection)
 	ResolvingVars map[string]bool
@@ -48,14 +48,14 @@ type Context struct {
 func NewContext(
 	locales []string,
 	funcs map[string]functions.MessageFunction,
-	scope map[string]interface{},
+	scope map[string]any,
 	onError func(error),
 ) *Context {
 	if funcs == nil {
 		funcs = make(map[string]functions.MessageFunction)
 	}
 	if scope == nil {
-		scope = make(map[string]interface{})
+		scope = make(map[string]any)
 	}
 
 	return &Context{
@@ -85,13 +85,11 @@ func (ctx *Context) Clone() *Context {
 
 // CloneWithScope creates a copy of the context with a new scope
 // TypeScript original code: { ...ctx, scope: newScope } spread operator equivalent
-func (ctx *Context) CloneWithScope(newScope map[string]interface{}) *Context {
+func (ctx *Context) CloneWithScope(newScope map[string]any) *Context {
 	cloned := ctx.Clone()
 
 	// Merge new scope with existing scope
-	for k, v := range newScope {
-		cloned.Scope[k] = v
-	}
+	maps.Copy(cloned.Scope, newScope)
 
 	return cloned
 }

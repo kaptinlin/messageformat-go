@@ -33,7 +33,7 @@ const (
 //	  ordinals?: PluralCategory[];
 //	  module?: string;
 //	}
-type PluralFunction func(value interface{}, ord ...bool) (PluralCategory, error)
+type PluralFunction func(value any, ord ...bool) (PluralCategory, error)
 
 // PluralObject represents plural rules and metadata for a specific locale
 // TypeScript original code:
@@ -54,7 +54,7 @@ type PluralObject struct {
 	ID          string
 	LC          string
 	Locale      string
-	GetCardinal func(value interface{}) (PluralCategory, error)
+	GetCardinal func(value any) (PluralCategory, error)
 	Func        PluralFunction
 	Cardinals   []PluralCategory
 	Ordinals    []PluralCategory
@@ -96,7 +96,7 @@ func normalize(locale string) (string, error) {
 // GetPlural returns the PluralObject for a given locale
 // TypeScript original code:
 // export function getPlural(locale: string | PluralFunction): PluralObject | null
-func GetPlural(locale interface{}) (PluralObject, error) {
+func GetPlural(locale any) (PluralObject, error) {
 	switch v := locale.(type) {
 	case string:
 		normalized, err := normalize(v)
@@ -201,7 +201,7 @@ func getPluralRules(locale string) (PluralFunction, []PluralCategory, []PluralCa
 	}
 
 	// Create wrapper function that uses golang.org/x/text/feature/plural
-	pluralFunc := func(value interface{}, ord ...bool) (PluralCategory, error) {
+	pluralFunc := func(value any, ord ...bool) (PluralCategory, error) {
 		num, err := toNumber(value)
 		if err != nil {
 			return PluralOther, err
@@ -309,7 +309,7 @@ func getAvailableCategories(tag language.Tag, ordinal bool) []PluralCategory {
 }
 
 // toNumber converts various types to int64
-func toNumber(value interface{}) (int64, error) {
+func toNumber(value any) (int64, error) {
 	switch v := value.(type) {
 	case int:
 		return int64(v), nil

@@ -19,16 +19,16 @@ import (
 //	  selectKeys?(keys: string[]): string[];
 //	}
 type MessageValue interface {
-	Type() string                    // Type identifier for the value
-	Source() string                  // Source text that produced this value
-	Dir() bidi.Direction             // Text direction
-	Locale() string                  // Locale for formatting
-	Options() map[string]interface{} // Formatting options
+	Type() string            // Type identifier for the value
+	Source() string          // Source text that produced this value
+	Dir() bidi.Direction     // Text direction
+	Locale() string          // Locale for formatting
+	Options() map[string]any // Formatting options
 
 	// Core formatting methods
 	ToString() (string, error)       // Convert to string representation
 	ToParts() ([]MessagePart, error) // Convert to formatted parts
-	ValueOf() (interface{}, error)   // Extract underlying value
+	ValueOf() (any, error)           // Extract underlying value
 
 	// Selection method for plural/select functions
 	SelectKeys(keys []string) ([]string, error) // Select matching keys
@@ -46,7 +46,7 @@ type MessageValue interface {
 //	}
 type MessagePart interface {
 	Type() string        // Part type identifier
-	Value() interface{}  // Part value
+	Value() any          // Part value
 	Source() string      // Source text (optional)
 	Locale() string      // Locale (optional)
 	Dir() bidi.Direction // Text direction (optional)
@@ -72,7 +72,7 @@ func NewTextPart(value, source, locale string) *TextPart {
 }
 
 func (tp *TextPart) Type() string        { return "text" }
-func (tp *TextPart) Value() interface{}  { return tp.value }
+func (tp *TextPart) Value() any          { return tp.value }
 func (tp *TextPart) Source() string      { return tp.source }
 func (tp *TextPart) Locale() string      { return tp.locale }
 func (tp *TextPart) Dir() bidi.Direction { return tp.dir }
@@ -88,7 +88,7 @@ func NewBidiIsolationPart(value string) *BidiIsolationPart {
 }
 
 func (bip *BidiIsolationPart) Type() string        { return "bidiIsolation" }
-func (bip *BidiIsolationPart) Value() interface{}  { return bip.value }
+func (bip *BidiIsolationPart) Value() any          { return bip.value }
 func (bip *BidiIsolationPart) Source() string      { return "" }
 func (bip *BidiIsolationPart) Locale() string      { return "" }
 func (bip *BidiIsolationPart) Dir() bidi.Direction { return bidi.DirAuto }
@@ -98,13 +98,13 @@ type MarkupPart struct {
 	kind    string // "open", "close", "standalone"
 	name    string
 	source  string
-	options map[string]interface{}
+	options map[string]any
 }
 
 // NewMarkupPart creates a new markup part
-func NewMarkupPart(kind, name, source string, options map[string]interface{}) *MarkupPart {
+func NewMarkupPart(kind, name, source string, options map[string]any) *MarkupPart {
 	if options == nil {
-		options = make(map[string]interface{})
+		options = make(map[string]any)
 	}
 	return &MarkupPart{
 		kind:    kind,
@@ -114,14 +114,14 @@ func NewMarkupPart(kind, name, source string, options map[string]interface{}) *M
 	}
 }
 
-func (mp *MarkupPart) Type() string                    { return "markup" }
-func (mp *MarkupPart) Value() interface{}              { return mp.name }
-func (mp *MarkupPart) Source() string                  { return mp.source }
-func (mp *MarkupPart) Locale() string                  { return "" }
-func (mp *MarkupPart) Dir() bidi.Direction             { return bidi.DirAuto }
-func (mp *MarkupPart) Kind() string                    { return mp.kind }
-func (mp *MarkupPart) Name() string                    { return mp.name }
-func (mp *MarkupPart) Options() map[string]interface{} { return mp.options }
+func (mp *MarkupPart) Type() string            { return "markup" }
+func (mp *MarkupPart) Value() any              { return mp.name }
+func (mp *MarkupPart) Source() string          { return mp.source }
+func (mp *MarkupPart) Locale() string          { return "" }
+func (mp *MarkupPart) Dir() bidi.Direction     { return bidi.DirAuto }
+func (mp *MarkupPart) Kind() string            { return mp.kind }
+func (mp *MarkupPart) Name() string            { return mp.name }
+func (mp *MarkupPart) Options() map[string]any { return mp.options }
 
 // FallbackPart represents fallback values for errors
 type FallbackPart struct {
@@ -140,7 +140,7 @@ func NewFallbackPart(source, locale string) *FallbackPart {
 }
 
 func (fp *FallbackPart) Type() string        { return "fallback" }
-func (fp *FallbackPart) Value() interface{}  { return "{" + fp.source + "}" }
+func (fp *FallbackPart) Value() any          { return "{" + fp.source + "}" }
 func (fp *FallbackPart) Source() string      { return fp.source }
 func (fp *FallbackPart) Locale() string      { return fp.locale }
 func (fp *FallbackPart) Dir() bidi.Direction { return fp.dir }

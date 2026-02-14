@@ -105,7 +105,7 @@ func TestValidateOptionKey(t *testing.T) {
 
 func TestValidateOptions(t *testing.T) {
 	t.Run("valid options", func(t *testing.T) {
-		options := map[string]interface{}{
+		options := map[string]any{
 			"minimumFractionDigits": 2,
 			"maximumFractionDigits": 4,
 			"signDisplay":           "always",
@@ -115,7 +115,7 @@ func TestValidateOptions(t *testing.T) {
 	})
 
 	t.Run("too many options", func(t *testing.T) {
-		options := make(map[string]interface{})
+		options := make(map[string]any)
 		for i := range MaxOptionsCount + 1 {
 			options[string(rune('a'+i))] = i
 		}
@@ -125,7 +125,7 @@ func TestValidateOptions(t *testing.T) {
 	})
 
 	t.Run("invalid option key", func(t *testing.T) {
-		options := map[string]interface{}{
+		options := map[string]any{
 			"valid_option": 1,
 			"__proto__":    "malicious",
 		}
@@ -135,7 +135,7 @@ func TestValidateOptions(t *testing.T) {
 	})
 
 	t.Run("empty options map", func(t *testing.T) {
-		options := map[string]interface{}{}
+		options := map[string]any{}
 		err := ValidateOptions(options)
 		assert.NoError(t, err)
 	})
@@ -143,7 +143,7 @@ func TestValidateOptions(t *testing.T) {
 
 func TestSanitizeOptions(t *testing.T) {
 	t.Run("filters out invalid keys", func(t *testing.T) {
-		options := map[string]interface{}{
+		options := map[string]any{
 			"validOption":  1,
 			"__proto__":    "malicious",
 			"constructor":  "bad",
@@ -167,7 +167,7 @@ func TestSanitizeOptions(t *testing.T) {
 	})
 
 	t.Run("all valid options", func(t *testing.T) {
-		options := map[string]interface{}{
+		options := map[string]any{
 			"option1": 1,
 			"option2": 2,
 		}
@@ -197,7 +197,7 @@ func BenchmarkValidateOptionKey(b *testing.B) {
 }
 
 func BenchmarkValidateOptions(b *testing.B) {
-	options := map[string]interface{}{
+	options := map[string]any{
 		"minimumFractionDigits": 2,
 		"maximumFractionDigits": 4,
 		"signDisplay":           "always",

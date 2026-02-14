@@ -60,6 +60,7 @@ package v1
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -266,22 +267,22 @@ func isSelectType(typeStr string) bool {
 
 // strictArgStyleParam processes parameters in strict mode
 func strictArgStyleParam(lt *LexerToken, param []Token) ([]Token, error) {
-	value := ""
-	text := ""
+	var value strings.Builder
+	var text strings.Builder
 
 	for _, p := range param {
 		pText := p.GetContext().Text
-		text += pText
+		text.WriteString(pText)
 
 		switch token := p.(type) {
 		case *Content:
-			value += token.Value
+			value.WriteString(token.Value)
 		case *PlainArg:
-			value += pText
+			value.WriteString(pText)
 		case *FunctionArg:
-			value += pText
+			value.WriteString(pText)
 		case *Octothorpe:
-			value += pText
+			value.WriteString(pText)
 		default:
 			return nil, NewParseError(lt, fmt.Sprintf("Unsupported part in strict mode function arg style: %s", pText))
 		}
@@ -289,11 +290,11 @@ func strictArgStyleParam(lt *LexerToken, param []Token) ([]Token, error) {
 
 	// Create combined context
 	ctx := param[0].GetContext()
-	ctx.Text = text
+	ctx.Text = text.String()
 
 	content := &Content{
 		Type:  "content",
-		Value: strings.TrimSpace(value),
+		Value: strings.TrimSpace(value.String()),
 		Ctx:   ctx,
 	}
 
@@ -307,12 +308,7 @@ var strictArgTypes = []string{
 
 // isStrictArgType checks if an argument type is valid in strict mode
 func isStrictArgType(argType string) bool {
-	for _, valid := range strictArgTypes {
-		if argType == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(strictArgTypes, argType)
 }
 
 // checkSelectKey validates select case keys

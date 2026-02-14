@@ -11,7 +11,7 @@ import (
 )
 
 // Custom function for demonstration
-func highlightFunction(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+func highlightFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 	var str string
 	if operand == nil {
 		str = ""
@@ -54,7 +54,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	parts, err := mf1.FormatToParts(map[string]interface{}{
+	parts, err := mf1.FormatToParts(map[string]any{
 		"name":  "Alice",
 		"count": 42,
 	})
@@ -80,7 +80,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result2a, err := mf2a.Format(map[string]interface{}{
+	result2a, err := mf2a.Format(map[string]any{
 		"name": "أحمد", // Arabic name
 	})
 	if err != nil {
@@ -96,7 +96,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result2b, err := mf2b.Format(map[string]interface{}{
+	result2b, err := mf2b.Format(map[string]any{
 		"name": "أحمد",
 	})
 	if err != nil {
@@ -125,7 +125,7 @@ user  * *      {{User {$name} has {$count} messages}}
 		log.Fatal(err)
 	}
 
-	complexTestCases := []map[string]interface{}{
+	complexTestCases := []map[string]any{
 		{"name": "Alice", "userType": "admin", "count": 0, "status": "idle"},
 		{"name": "Bob", "userType": "admin", "count": 1, "status": "active"},
 		{"name": "Charlie", "userType": "admin", "count": 5, "status": "active"},
@@ -156,7 +156,7 @@ user  * *      {{User {$name} has {$count} messages}}
 		log.Fatal(err)
 	}
 
-	result4, err := mf4.Format(map[string]interface{}{
+	result4, err := mf4.Format(map[string]any{
 		"status":   "Active",
 		"priority": "High",
 	})
@@ -180,7 +180,7 @@ user  * *      {{User {$name} has {$count} messages}}
 	items := []string{"file1.txt", "file2.txt", "file3.txt", "file4.txt", "file5.txt"}
 
 	for i, item := range items {
-		result, err := mf5.Format(map[string]interface{}{
+		result, err := mf5.Format(map[string]any{
 			"index": i + 1,
 			"total": len(items),
 			"item":  item,
@@ -208,7 +208,7 @@ user  * *      {{User {$name} has {$count} messages}}
 		log.Fatal(err)
 	}
 
-	result6, err := mf6.Format(map[string]interface{}{
+	result6, err := mf6.Format(map[string]any{
 		"count": 42,
 		// Intentionally missing "missing_var"
 	})
@@ -230,7 +230,7 @@ user  * *      {{User {$name} has {$count} messages}}
 		log.Fatal(err)
 	}
 
-	result7, err := mf7.Format(map[string]interface{}{
+	result7, err := mf7.Format(map[string]any{
 		"name":    "Alice",
 		"service": "platform",
 	})
@@ -255,7 +255,7 @@ user  * *      {{User {$name} has {$count} messages}}
 			log.Fatal(err)
 		}
 
-		result, err := mf.Format(map[string]interface{}{
+		result, err := mf.Format(map[string]any{
 			"count": 1234,
 		})
 		if err != nil {
@@ -280,7 +280,7 @@ push {{🔔 Push notification: {$title}}}
 		log.Fatal(err)
 	}
 
-	notifications := []map[string]interface{}{
+	notifications := []map[string]any{
 		{
 			"type":    "email",
 			"sender":  "alice@example.com",

@@ -68,7 +68,7 @@ func (ctx *ParseContext) Source() string {
 //
 // ): void;
 // onError(type: 'missing-syntax', start: number, char: string): void;
-func (ctx *ParseContext) OnError(errorType string, start int, endOrChar interface{}) {
+func (ctx *ParseContext) OnError(errorType string, start int, endOrChar any) {
 	// Convert string error types to constants
 	var errorTypeConstant string
 	switch errorType {

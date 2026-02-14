@@ -81,7 +81,7 @@ func TestPlainStrings(t *testing.T) {
 	})
 
 	t.Run("should allow you to use extension keywords for plural formats everywhere except where they go", func(t *testing.T) {
-		tests := map[string][]interface{}{
+		tests := map[string][]any{
 			"select select, ":          {"select select, "},
 			"select offset, offset:1 ": {"select offset, offset:1 "},
 			"one other, =1 ":           {"one other, =1 "},
@@ -194,14 +194,14 @@ func TestSimpleArguments(t *testing.T) {
 	t.Run("should maintain exact strings - not affected by variables", func(t *testing.T) {
 		testCases := []struct {
 			input    string
-			expected []interface{}
+			expected []any
 		}{
-			{"x{test}", []interface{}{"x", "test"}},
-			{"\n{test}", []interface{}{"\n", "test"}},
-			{" {test}", []interface{}{" ", "test"}},
-			{"x { test}", []interface{}{"x ", "test"}},
-			{"x{test} x ", []interface{}{"x", "test", " x "}},
-			{"x\n{test}\n", []interface{}{"x\n", "test", "\n"}},
+			{"x{test}", []any{"x", "test"}},
+			{"\n{test}", []any{"\n", "test"}},
+			{" {test}", []any{" ", "test"}},
+			{"x { test}", []any{"x ", "test"}},
+			{"x{test} x ", []any{"x", "test", " x "}},
+			{"x\n{test}\n", []any{"x\n", "test", "\n"}},
 		}
 
 		for _, tc := range testCases {
@@ -232,10 +232,10 @@ func TestSimpleArguments(t *testing.T) {
 	t.Run("should handle extended character literals", func(t *testing.T) {
 		testCases := []struct {
 			input    string
-			expected []interface{}
+			expected []any
 		}{
-			{"☺{test}", []interface{}{"☺", "test"}},
-			{"中{test}中国话不用彁字。", []interface{}{"中", "test", "中国话不用彁字。"}},
+			{"☺{test}", []any{"☺", "test"}},
+			{"中{test}中国话不用彁字。", []any{"中", "test", "中国话不用彁字。"}},
 		}
 
 		for _, tc := range testCases {

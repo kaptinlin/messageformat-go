@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"maps"
 	"testing"
 
 	"github.com/kaptinlin/messageformat-go"
@@ -24,14 +25,10 @@ func tests(tc utils.Test) func(*testing.T) {
 		allFunctions := make(map[string]functions.MessageFunction)
 
 		// Add draft functions
-		for name, fn := range functions.DraftFunctions {
-			allFunctions[name] = fn
-		}
+		maps.Copy(allFunctions, functions.DraftFunctions)
 
 		// Add test functions
-		for name, fn := range TestFunctions() {
-			allFunctions[name] = fn
-		}
+		maps.Copy(allFunctions, TestFunctions())
 
 		switch utils.GetTestType(tc) {
 		case utils.TestTypeSyntaxError:
@@ -114,7 +111,7 @@ func tests(tc utils.Test) func(*testing.T) {
 					// Check if ExpErrors is false (explicitly no errors)
 					if tc.ExpErrors == false {
 						assert.Empty(t, errors, "Expected no errors but got: %v", errors)
-					} else if errArray, ok := tc.ExpErrors.([]interface{}); ok && len(errArray) == 0 {
+					} else if errArray, ok := tc.ExpErrors.([]any); ok && len(errArray) == 0 {
 						// Empty array means no expected errors
 						assert.Empty(t, errors, "Expected no errors but got: %v", errors)
 					} else {
@@ -135,9 +132,9 @@ func tests(tc utils.Test) func(*testing.T) {
 					parts, err := mf.FormatToParts(tc.GetParamsMap(), onError)
 
 					// Convert parts to interface{} for comparison (matches TypeScript: expect(mp).toMatchObject(tc.expParts))
-					var actualParts []interface{}
+					var actualParts []any
 					for _, part := range parts {
-						partMap := map[string]interface{}{
+						partMap := map[string]any{
 							"type": part.Type(),
 						}
 
@@ -156,7 +153,7 @@ func tests(tc utils.Test) func(*testing.T) {
 									partMap["id"] = id
 									// Create filtered options without u:id
 									if len(options) > 1 {
-										filteredOptions := make(map[string]interface{})
+										filteredOptions := make(map[string]any)
 										for k, v := range options {
 											if k != "u:id" {
 												filteredOptions[k] = v
@@ -186,9 +183,9 @@ func tests(tc utils.Test) func(*testing.T) {
 						case *messagevalue.NumberPart:
 							// For number parts, include parts array if available
 							if numberParts := p.Parts(); len(numberParts) > 0 {
-								var parts []interface{}
+								var parts []any
 								for _, np := range numberParts {
-									parts = append(parts, map[string]interface{}{
+									parts = append(parts, map[string]any{
 										"type":  np.Type(),
 										"value": np.Value(),
 									})
@@ -231,7 +228,7 @@ func tests(tc utils.Test) func(*testing.T) {
 						// Check if ExpErrors is false (explicitly no errors)
 						if tc.ExpErrors == false {
 							assert.Empty(t, errors, "Expected no errors in parts but got: %v", errors)
-						} else if errArray, ok := tc.ExpErrors.([]interface{}); ok && len(errArray) == 0 {
+						} else if errArray, ok := tc.ExpErrors.([]any); ok && len(errArray) == 0 {
 							// Empty array means no expected errors
 							assert.Empty(t, errors, "Expected no errors in parts but got: %v", errors)
 						} else {

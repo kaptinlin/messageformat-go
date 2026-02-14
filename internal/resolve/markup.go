@@ -45,13 +45,13 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 		markup.Kind(),
 		markup.Name(),
 		"", // source will be set if needed
-		make(map[string]interface{}),
+		make(map[string]any),
 	)
 
 	options := markup.Options()
 	// matches TypeScript: if (options?.size)
 	if len(options) > 0 {
-		partOptions := make(map[string]interface{})
+		partOptions := make(map[string]any)
 
 		// matches TypeScript: for (const [name, value] of options)
 		for name, value := range options {
@@ -75,7 +75,7 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 					))
 				}
 			} else {
-				var rv interface{}
+				var rv any
 
 				// matches TypeScript: let rv = resolveValue(ctx, value);
 				if node, ok := value.(datamodel.Node); ok {

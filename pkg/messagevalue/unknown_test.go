@@ -12,12 +12,12 @@ func TestUnknownValue(t *testing.T) {
 	tests := []struct {
 		name             string
 		source           string
-		value            interface{}
+		value            any
 		locale           string
 		expectedType     string
 		expectedDir      bidi.Direction
 		expectedToString string
-		expectedValueOf  interface{}
+		expectedValueOf  any
 	}{
 		{
 			name:             "string value",

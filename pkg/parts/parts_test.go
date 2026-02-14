@@ -21,7 +21,7 @@ func TestNewBidiIsolationPart(t *testing.T) {
 }
 
 func TestNewMarkupPart(t *testing.T) {
-	options := map[string]interface{}{
+	options := map[string]any{
 		"class": "highlight",
 	}
 	part := NewMarkupPart("open", "span", "span", options)

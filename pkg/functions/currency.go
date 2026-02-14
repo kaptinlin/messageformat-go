@@ -1,6 +1,8 @@
 package functions
 
 import (
+	"maps"
+
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
@@ -99,8 +101,8 @@ import (
 //	}
 func CurrencyFunction(
 	ctx MessageFunctionContext,
-	options map[string]interface{},
-	operand interface{},
+	options map[string]any,
+	operand any,
 ) messagevalue.MessageValue {
 	source := ctx.Source()
 
@@ -112,16 +114,14 @@ func CurrencyFunction(
 	}
 
 	// Start with operand options and set currency style
-	mergedOptions := make(map[string]interface{})
+	mergedOptions := make(map[string]any)
 
 	// Copy existing options from the operand if any
 	// According to the spec and tests, numbers from :number and :integer CAN be reformatted as currency
 	// Only check if it already has a conflicting style (like "percent")
 	if numericOperand.Options != nil {
 		// Copy existing options
-		for k, v := range numericOperand.Options {
-			mergedOptions[k] = v
-		}
+		maps.Copy(mergedOptions, numericOperand.Options)
 
 		// Check if it has a style already set that conflicts
 		if existingStyle, hasStyle := numericOperand.Options["style"]; hasStyle {
@@ -214,7 +214,7 @@ func CurrencyFunction(
 }
 
 // toString converts a value to string for error messages
-func toString(value interface{}) string {
+func toString(value any) string {
 	if str, ok := value.(string); ok {
 		return str
 	}

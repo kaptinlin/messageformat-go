@@ -40,7 +40,7 @@ func TestUnitSelection(t *testing.T) {
 		"",
 	)
 
-	options := map[string]interface{}{
+	options := map[string]any{
 		"unit": "meter",
 	}
 
@@ -91,7 +91,7 @@ func TestUnitComplexOperand(t *testing.T) {
 			"",
 		)
 
-		options := map[string]interface{}{
+		options := map[string]any{
 			"unit":                "meter",
 			"signDisplay":         "always",
 			"trailingZeroDisplay": "stripIfInteger",
@@ -133,12 +133,12 @@ func TestUnitComplexOperand(t *testing.T) {
 
 		// TypeScript original code: const n = { valueOf: () => 42, options: { unit: 'meter' } };
 		// In Go, we simulate this with a map containing valueOf and options
-		operand := map[string]interface{}{
+		operand := map[string]any{
 			"valueOf": 42,
-			"options": map[string]interface{}{"unit": "meter"},
+			"options": map[string]any{"unit": "meter"},
 		}
 
-		options := map[string]interface{}{} // No explicit options, should use operand options
+		options := map[string]any{} // No explicit options, should use operand options
 
 		// TypeScript original code: expect(mf.format({ n })).toEqual(nf.format(42));
 		result := UnitFunction(ctx, options, operand)
@@ -165,7 +165,7 @@ func TestUnitBasicFunctionality(t *testing.T) {
 			"",
 		)
 
-		options := map[string]interface{}{
+		options := map[string]any{
 			"unit": "meter",
 		}
 
@@ -195,7 +195,7 @@ func TestUnitBasicFunctionality(t *testing.T) {
 			"",
 		)
 
-		options := map[string]interface{}{} // No unit option
+		options := map[string]any{} // No unit option
 
 		result := UnitFunction(ctx, options, 42)
 		require.NotNil(t, result)
@@ -231,7 +231,7 @@ func TestUnitBasicFunctionality(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run("unit="+tc.unit, func(t *testing.T) {
-				options := map[string]interface{}{
+				options := map[string]any{
 					"unit": tc.unit,
 				}
 
@@ -269,7 +269,7 @@ func TestUnitBasicFunctionality(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run("unitDisplay="+tc.unitDisplay, func(t *testing.T) {
-				options := map[string]interface{}{
+				options := map[string]any{
 					"unit":        "meter",
 					"unitDisplay": tc.unitDisplay,
 				}

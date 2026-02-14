@@ -21,7 +21,7 @@ import (
 //	| MessageExpressionPart<...>
 type MessagePart interface {
 	Type() string
-	Value() interface{}
+	Value() any
 	Source() string
 	Locale() string
 	Dir() bidi.Direction
@@ -36,7 +36,7 @@ type MessagePart interface {
 //	}
 type MessageTextPart interface {
 	Type() string
-	Value() interface{}
+	Value() any
 	Source() string
 	Locale() string
 	Dir() bidi.Direction
@@ -52,7 +52,7 @@ type MessageTextPart interface {
 //	}
 type MessageBidiIsolationPart interface {
 	Type() string
-	Value() interface{}
+	Value() any
 	Source() string
 	Locale() string
 	Dir() bidi.Direction
@@ -70,7 +70,7 @@ type MessageBidiIsolationPart interface {
 //	}
 type MessageMarkupPart interface {
 	Type() string
-	Value() interface{}
+	Value() any
 	Source() string
 	Locale() string
 	Dir() bidi.Direction
@@ -85,7 +85,7 @@ type MessageMarkupPart interface {
 //	}
 type MessageFallbackPart interface {
 	Type() string
-	Value() interface{}
+	Value() any
 	Source() string
 	Locale() string
 	Dir() bidi.Direction
@@ -94,7 +94,7 @@ type MessageFallbackPart interface {
 // MessageStringPart represents a string part
 type MessageStringPart interface {
 	Type() string
-	Value() interface{}
+	Value() any
 	Source() string
 	Locale() string
 	Dir() bidi.Direction
@@ -103,7 +103,7 @@ type MessageStringPart interface {
 // MessageNumberPart represents a number part
 type MessageNumberPart interface {
 	Type() string
-	Value() interface{}
+	Value() any
 	Source() string
 	Locale() string
 	Dir() bidi.Direction
@@ -120,7 +120,7 @@ func NewBidiIsolationPart(value string) messagevalue.MessagePart {
 }
 
 // NewMarkupPart creates a new markup part
-func NewMarkupPart(kind, name, source string, options map[string]interface{}) messagevalue.MessagePart {
+func NewMarkupPart(kind, name, source string, options map[string]any) messagevalue.MessagePart {
 	return messagevalue.NewMarkupPart(kind, name, source, options)
 }
 

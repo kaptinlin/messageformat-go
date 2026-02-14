@@ -22,7 +22,7 @@ func TestOnError_AllErrorTypes(t *testing.T) {
 		name        string
 		errorType   string
 		start       int
-		endOrChar   interface{}
+		endOrChar   any
 		expectedLen int
 	}{
 		{

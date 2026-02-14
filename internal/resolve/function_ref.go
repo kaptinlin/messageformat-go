@@ -90,7 +90,7 @@ func resolveFunctionRefInternal(
 	source string,
 ) (messagevalue.MessageValue, error) {
 	// matches TypeScript: const fnInput = operand ? [resolveValue(ctx, operand)] : [];
-	var fnInput []interface{}
+	var fnInput []any
 	if operand != nil {
 		resolved, err := resolveValue(ctx, operand)
 		if err != nil {
@@ -102,9 +102,9 @@ func resolveFunctionRefInternal(
 				source,
 			)
 		}
-		fnInput = []interface{}{resolved}
+		fnInput = []any{resolved}
 	} else {
-		fnInput = []interface{}{}
+		fnInput = []any{}
 	}
 
 	// matches TypeScript: const rf = ctx.functions[name];
@@ -162,7 +162,7 @@ func resolveFunctionRefInternal(
 func createMessageFunctionContext(
 	ctx *Context,
 	source string,
-	options map[string]interface{},
+	options map[string]any,
 ) functions.MessageFunctionContext {
 	var dir string
 	var id string
@@ -261,8 +261,8 @@ func createMessageFunctionContext(
 }
 
 // resolveOptions resolves function options
-func resolveOptions(ctx *Context, options map[string]interface{}) map[string]interface{} {
-	opt := make(map[string]interface{})
+func resolveOptions(ctx *Context, options map[string]any) map[string]any {
+	opt := make(map[string]any)
 
 	if options == nil {
 		return opt
@@ -271,7 +271,7 @@ func resolveOptions(ctx *Context, options map[string]interface{}) map[string]int
 	for name, value := range options {
 		// Skip universal options (they're handled by MessageFunctionContext)
 		if !isUniversalOption(name) {
-			var resolved interface{}
+			var resolved any
 
 			// Try to resolve as datamodel.Node first
 			if node, ok := value.(datamodel.Node); ok {
@@ -316,8 +316,8 @@ func isUniversalOption(name string) bool {
 }
 
 // convertOptionsToMap converts FunctionRef options to a map[string]interface{}
-func convertOptionsToMap(options datamodel.Options) map[string]interface{} {
-	converted := make(map[string]interface{})
+func convertOptionsToMap(options datamodel.Options) map[string]any {
+	converted := make(map[string]any)
 
 	for name, value := range options {
 		converted[name] = value
@@ -363,7 +363,7 @@ func (mv *messageValueWithOptions) Locale() string {
 	return mv.wrapped.Locale()
 }
 
-func (mv *messageValueWithOptions) Options() map[string]interface{} {
+func (mv *messageValueWithOptions) Options() map[string]any {
 	return mv.wrapped.Options()
 }
 
@@ -409,7 +409,7 @@ func (mv *messageValueWithOptions) ToParts() ([]messagevalue.MessagePart, error)
 	return parts, nil
 }
 
-func (mv *messageValueWithOptions) ValueOf() (interface{}, error) {
+func (mv *messageValueWithOptions) ValueOf() (any, error) {
 	return mv.wrapped.ValueOf()
 }
 
@@ -435,10 +435,10 @@ type partWithOptions struct {
 	locale  string
 }
 
-func (p *partWithOptions) Type() string       { return p.wrapped.Type() }
-func (p *partWithOptions) Value() interface{} { return p.wrapped.Value() }
-func (p *partWithOptions) Source() string     { return p.wrapped.Source() }
-func (p *partWithOptions) Locale() string     { return p.wrapped.Locale() }
+func (p *partWithOptions) Type() string   { return p.wrapped.Type() }
+func (p *partWithOptions) Value() any     { return p.wrapped.Value() }
+func (p *partWithOptions) Source() string { return p.wrapped.Source() }
+func (p *partWithOptions) Locale() string { return p.wrapped.Locale() }
 
 func (p *partWithOptions) Dir() bidi.Direction {
 	if p.dir != "" {

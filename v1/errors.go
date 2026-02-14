@@ -31,15 +31,15 @@ func WrapInvalidLocale(locale string) error {
 	return fmt.Errorf("%w: %s", ErrInvalidLocale, locale)
 }
 
-func WrapInvalidNumberValue(value interface{}) error {
+func WrapInvalidNumberValue(value any) error {
 	return fmt.Errorf("%w: %v", ErrInvalidNumberValue, value)
 }
 
-func WrapInvalidDateValue(value interface{}) error {
+func WrapInvalidDateValue(value any) error {
 	return fmt.Errorf("%w: %v", ErrInvalidDateValue, value)
 }
 
-func WrapInvalidTimeValue(value interface{}) error {
+func WrapInvalidTimeValue(value any) error {
 	return fmt.Errorf("%w: %v", ErrInvalidTimeValue, value)
 }
 

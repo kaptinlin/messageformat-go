@@ -9,7 +9,7 @@ import (
 func TestAsBoolean(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected bool
 		hasError bool
 	}{
@@ -38,7 +38,7 @@ func TestAsBoolean(t *testing.T) {
 func TestAsPositiveInteger(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected int
 		hasError bool
 	}{
@@ -69,7 +69,7 @@ func TestAsPositiveInteger(t *testing.T) {
 func TestAsString(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected string
 		hasError bool
 	}{
@@ -94,7 +94,7 @@ func TestAsString(t *testing.T) {
 }
 
 func TestGetStringOption(t *testing.T) {
-	options := map[string]interface{}{
+	options := map[string]any{
 		"valid":   "test",
 		"invalid": 42,
 	}
@@ -105,7 +105,7 @@ func TestGetStringOption(t *testing.T) {
 }
 
 func TestGetIntOption(t *testing.T) {
-	options := map[string]interface{}{
+	options := map[string]any{
 		"valid":   5,
 		"invalid": "abc",
 	}
@@ -116,7 +116,7 @@ func TestGetIntOption(t *testing.T) {
 }
 
 func TestGetBoolOption(t *testing.T) {
-	options := map[string]interface{}{
+	options := map[string]any{
 		"valid":   true,
 		"invalid": "abc",
 	}

@@ -36,18 +36,18 @@ var (
 //	  selectKeys(keys: string[]) { /* plural selection logic */ }
 //	}
 type NumberValue struct {
-	value     interface{} // int64, float64, or other numeric types
+	value     any // int64, float64, or other numeric types
 	locale    string
 	dir       bidi.Direction
 	source    string
-	options   map[string]interface{}
+	options   map[string]any
 	canSelect bool // whether this number value supports selection
 }
 
 // NewNumberValue creates a new number value
-func NewNumberValue(value interface{}, locale, source string, options map[string]interface{}) *NumberValue {
+func NewNumberValue(value any, locale, source string, options map[string]any) *NumberValue {
 	if options == nil {
-		options = make(map[string]interface{})
+		options = make(map[string]any)
 	}
 
 	return &NumberValue{
@@ -61,9 +61,9 @@ func NewNumberValue(value interface{}, locale, source string, options map[string
 }
 
 // NewNumberValueWithDir creates a new number value with explicit direction
-func NewNumberValueWithDir(value interface{}, locale, source string, dir bidi.Direction, options map[string]interface{}) *NumberValue {
+func NewNumberValueWithDir(value any, locale, source string, dir bidi.Direction, options map[string]any) *NumberValue {
 	if options == nil {
-		options = make(map[string]interface{})
+		options = make(map[string]any)
 	}
 
 	return &NumberValue{
@@ -78,9 +78,9 @@ func NewNumberValueWithDir(value interface{}, locale, source string, dir bidi.Di
 
 // NewNumberValueWithSelection creates a new number value with specified selection capability
 // TypeScript original code: new NumberValue(source, value, locale, dir, options) with canSelect parameter
-func NewNumberValueWithSelection(value interface{}, locale, source string, dir bidi.Direction, options map[string]interface{}, canSelect bool) *NumberValue {
+func NewNumberValueWithSelection(value any, locale, source string, dir bidi.Direction, options map[string]any, canSelect bool) *NumberValue {
 	if options == nil {
-		options = make(map[string]interface{})
+		options = make(map[string]any)
 	}
 
 	return &NumberValue{
@@ -109,7 +109,7 @@ func (nv *NumberValue) Locale() string {
 	return nv.locale
 }
 
-func (nv *NumberValue) Options() map[string]interface{} {
+func (nv *NumberValue) Options() map[string]any {
 	return nv.options
 }
 
@@ -651,7 +651,7 @@ func (nv *NumberValue) adjustFractionDigits(formatted string, minFractionDigits,
 		if minFractionDigits > 0 {
 			// Add decimal point and required digits
 			formatted += "."
-			for i := 0; i < minFractionDigits; i++ {
+			for range minFractionDigits {
 				formatted += "0"
 			}
 		}
@@ -1078,7 +1078,7 @@ func (nv *NumberValue) parseIntegerWithGroups(integer string) []MessagePart {
 	return parts
 }
 
-func (nv *NumberValue) ValueOf() (interface{}, error) {
+func (nv *NumberValue) ValueOf() (any, error) {
 	return nv.value, nil
 }
 
@@ -1162,7 +1162,7 @@ func formatNumberForSelection(num float64) string {
 // getPluralCategory determines the plural category for a number
 // TypeScript reference: new Intl.PluralRules(locales, pluralOpt).select(Number(numVal))
 // Note: The percent multiplication (*100) is now handled by the caller (SelectKeys)
-func getPluralCategory(num float64, options map[string]interface{}, locale string) string {
+func getPluralCategory(num float64, options map[string]any, locale string) string {
 	// Check select option type (cardinal, ordinal, or default to cardinal)
 	selectType := "cardinal"
 	if selectOpt, hasSelect := options["select"]; hasSelect {
@@ -1199,7 +1199,7 @@ func getPluralCategory(num float64, options map[string]interface{}, locale strin
 // NumberSubPart represents a sub-part of a number (like integer, decimal, etc.)
 type NumberSubPart struct {
 	partType string
-	value    interface{}
+	value    any
 	source   string
 	locale   string
 	dir      bidi.Direction
@@ -1209,7 +1209,7 @@ func (nsp *NumberSubPart) Type() string {
 	return nsp.partType
 }
 
-func (nsp *NumberSubPart) Value() interface{} {
+func (nsp *NumberSubPart) Value() any {
 	return nsp.value
 }
 
@@ -1228,7 +1228,7 @@ func (nsp *NumberSubPart) Dir() bidi.Direction {
 // NumberPart implements MessagePart for number parts
 // TypeScript original code: number part implementation
 type NumberPart struct {
-	value  interface{}
+	value  any
 	source string
 	locale string
 	dir    bidi.Direction
@@ -1239,7 +1239,7 @@ func (np *NumberPart) Type() string {
 	return "number"
 }
 
-func (np *NumberPart) Value() interface{} {
+func (np *NumberPart) Value() any {
 	return np.value
 }
 

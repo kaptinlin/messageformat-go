@@ -7,7 +7,7 @@ import (
 
 // ToString converts any value to a string representation
 // This is a helper function for custom function implementations
-func ToString(value interface{}) string {
+func ToString(value any) string {
 	if value == nil {
 		return ""
 	}
@@ -35,7 +35,7 @@ func ToString(value interface{}) string {
 
 // ToNumber converts any value to a float64
 // This is a helper function for custom function implementations
-func ToNumber(value interface{}) float64 {
+func ToNumber(value any) float64 {
 	if value == nil {
 		return 0
 	}
@@ -91,6 +91,6 @@ func String(value string) *StringValue {
 }
 
 // Number creates a new NumberValue for use in custom functions
-func Number(value interface{}) *NumberValue {
+func Number(value any) *NumberValue {
 	return NewNumberValue(value, "", "", nil)
 }

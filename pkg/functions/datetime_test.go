@@ -27,7 +27,7 @@ func TestDatetimeFunctionReturnsDateTimeValue(t *testing.T) {
 	)
 
 	// Test with ISO date string
-	options := map[string]interface{}{
+	options := map[string]any{
 		"dateStyle": "medium",
 		"timeStyle": "short",
 	}
@@ -89,7 +89,7 @@ func TestDatetimeFunctionDefaultOptions(t *testing.T) {
 	)
 
 	// Test with no options - should get default dateStyle=medium, timeStyle=short
-	result := DatetimeFunction(ctx, map[string]interface{}{}, "2006-01-02T15:04:05")
+	result := DatetimeFunction(ctx, map[string]any{}, "2006-01-02T15:04:05")
 
 	dtv, ok := result.(*messagevalue.DateTimeValue)
 	require.True(t, ok)

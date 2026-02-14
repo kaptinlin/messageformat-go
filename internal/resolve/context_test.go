@@ -12,11 +12,11 @@ import (
 func TestNewContext(t *testing.T) {
 	locales := []string{"en", "fr"}
 	funcs := map[string]functions.MessageFunction{
-		"test": func(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+		"test": func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 			return messagevalue.NewStringValue("test", "en", "test")
 		},
 	}
-	scope := map[string]interface{}{
+	scope := map[string]any{
 		"name": "Alice",
 	}
 
@@ -42,10 +42,10 @@ func TestNewContextWithNils(t *testing.T) {
 func TestContextClone(t *testing.T) {
 	original := NewContext(
 		[]string{"en"},
-		map[string]functions.MessageFunction{"test": func(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+		map[string]functions.MessageFunction{"test": func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 			return messagevalue.NewStringValue("test", "en", "test")
 		}},
-		map[string]interface{}{"name": "Alice"},
+		map[string]any{"name": "Alice"},
 		nil,
 	)
 
@@ -72,11 +72,11 @@ func TestContextCloneWithScope(t *testing.T) {
 	original := NewContext(
 		[]string{"en"},
 		nil,
-		map[string]interface{}{"name": "Alice"},
+		map[string]any{"name": "Alice"},
 		nil,
 	)
 
-	newScope := map[string]interface{}{
+	newScope := map[string]any{
 		"age":  30,
 		"city": "Paris",
 	}

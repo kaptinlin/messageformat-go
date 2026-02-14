@@ -65,7 +65,7 @@ func TestSimpleOpenClose(t *testing.T) {
 		openMarkup := datamodel.NewMarkup("open", "b", options, nil)
 
 		// Create a basic context with variables
-		values := map[string]interface{}{
+		values := map[string]any{
 			"foo": "foo bar",
 		}
 		ctx := NewContext([]string{"en"}, functions.DefaultFunctions, values, nil)

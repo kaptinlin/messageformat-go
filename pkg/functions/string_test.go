@@ -19,15 +19,15 @@ func TestStringFunction(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		operand  interface{}
-		options  map[string]interface{}
+		operand  any
+		options  map[string]any
 		expected string
 	}{
 		{"string input", "hello", nil, "hello"},
 		{"nil input", nil, nil, ""},
 		{"number input", 42, nil, "42"},
 		{"boolean input", true, nil, "true"},
-		{"with locale option", "test", map[string]interface{}{"locale": "fr"}, "test"},
+		{"with locale option", "test", map[string]any{"locale": "fr"}, "test"},
 	}
 
 	for _, tt := range tests {

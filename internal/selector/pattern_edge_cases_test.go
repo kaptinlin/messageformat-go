@@ -54,7 +54,7 @@ func TestSelectPattern_NoMatchingVariant(t *testing.T) {
 			"string": functions.StringFunction,
 			"number": functions.NumberFunction,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"count": 999,
 		},
 		onError,
@@ -100,7 +100,7 @@ func TestSelectPattern_MultipleSelectors(t *testing.T) {
 			"string": functions.StringFunction,
 			"number": functions.NumberFunction,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"gender": "female",
 			"count":  1,
 		},
@@ -165,7 +165,7 @@ func TestSelectPattern_Backtracking(t *testing.T) {
 			"string": functions.StringFunction,
 			"number": functions.NumberFunction,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"a": "x",
 			"b": "y",
 		},
@@ -234,7 +234,7 @@ func TestSelectPattern_BadSelector(t *testing.T) {
 			"string": functions.StringFunction,
 			"number": functions.NumberFunction,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"bad": "value", // String doesn't support selection
 		},
 		onError,
@@ -271,7 +271,7 @@ func TestSelectPattern_KeyMismatch(t *testing.T) {
 			"string": functions.StringFunction,
 			"number": functions.NumberFunction,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"a": "x",
 			"b": "y",
 		},
@@ -321,7 +321,7 @@ func TestSelectPattern_CatchallOnly(t *testing.T) {
 			"string": functions.StringFunction,
 			"number": functions.NumberFunction,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"count": 42,
 		},
 		nil,
@@ -360,7 +360,7 @@ func TestSelectPattern_ComplexBacktracking(t *testing.T) {
 			"string": functions.StringFunction,
 			"number": functions.NumberFunction,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"a": "1",
 			"b": "2",
 			"c": "3",
@@ -421,7 +421,7 @@ func TestSelectPattern_MixedCatchallAndLiteral(t *testing.T) {
 			"string": functions.StringFunction,
 			"number": functions.NumberFunction,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"a": "x",
 			"b": "y",
 		},
@@ -488,7 +488,7 @@ func TestSelectPattern_EmptyVariants(t *testing.T) {
 		map[string]functions.MessageFunction{
 			"string": functions.StringFunction,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"count": 1,
 		},
 		onError,
@@ -514,7 +514,7 @@ func TestSelectPattern_EmptyVariants(t *testing.T) {
 func TestSelectPattern_SingleSelector(t *testing.T) {
 	tests := []struct {
 		name          string
-		selectorValue interface{}
+		selectorValue any
 		variantKeys   []string
 		expectedIndex int
 	}{
@@ -540,7 +540,7 @@ func TestSelectPattern_SingleSelector(t *testing.T) {
 					"string": functions.StringFunction,
 					"number": functions.NumberFunction,
 				},
-				map[string]interface{}{
+				map[string]any{
 					"sel": tt.selectorValue,
 				},
 				nil,

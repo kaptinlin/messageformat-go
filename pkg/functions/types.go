@@ -17,8 +17,8 @@ import (
 // ) => MessageValue;
 type MessageFunction func(
 	ctx MessageFunctionContext,
-	options map[string]interface{},
-	operand interface{},
+	options map[string]any,
+	operand any,
 ) messagevalue.MessageValue
 
 // MessageFunctionContext provides context for function execution

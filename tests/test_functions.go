@@ -2,6 +2,7 @@ package tests
 
 import (
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -69,12 +70,12 @@ func (tv *testValue) Locale() string {
 }
 
 // Options returns formatting options
-func (tv *testValue) Options() map[string]interface{} {
+func (tv *testValue) Options() map[string]any {
 	return nil
 }
 
 // ValueOf returns the underlying value
-func (tv *testValue) ValueOf() (interface{}, error) {
+func (tv *testValue) ValueOf() (any, error) {
 	return tv.input, nil
 }
 
@@ -96,17 +97,13 @@ func (tv *testValue) SelectKeys(keys []string) ([]string, error) {
 	if tv.input == 1 {
 		// Check for "1.0" first if decimalPlaces === 1
 		if tv.decimalPlaces == 1 {
-			for _, key := range keys {
-				if key == "1.0" {
-					return []string{"1.0"}, nil
-				}
+			if slices.Contains(keys, "1.0") {
+				return []string{"1.0"}, nil
 			}
 		}
 		// Then check for "1"
-		for _, key := range keys {
-			if key == "1" {
-				return []string{"1"}, nil
-			}
+		if slices.Contains(keys, "1") {
+			return []string{"1"}, nil
 		}
 	}
 
@@ -179,22 +176,22 @@ func (tv *testValue) ToParts() ([]messagevalue.MessagePart, error) {
 }
 
 // testFunction implements the :test:function behavior
-func testFunction(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+func testFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 	return createTestValue(ctx, options, operand, true, true)
 }
 
 // testSelectFunction implements the :test:select behavior
-func testSelectFunction(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+func testSelectFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 	return createTestValue(ctx, options, operand, false, true)
 }
 
 // testFormatFunction implements the :test:format behavior
-func testFormatFunction(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+func testFormatFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 	return createTestValue(ctx, options, operand, true, false)
 }
 
 // createTestValue creates a test value with the specified capabilities
-func createTestValue(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}, canFormat, canSelect bool) messagevalue.MessageValue {
+func createTestValue(ctx functions.MessageFunctionContext, options map[string]any, operand any, canFormat, canSelect bool) messagevalue.MessageValue {
 	// Get locale from context
 	locale := "en"
 	if locales := ctx.Locales(); len(locales) > 0 {
@@ -320,9 +317,9 @@ func createTestValue(ctx functions.MessageFunctionContext, options map[string]in
 }
 
 // parseNumericInputStrict parses input more strictly like TypeScript version
-func parseNumericInputStrict(input interface{}) (float64, error) {
+func parseNumericInputStrict(input any) (float64, error) {
 	// Handle valueOf() method like TypeScript
-	if obj, ok := input.(interface{ ValueOf() (interface{}, error) }); ok {
+	if obj, ok := input.(interface{ ValueOf() (any, error) }); ok {
 		if val, err := obj.ValueOf(); err == nil {
 			input = val
 		}
@@ -357,7 +354,7 @@ func parseNumericInputStrict(input interface{}) (float64, error) {
 }
 
 // Helper functions (simplified versions of functions package utilities)
-func asPositiveInteger(value interface{}) (int, error) {
+func asPositiveInteger(value any) (int, error) {
 	switch v := value.(type) {
 	case int:
 		if v >= 0 {
@@ -375,7 +372,7 @@ func asPositiveInteger(value interface{}) (int, error) {
 	return 0, ErrNotPositiveInt
 }
 
-func asString(value interface{}) (string, error) {
+func asString(value any) (string, error) {
 	if str, ok := value.(string); ok {
 		return str, nil
 	}
@@ -383,7 +380,7 @@ func asString(value interface{}) (string, error) {
 }
 
 // placeholderFunction implements a simple placeholder function for testing
-func placeholderFunction(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+func placeholderFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 	locale := "en"
 	if locales := ctx.Locales(); len(locales) > 0 {
 		locale = locales[0]

@@ -12,16 +12,16 @@ import (
 func TestOffsetFunction(t *testing.T) {
 	tests := []struct {
 		name        string
-		operand     interface{}
-		options     map[string]interface{}
+		operand     any
+		options     map[string]any
 		expectError bool
-		expectValue interface{}
+		expectValue any
 		description string
 	}{
 		{
 			name:        "add integer to number",
 			operand:     5,
-			options:     map[string]interface{}{"add": 3},
+			options:     map[string]any{"add": 3},
 			expectError: false,
 			expectValue: 8,
 			description: "Should add 3 to 5 to get 8",
@@ -29,7 +29,7 @@ func TestOffsetFunction(t *testing.T) {
 		{
 			name:        "subtract integer from number",
 			operand:     10,
-			options:     map[string]interface{}{"subtract": 4},
+			options:     map[string]any{"subtract": 4},
 			expectError: false,
 			expectValue: 6,
 			description: "Should subtract 4 from 10 to get 6",
@@ -37,7 +37,7 @@ func TestOffsetFunction(t *testing.T) {
 		{
 			name:        "add to float64",
 			operand:     5.5,
-			options:     map[string]interface{}{"add": 2},
+			options:     map[string]any{"add": 2},
 			expectError: false,
 			expectValue: 7.5,
 			description: "Should add 2 to 5.5 to get 7.5",
@@ -45,7 +45,7 @@ func TestOffsetFunction(t *testing.T) {
 		{
 			name:        "subtract from float64",
 			operand:     10.7,
-			options:     map[string]interface{}{"subtract": 3},
+			options:     map[string]any{"subtract": 3},
 			expectError: false,
 			expectValue: 7.7,
 			description: "Should subtract 3 from 10.7 to get 7.7",
@@ -53,43 +53,43 @@ func TestOffsetFunction(t *testing.T) {
 		{
 			name:        "both add and subtract provided",
 			operand:     5,
-			options:     map[string]interface{}{"add": 3, "subtract": 2},
+			options:     map[string]any{"add": 3, "subtract": 2},
 			expectError: true,
 			description: "Should error when both add and subtract are provided",
 		},
 		{
 			name:        "neither add nor subtract provided",
 			operand:     5,
-			options:     map[string]interface{}{},
+			options:     map[string]any{},
 			expectError: true,
 			description: "Should error when neither add nor subtract are provided",
 		},
 		{
 			name:        "invalid add value",
 			operand:     5,
-			options:     map[string]interface{}{"add": "invalid"},
+			options:     map[string]any{"add": "invalid"},
 			expectError: true,
 			description: "Should error when add value is not a positive integer",
 		},
 		{
 			name:        "invalid subtract value",
 			operand:     5,
-			options:     map[string]interface{}{"subtract": -1},
+			options:     map[string]any{"subtract": -1},
 			expectError: true,
 			description: "Should error when subtract value is negative",
 		},
 		{
 			name:        "string operand that parses to number",
 			operand:     "10",
-			options:     map[string]interface{}{"add": 5},
+			options:     map[string]any{"add": 5},
 			expectError: false,
 			expectValue: int64(15),
 			description: "Should parse string operand to number and add 5",
 		},
 		{
 			name:        "object with valueOf method",
-			operand:     map[string]interface{}{"valueOf": 8, "options": map[string]interface{}{"style": "decimal"}},
-			options:     map[string]interface{}{"subtract": 3},
+			operand:     map[string]any{"valueOf": 8, "options": map[string]any{"style": "decimal"}},
+			options:     map[string]any{"subtract": 3},
 			expectError: false,
 			expectValue: 5,
 			description: "Should extract value from object and subtract 3",
@@ -160,7 +160,7 @@ func TestOffsetFunctionEdgeCases(t *testing.T) {
 			"ltr",
 			"",
 		)
-		result := OffsetFunction(ctx, map[string]interface{}{"add": 0}, 10)
+		result := OffsetFunction(ctx, map[string]any{"add": 0}, 10)
 
 		numVal, ok := result.(*messagevalue.NumberValue)
 		require.True(t, ok)
@@ -181,7 +181,7 @@ func TestOffsetFunctionEdgeCases(t *testing.T) {
 			"ltr",
 			"",
 		)
-		result := OffsetFunction(ctx, map[string]interface{}{"add": 1000000}, 2000000)
+		result := OffsetFunction(ctx, map[string]any{"add": 1000000}, 2000000)
 
 		numVal, ok := result.(*messagevalue.NumberValue)
 		require.True(t, ok)
@@ -206,7 +206,7 @@ func TestOffsetFunctionEdgeCases(t *testing.T) {
 
 		// Test with big.Int to match TypeScript BigInt behavior
 		bigInt := big.NewInt(9223372036854775807) // Max int64
-		result := OffsetFunction(ctx, map[string]interface{}{"add": 1}, bigInt)
+		result := OffsetFunction(ctx, map[string]any{"add": 1}, bigInt)
 
 		_, ok := result.(*messagevalue.NumberValue)
 		require.True(t, ok)
@@ -226,7 +226,7 @@ func TestOffsetFunctionEdgeCases(t *testing.T) {
 		)
 
 		// This matches TypeScript: if (add < 0 === sub < 0)
-		result := OffsetFunction(ctx, map[string]interface{}{}, 10)
+		result := OffsetFunction(ctx, map[string]any{}, 10)
 
 		_, ok := result.(*messagevalue.FallbackValue)
 		require.True(t, ok)
@@ -246,7 +246,7 @@ func TestOffsetFunctionEdgeCases(t *testing.T) {
 			"",
 		)
 
-		result := OffsetFunction(ctx, map[string]interface{}{"subtract": 5}, -10)
+		result := OffsetFunction(ctx, map[string]any{"subtract": 5}, -10)
 
 		numVal, ok := result.(*messagevalue.NumberValue)
 		require.True(t, ok)

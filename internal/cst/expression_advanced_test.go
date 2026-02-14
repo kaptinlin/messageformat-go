@@ -2,6 +2,7 @@
 package cst
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -95,11 +96,11 @@ func TestParseAttribute(t *testing.T) {
 			assert.NotNil(t, attr)
 
 			// Build name from identifier parts
-			var name string
+			var name strings.Builder
 			for _, part := range attr.Name() {
-				name += part.Value()
+				name.WriteString(part.Value())
 			}
-			assert.Equal(t, tt.expectedName, name)
+			assert.Equal(t, tt.expectedName, name.String())
 
 			if tt.hasValue {
 				assert.NotNil(t, attr.Value())
@@ -302,11 +303,11 @@ func TestParseFunctionRefOrMarkup_Function(t *testing.T) {
 			if funcRef, ok := result.(*FunctionRef); ok {
 				assert.Equal(t, "function", funcRef.Type())
 
-				var funcName string
+				var funcName strings.Builder
 				for _, part := range funcRef.Name() {
-					funcName += part.Value()
+					funcName.WriteString(part.Value())
 				}
-				assert.Equal(t, tt.expectedFunc, funcName)
+				assert.Equal(t, tt.expectedFunc, funcName.String())
 				assert.Len(t, funcRef.Options(), tt.optionCount)
 			} else {
 				t.Fatalf("Expected FunctionRef, got %T", result)
@@ -368,11 +369,11 @@ func TestParseFunctionRefOrMarkup_Markup(t *testing.T) {
 			if markup, ok := result.(*Markup); ok {
 				assert.Equal(t, "markup", markup.Type())
 
-				var tagName string
+				var tagName strings.Builder
 				for _, part := range markup.Name() {
-					tagName += part.Value()
+					tagName.WriteString(part.Value())
 				}
-				assert.Equal(t, tt.expectedTag, tagName)
+				assert.Equal(t, tt.expectedTag, tagName.String())
 
 				if tt.hasClose {
 					assert.NotNil(t, markup.Close())

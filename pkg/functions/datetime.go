@@ -41,7 +41,7 @@ var (
 // TypeScript reference: datetime.ts:244-261
 func readStringOption(
 	ctx MessageFunctionContext,
-	options map[string]interface{},
+	options map[string]any,
 	name string,
 	allowed map[string]bool,
 ) string {
@@ -70,8 +70,8 @@ func readStringOption(
 func dateTimeImplementation(
 	functionName string, // 'datetime' | 'date' | 'time'
 	ctx MessageFunctionContext,
-	exprOpt map[string]interface{},
-	operand interface{},
+	exprOpt map[string]any,
+	operand any,
 ) messagevalue.MessageValue {
 	source := ctx.Source()
 	locale := getFirstLocale(ctx.Locales())
@@ -84,13 +84,13 @@ func dateTimeImplementation(
 	}
 
 	// Build datetime format options (TS: line 90-92)
-	dtOptions := make(map[string]interface{})
+	dtOptions := make(map[string]any)
 	dtOptions["localeMatcher"] = ctx.LocaleMatcher()
 
 	// Extract options from operand if present (TS: lines 95-101)
-	if opMap, ok := operand.(map[string]interface{}); ok {
+	if opMap, ok := operand.(map[string]any); ok {
 		if opts, hasOpts := opMap["options"]; hasOpts {
-			if optsMap, ok := opts.(map[string]interface{}); ok {
+			if optsMap, ok := opts.(map[string]any); ok {
 				if cal, ok := optsMap["calendar"]; ok {
 					dtOptions["calendar"] = cal
 				}
@@ -213,13 +213,13 @@ func dateTimeImplementation(
 // parseDateTimeValue extracts time.Time from various operand types
 // Handles both plain values and operands with options/valueOf
 // TypeScript reference: datetime.ts:94-112
-func parseDateTimeValue(operand interface{}) (time.Time, error) {
+func parseDateTimeValue(operand any) (time.Time, error) {
 	value := operand
 
 	// Check if operand is an object with options and/or valueOf
 	// TypeScript: if (typeof value === 'object' && value !== null)
 	if operand != nil {
-		if opMap, ok := operand.(map[string]interface{}); ok {
+		if opMap, ok := operand.(map[string]any); ok {
 			// Extract valueOf if present
 			// TypeScript: if (typeof value.valueOf === 'function') value = value.valueOf()
 			if valueOf, ok := opMap["valueOf"]; ok {
@@ -240,8 +240,8 @@ func parseDateTimeValue(operand interface{}) (time.Time, error) {
 // TypeScript reference: datetime.ts:55-59
 func DatetimeFunction(
 	ctx MessageFunctionContext,
-	options map[string]interface{},
-	operand interface{},
+	options map[string]any,
+	operand any,
 ) messagevalue.MessageValue {
 	return dateTimeImplementation("datetime", ctx, options, operand)
 }
@@ -251,8 +251,8 @@ func DatetimeFunction(
 // TypeScript reference: datetime.ts:66-70
 func DateFunction(
 	ctx MessageFunctionContext,
-	options map[string]interface{},
-	operand interface{},
+	options map[string]any,
+	operand any,
 ) messagevalue.MessageValue {
 	return dateTimeImplementation("date", ctx, options, operand)
 }
@@ -262,14 +262,14 @@ func DateFunction(
 // TypeScript reference: datetime.ts:78-82
 func TimeFunction(
 	ctx MessageFunctionContext,
-	options map[string]interface{},
-	operand interface{},
+	options map[string]any,
+	operand any,
 ) messagevalue.MessageValue {
 	return dateTimeImplementation("time", ctx, options, operand)
 }
 
 // parseDateTime converts various input types to time.Time
-func parseDateTime(input interface{}) (time.Time, error) {
+func parseDateTime(input any) (time.Time, error) {
 	// Handle MessageValue types (e.g., from :datetime function)
 	if mv, ok := input.(messagevalue.MessageValue); ok {
 		if mv.Type() == "datetime" {

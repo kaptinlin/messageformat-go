@@ -61,7 +61,7 @@ func (fv *FallbackValue) Locale() string {
 	return fv.locale
 }
 
-func (fv *FallbackValue) Options() map[string]interface{} {
+func (fv *FallbackValue) Options() map[string]any {
 	return nil
 }
 
@@ -79,7 +79,7 @@ func (fv *FallbackValue) ToParts() ([]MessagePart, error) {
 	}, nil
 }
 
-func (fv *FallbackValue) ValueOf() (interface{}, error) {
+func (fv *FallbackValue) ValueOf() (any, error) {
 	return fv.source, nil
 }
 

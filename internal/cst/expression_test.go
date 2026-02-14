@@ -1,6 +1,7 @@
 package cst
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -158,11 +159,11 @@ func TestParseExpression_FunctionCalls(t *testing.T) {
 			if fr, ok := funcRef.(*FunctionRef); ok {
 				require.True(t, len(fr.Name()) > 0, "Function name should not be empty")
 				// Get function name from identifier parts
-				funcName := ""
+				var funcName strings.Builder
 				for _, part := range fr.Name() {
-					funcName += part.Value()
+					funcName.WriteString(part.Value())
 				}
-				assert.Equal(t, tt.expectedFunc, funcName, "Function name mismatch")
+				assert.Equal(t, tt.expectedFunc, funcName.String(), "Function name mismatch")
 			} else {
 				t.Fatalf("Expected FunctionRef, got %T", funcRef)
 			}

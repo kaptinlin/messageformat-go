@@ -20,6 +20,6 @@ import (
 //	  toString: () => String(input),
 //	  valueOf: () => input
 //	});
-func UnknownFunction(source string, input interface{}, locale string) messagevalue.MessageValue {
+func UnknownFunction(source string, input any, locale string) messagevalue.MessageValue {
 	return messagevalue.NewUnknownValue(source, input, locale)
 }

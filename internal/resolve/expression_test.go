@@ -18,7 +18,7 @@ func TestResolveExpression_NilExpression(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
 		functions.DefaultFunctions,
-		map[string]interface{}{},
+		map[string]any{},
 		nil,
 	)
 
@@ -33,7 +33,7 @@ func TestResolveExpression_NilArg(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
 		functions.DefaultFunctions,
-		map[string]interface{}{},
+		map[string]any{},
 		nil,
 	)
 
@@ -52,7 +52,7 @@ func TestResolveExpression_WithFunctionRef(t *testing.T) {
 		operand      datamodel.Node
 		functionName string
 		options      datamodel.Options
-		scope        map[string]interface{}
+		scope        map[string]any
 		expected     string
 	}{
 		{
@@ -60,7 +60,7 @@ func TestResolveExpression_WithFunctionRef(t *testing.T) {
 			operand:      datamodel.NewLiteral("42"),
 			functionName: "number",
 			options:      nil,
-			scope:        map[string]interface{}{},
+			scope:        map[string]any{},
 			expected:     "number",
 		},
 		{
@@ -68,7 +68,7 @@ func TestResolveExpression_WithFunctionRef(t *testing.T) {
 			operand:      datamodel.NewVariableRef("name"),
 			functionName: "string",
 			options:      nil,
-			scope:        map[string]interface{}{"name": "Alice"},
+			scope:        map[string]any{"name": "Alice"},
 			expected:     "string",
 		},
 		{
@@ -76,7 +76,7 @@ func TestResolveExpression_WithFunctionRef(t *testing.T) {
 			operand:      nil,
 			functionName: "number",
 			options:      nil,
-			scope:        map[string]interface{}{},
+			scope:        map[string]any{},
 			expected:     "fallback", // nil operand results in fallback
 		},
 	}
@@ -104,7 +104,7 @@ func TestResolveExpression_LiteralOnly(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
 		functions.DefaultFunctions,
-		map[string]interface{}{},
+		map[string]any{},
 		nil,
 	)
 
@@ -124,25 +124,25 @@ func TestResolveExpression_VariableOnly(t *testing.T) {
 	tests := []struct {
 		name         string
 		variableName string
-		scope        map[string]interface{}
+		scope        map[string]any
 		expectedType string
 	}{
 		{
 			name:         "string variable",
 			variableName: "name",
-			scope:        map[string]interface{}{"name": "Alice"},
+			scope:        map[string]any{"name": "Alice"},
 			expectedType: "string",
 		},
 		{
 			name:         "number variable",
 			variableName: "age",
-			scope:        map[string]interface{}{"age": 42},
+			scope:        map[string]any{"age": 42},
 			expectedType: "number",
 		},
 		{
 			name:         "missing variable returns fallback",
 			variableName: "missing",
-			scope:        map[string]interface{}{},
+			scope:        map[string]any{},
 			expectedType: "fallback",
 		},
 	}
@@ -171,7 +171,7 @@ func TestResolveExpression_UnsupportedType(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
 		functions.DefaultFunctions,
-		map[string]interface{}{},
+		map[string]any{},
 		func(err error) {
 			errorCalled = true
 		},
@@ -193,7 +193,7 @@ func TestResolveExpression_ComplexScenarios(t *testing.T) {
 		ctx := NewContext(
 			[]string{"en"},
 			functions.DefaultFunctions,
-			map[string]interface{}{"count": 42},
+			map[string]any{"count": 42},
 			nil,
 		)
 
@@ -215,7 +215,7 @@ func TestResolveExpression_ComplexScenarios(t *testing.T) {
 		ctx := NewContext(
 			[]string{"en"},
 			functions.DefaultFunctions,
-			map[string]interface{}{},
+			map[string]any{},
 			nil,
 		)
 
@@ -243,7 +243,7 @@ func TestResolveExpression_ErrorHandling(t *testing.T) {
 		ctx := NewContext(
 			[]string{"en"},
 			functions.DefaultFunctions,
-			map[string]interface{}{},
+			map[string]any{},
 			onError,
 		)
 
@@ -262,7 +262,7 @@ func TestResolveExpression_ErrorHandling(t *testing.T) {
 		ctx := NewContext(
 			[]string{"en"},
 			functions.DefaultFunctions,
-			map[string]interface{}{},
+			map[string]any{},
 			nil,
 		)
 
@@ -283,7 +283,7 @@ func TestResolveExpression_WithAnnotations(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
 		functions.DefaultFunctions,
-		map[string]interface{}{"value": 42},
+		map[string]any{"value": 42},
 		nil,
 	)
 
@@ -304,8 +304,8 @@ func TestResolveExpression_WithAnnotations(t *testing.T) {
 // mockUnsupportedNode is a mock implementation of an unsupported node type
 type mockUnsupportedNode struct{}
 
-func (m *mockUnsupportedNode) Type() string     { return "unsupported" }
-func (m *mockUnsupportedNode) CST() interface{} { return nil }
+func (m *mockUnsupportedNode) Type() string { return "unsupported" }
+func (m *mockUnsupportedNode) CST() any     { return nil }
 
 // TestResolveExpression_LocaleHandling tests locale handling in expression resolution
 func TestResolveExpression_LocaleHandling(t *testing.T) {
@@ -336,7 +336,7 @@ func TestResolveExpression_LocaleHandling(t *testing.T) {
 			ctx := NewContext(
 				tt.locales,
 				functions.DefaultFunctions,
-				map[string]interface{}{"value": "test"},
+				map[string]any{"value": "test"},
 				nil,
 			)
 
@@ -354,7 +354,7 @@ func TestResolveExpression_MessageValuePassthrough(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
 		functions.DefaultFunctions,
-		map[string]interface{}{
+		map[string]any{
 			"preformatted": messagevalue.NewStringValue("formatted", "en", "test"),
 		},
 		nil,

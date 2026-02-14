@@ -31,9 +31,9 @@ var positiveIntegerRegex = regexp.MustCompile(`^(0|[1-9][0-9]*)$`)
 //	  if (value === 'false') return false;
 //	  throw new RangeError('Not a boolean');
 //	}
-func asBoolean(value interface{}) (bool, error) {
+func asBoolean(value any) (bool, error) {
 	// Unwrap objects with valueOf method
-	if obj, ok := value.(map[string]interface{}); ok {
+	if obj, ok := value.(map[string]any); ok {
 		if valueOf, hasValueOf := obj["valueOf"]; hasValueOf {
 			value = valueOf
 		}
@@ -70,9 +70,9 @@ func asBoolean(value interface{}) (bool, error) {
 //	  }
 //	  throw new RangeError('Not a positive integer');
 //	}
-func asPositiveInteger(value interface{}) (int, error) {
+func asPositiveInteger(value any) (int, error) {
 	// Unwrap objects with valueOf method
-	if obj, ok := value.(map[string]interface{}); ok {
+	if obj, ok := value.(map[string]any); ok {
 		if valueOf, hasValueOf := obj["valueOf"]; hasValueOf {
 			value = valueOf
 		}
@@ -114,9 +114,9 @@ func asPositiveInteger(value interface{}) (int, error) {
 //	  if (value && typeof value === 'object') return String(value);
 //	  throw new RangeError('Not a string');
 //	}
-func asString(value interface{}) (string, error) {
+func asString(value any) (string, error) {
 	// Unwrap objects with valueOf method
-	if obj, ok := value.(map[string]interface{}); ok {
+	if obj, ok := value.(map[string]any); ok {
 		if valueOf, hasValueOf := obj["valueOf"]; hasValueOf {
 			value = valueOf
 		}
@@ -132,7 +132,7 @@ func asString(value interface{}) (string, error) {
 }
 
 // getStringOption safely gets a string option with a default value
-func getStringOption(options map[string]interface{}, name, defaultValue string) string {
+func getStringOption(options map[string]any, name, defaultValue string) string {
 	if val, ok := options[name]; ok {
 		if str, ok := val.(string); ok {
 			return str
@@ -142,7 +142,7 @@ func getStringOption(options map[string]interface{}, name, defaultValue string) 
 }
 
 // getIntOption safely gets an integer option with a default value
-func getIntOption(options map[string]interface{}, name string, defaultValue int) int {
+func getIntOption(options map[string]any, name string, defaultValue int) int {
 	if val, ok := options[name]; ok {
 		if intVal, err := asPositiveInteger(val); err == nil {
 			return intVal
@@ -152,7 +152,7 @@ func getIntOption(options map[string]interface{}, name string, defaultValue int)
 }
 
 // getBoolOption safely gets a boolean option with a default value
-func getBoolOption(options map[string]interface{}, name string, defaultValue bool) bool {
+func getBoolOption(options map[string]any, name string, defaultValue bool) bool {
 	if val, ok := options[name]; ok {
 		if boolVal, err := asBoolean(val); err == nil {
 			return boolVal

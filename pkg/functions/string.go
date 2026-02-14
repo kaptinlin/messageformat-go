@@ -36,8 +36,8 @@ import (
 //	}
 func StringFunction(
 	ctx MessageFunctionContext,
-	options map[string]interface{},
-	operand interface{},
+	options map[string]any,
+	operand any,
 ) messagevalue.MessageValue {
 	// Convert input to string
 	var stringValue string

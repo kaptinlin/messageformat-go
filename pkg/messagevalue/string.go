@@ -64,7 +64,7 @@ func (sv *StringValue) Locale() string {
 	return sv.locale
 }
 
-func (sv *StringValue) Options() map[string]interface{} {
+func (sv *StringValue) Options() map[string]any {
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (sv *StringValue) ToParts() ([]MessagePart, error) {
 	}, nil
 }
 
-func (sv *StringValue) ValueOf() (interface{}, error) {
+func (sv *StringValue) ValueOf() (any, error) {
 	return sv.value, nil
 }
 
@@ -112,7 +112,7 @@ func (sp *StringPart) Type() string {
 	return "string"
 }
 
-func (sp *StringPart) Value() interface{} {
+func (sp *StringPart) Value() any {
 	return sp.value
 }
 

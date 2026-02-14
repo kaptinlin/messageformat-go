@@ -17,7 +17,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result1, err := mf1.Format(map[string]interface{}{
+	result1, err := mf1.Format(map[string]any{
 		"name": "World",
 	})
 	if err != nil {
@@ -34,7 +34,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result2, err := mf2.Format(map[string]interface{}{
+	result2, err := mf2.Format(map[string]any{
 		"count": 1234,
 	})
 	if err != nil {
@@ -51,7 +51,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result3, err := mf3.Format(map[string]interface{}{
+	result3, err := mf3.Format(map[string]any{
 		"user":  "Alice",
 		"count": 5,
 	})
@@ -71,7 +71,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	resultEn, err := mfEn.Format(map[string]interface{}{
+	resultEn, err := mfEn.Format(map[string]any{
 		"name":  "Alice",
 		"count": 42,
 	})
@@ -86,7 +86,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	resultCn, err := mfCn.Format(map[string]interface{}{
+	resultCn, err := mfCn.Format(map[string]any{
 		"name":  "爱丽丝",
 		"count": 42,
 	})
@@ -104,7 +104,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result5a, err := mf5a.Format(map[string]interface{}{
+	result5a, err := mf5a.Format(map[string]any{
 		"price": 29.99,
 	})
 	if err != nil {
@@ -118,7 +118,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result5b, err := mf5b.Format(map[string]interface{}{
+	result5b, err := mf5b.Format(map[string]any{
 		"count": 1234.56,
 	})
 	if err != nil {
@@ -132,7 +132,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result5c, err := mf5c.Format(map[string]interface{}{
+	result5c, err := mf5c.Format(map[string]any{
 		"name": "John Doe",
 	})
 	if err != nil {
@@ -147,7 +147,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result6, err := mf6.Format(map[string]interface{}{
+	result6, err := mf6.Format(map[string]any{
 		// Intentionally omit the 'name' variable
 	}, messageformat.WithErrorHandler(func(error) {
 		// Suppress error logging for demo purposes
@@ -168,7 +168,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result7, err := mf7.Format(map[string]interface{}{
+	result7, err := mf7.Format(map[string]any{
 		"name": "World",
 	})
 	if err != nil {
@@ -187,7 +187,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result8, err := mf8.Format(map[string]interface{}{
+	result8, err := mf8.Format(map[string]any{
 		"name": "World",
 	})
 	if err != nil {

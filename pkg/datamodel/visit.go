@@ -21,16 +21,16 @@ package datamodel
 //
 // )
 type Visitor struct {
-	Attributes  func(attributes map[string]interface{}, context string) func()
+	Attributes  func(attributes map[string]any, context string) func()
 	Declaration func(declaration Declaration) func()
 	Expression  func(expression *Expression, context string) func()
-	FunctionRef func(functionRef *FunctionRef, context string, argument interface{}) func()
+	FunctionRef func(functionRef *FunctionRef, context string, argument any) func()
 	Key         func(key VariantKey, index int, keys []VariantKey)
 	Markup      func(markup *Markup, context string) func()
-	Node        func(node interface{}, rest ...interface{})
-	Options     func(options map[string]interface{}, context string) func()
+	Node        func(node any, rest ...any)
+	Options     func(options map[string]any, context string) func()
 	Pattern     func(pattern Pattern) func()
-	Value       func(value interface{}, context string, position string)
+	Value       func(value any, context string, position string)
 	Variant     func(variant *Variant) func()
 }
 
@@ -96,7 +96,7 @@ func Visit(msg Message, visitor *Visitor) {
 	}
 }
 
-func handleElement(elem interface{}, context string, visitor *Visitor) {
+func handleElement(elem any, context string, visitor *Visitor) {
 	switch e := elem.(type) {
 	case *Expression:
 		var end func()
@@ -181,7 +181,7 @@ func handlePattern(pattern Pattern, visitor *Visitor) {
 	}
 }
 
-func handleOptions(options map[string]interface{}, context string, visitor *Visitor) {
+func handleOptions(options map[string]any, context string, visitor *Visitor) {
 	if options == nil {
 		return
 	}
@@ -205,7 +205,7 @@ func handleOptions(options map[string]interface{}, context string, visitor *Visi
 	}
 }
 
-func handleAttributes(attributes map[string]interface{}, context string, visitor *Visitor) {
+func handleAttributes(attributes map[string]any, context string, visitor *Visitor) {
 	if attributes == nil {
 		return
 	}
@@ -230,24 +230,24 @@ func handleAttributes(attributes map[string]interface{}, context string, visitor
 }
 
 // Helper functions to convert typed maps to interface{} maps
-func convertOptionsToMap(options Options) map[string]interface{} {
+func convertOptionsToMap(options Options) map[string]any {
 	if options == nil {
 		return nil
 	}
 
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	for k, v := range options {
 		result[k] = v
 	}
 	return result
 }
 
-func convertAttributesToMap(attributes Attributes) map[string]interface{} {
+func convertAttributesToMap(attributes Attributes) map[string]any {
 	if attributes == nil {
 		return nil
 	}
 
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	for k, v := range attributes {
 		if _, ok := v.(*BooleanAttribute); ok {
 			result[k] = true

@@ -11,7 +11,7 @@ func BenchmarkSimpleMessage(b *testing.B) {
 	mf, err := messageformat.New("en", "Hello, {$name}!")
 	require.NoError(b, err)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"name": "World",
 	}
 
@@ -26,7 +26,7 @@ func BenchmarkNumberFormatting(b *testing.B) {
 	mf, err := messageformat.New("en", "You have {$count :number} messages")
 	require.NoError(b, err)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"count": 42,
 	}
 
@@ -47,7 +47,7 @@ one {{One item}}
 `)
 	require.NoError(b, err)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"count": 5,
 	}
 
@@ -76,7 +76,7 @@ one *      {{{$userName} added one photo to their album.}}
 `)
 	require.NoError(b, err)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"userName":   "Alice",
 		"photoCount": 3,
 		"userGender": "female",
@@ -93,7 +93,7 @@ func BenchmarkFormatToParts(b *testing.B) {
 	mf, err := messageformat.New("en", "Hello, {$name}! You have {$count :number} messages.")
 	require.NoError(b, err)
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"name":  "World",
 		"count": 42,
 	}

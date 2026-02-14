@@ -218,7 +218,7 @@ func asExpression(exp cst.Node, allowMarkup bool) (PatternElement, error) {
 		}
 
 		// Convert argument
-		var arg interface{}
+		var arg any
 		if e.Arg() != nil {
 			converted, err := asValue(e.Arg())
 			if err != nil {
@@ -243,9 +243,9 @@ func asExpression(exp cst.Node, allowMarkup bool) (PatternElement, error) {
 		}
 
 		// Convert attributes
-		var attributes map[string]interface{}
+		var attributes map[string]any
 		if len(e.Attributes()) > 0 {
-			attributes = make(map[string]interface{})
+			attributes = make(map[string]any)
 			for _, attr := range e.Attributes() {
 				name := asName(attr.Name())
 				if attr.Value() != nil {
@@ -300,9 +300,9 @@ func asMarkup(exp *cst.Expression) (*Markup, error) {
 	}
 
 	// Convert options
-	var options map[string]interface{}
+	var options map[string]any
 	if len(markup.Options()) > 0 {
-		options = make(map[string]interface{})
+		options = make(map[string]any)
 		for _, opt := range markup.Options() {
 			optName := asName(opt.Name())
 			value, err := asValue(opt.Value())
@@ -314,9 +314,9 @@ func asMarkup(exp *cst.Expression) (*Markup, error) {
 	}
 
 	// Convert attributes
-	var attributes map[string]interface{}
+	var attributes map[string]any
 	if len(exp.Attributes()) > 0 {
-		attributes = make(map[string]interface{})
+		attributes = make(map[string]any)
 		for _, attr := range exp.Attributes() {
 			attrName := asName(attr.Name())
 			if attr.Value() != nil {
@@ -339,9 +339,9 @@ func asFunctionRef(funcRef *cst.FunctionRef) (*FunctionRef, error) {
 	name := asName(funcRef.Name())
 
 	// Convert options
-	var options map[string]interface{}
+	var options map[string]any
 	if len(funcRef.Options()) > 0 {
-		options = make(map[string]interface{})
+		options = make(map[string]any)
 		for _, opt := range funcRef.Options() {
 			optName := asName(opt.Name())
 			value, err := asValue(opt.Value())
@@ -385,7 +385,7 @@ func asVariant(variant cst.Variant) (*Variant, error) {
 }
 
 // asValue converts a CST value to a data model value
-func asValue(value cst.Node) (interface{}, error) {
+func asValue(value cst.Node) (any, error) {
 	switch v := value.(type) {
 	case *cst.Literal:
 		return asLiteral(v)

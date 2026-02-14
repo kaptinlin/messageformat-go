@@ -26,7 +26,7 @@ one {{One message}}
 	// Test different counts
 	testCounts := []int{0, 1, 2, 5, 10, 100}
 	for _, count := range testCounts {
-		result, err := mf1.Format(map[string]interface{}{
+		result, err := mf1.Format(map[string]any{
 			"count": count,
 		})
 		if err != nil {
@@ -53,7 +53,7 @@ one {{One item}}
 	}
 
 	for _, count := range []int{0, 1, 2, 5} {
-		result, err := mfEn.Format(map[string]interface{}{
+		result, err := mfEn.Format(map[string]any{
 			"count": count,
 		})
 		if err != nil {
@@ -75,7 +75,7 @@ one {{One item}}
 	}
 
 	for _, count := range []int{0, 1, 2, 5} {
-		result, err := mfCn.Format(map[string]interface{}{
+		result, err := mfCn.Format(map[string]any{
 			"count": count,
 		})
 		if err != nil {
@@ -98,7 +98,7 @@ female {{{$name} sent a message}}
 		log.Fatal(err)
 	}
 
-	testCases := []map[string]interface{}{
+	testCases := []map[string]any{
 		{"name": "John", "gender": "male"},
 		{"name": "Jane", "gender": "female"},
 		{"name": "Alex", "gender": "other"},
@@ -131,7 +131,7 @@ one *      {{{$name} sent one message}}
 		log.Fatal(err)
 	}
 
-	complexTestCases := []map[string]interface{}{
+	complexTestCases := []map[string]any{
 		{"name": "John", "gender": "male", "count": 0},
 		{"name": "Jane", "gender": "female", "count": 1},
 		{"name": "Alex", "gender": "other", "count": 1},
@@ -165,7 +165,7 @@ busy    {{{$user} is busy}}
 		log.Fatal(err)
 	}
 
-	statusTestCases := []map[string]interface{}{
+	statusTestCases := []map[string]any{
 		{"user": "Alice", "status": "online"},
 		{"user": "Bob", "status": "offline"},
 		{"user": "Charlie", "status": "away"},
@@ -201,7 +201,7 @@ busy    {{{$user} is busy}}
 
 	timeTestCases := []int{0, 1, 2, 3, 4, 5, 12, 24, 48}
 	for _, hours := range timeTestCases {
-		result, err := mf6.Format(map[string]interface{}{
+		result, err := mf6.Format(map[string]any{
 			"hours": hours,
 		})
 		if err != nil {
@@ -226,7 +226,7 @@ document {{📄 {$name} (Document)}}
 		log.Fatal(err)
 	}
 
-	fileTestCases := []map[string]interface{}{
+	fileTestCases := []map[string]any{
 		{"name": "photo.jpg", "type": "image"},
 		{"name": "movie.mp4", "type": "video"},
 		{"name": "song.mp3", "type": "audio"},

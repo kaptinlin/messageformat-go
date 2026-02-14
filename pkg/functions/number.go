@@ -3,6 +3,7 @@ package functions
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"math/big"
 
@@ -22,8 +23,8 @@ var (
 // TypeScript original code:
 // { value: number | bigint; options: unknown }
 type NumericInput struct {
-	Value   interface{}
-	Options map[string]interface{}
+	Value   any
+	Options map[string]any
 }
 
 // readNumericOperand parses numeric operand and extracts value and options
@@ -55,7 +56,7 @@ type NumericInput struct {
 //	  }
 //	  return { value, options };
 //	}
-func readNumericOperand(value interface{}, source string) (*NumericInput, error) {
+func readNumericOperand(value any, source string) (*NumericInput, error) {
 	// Check for nil operand first - should return bad-operand error
 	if value == nil {
 		return nil, pkgErrors.NewMessageResolutionError(
@@ -65,7 +66,7 @@ func readNumericOperand(value interface{}, source string) (*NumericInput, error)
 		)
 	}
 
-	var options map[string]interface{}
+	var options map[string]any
 
 	// Check if it's a MessageValue with valueOf method
 	if mv, ok := value.(messagevalue.MessageValue); ok {
@@ -94,11 +95,11 @@ func readNumericOperand(value interface{}, source string) (*NumericInput, error)
 				options = nvOptions
 			}
 		}
-	} else if obj, ok := value.(map[string]interface{}); ok {
+	} else if obj, ok := value.(map[string]any); ok {
 		// Check if value has valueOf method and options
 		if valueOf, hasValueOf := obj["valueOf"]; hasValueOf {
 			if optionsVal, hasOptions := obj["options"]; hasOptions {
-				if optMap, ok := optionsVal.(map[string]interface{}); ok {
+				if optMap, ok := optionsVal.(map[string]any); ok {
 					options = optMap
 				}
 			}
@@ -209,8 +210,8 @@ func readNumericOperand(value interface{}, source string) (*NumericInput, error)
 //	}
 func NumberFunction(
 	ctx MessageFunctionContext,
-	options map[string]interface{},
-	operand interface{},
+	options map[string]any,
+	operand any,
 ) messagevalue.MessageValue {
 	// Read numeric operand - matches TypeScript: const input = readNumericOperand(operand, ctx.source);
 	numInput, err := readNumericOperand(operand, ctx.Source())
@@ -299,8 +300,8 @@ func NumberFunction(
 //	}
 func IntegerFunction(
 	ctx MessageFunctionContext,
-	options map[string]interface{},
-	operand interface{},
+	options map[string]any,
+	operand any,
 ) messagevalue.MessageValue {
 	// Read numeric operand - matches TypeScript: const input = readNumericOperand(operand, ctx.source);
 	numInput, err := readNumericOperand(operand, ctx.Source())
@@ -310,7 +311,7 @@ func IntegerFunction(
 	}
 
 	// Round to integer - matches TypeScript: Number.isFinite(input.value) ? Math.round(input.value as number) : input.value;
-	var value interface{}
+	var value any
 	switch v := numInput.Value.(type) {
 	case float64:
 		if isFinite(v) {
@@ -381,8 +382,8 @@ func IntegerFunction(
 // ): MessageNumber
 func getMessageNumber(
 	ctx MessageFunctionContext,
-	value interface{},
-	options map[string]interface{},
+	value any,
+	options map[string]any,
 	canSelect bool,
 ) messagevalue.MessageValue {
 	// Validate select option - matches TypeScript select validation logic
@@ -435,25 +436,21 @@ func getMessageNumber(
 // Combines operand options with expression options, with expression options taking precedence
 // Matches TypeScript Object.assign({}, input.options, { localeMatcher: ctx.localeMatcher, ... })
 func mergeNumberOptions(
-	operandOptions map[string]interface{},
-	exprOptions map[string]interface{},
+	operandOptions map[string]any,
+	exprOptions map[string]any,
 	localeMatcher string,
-) map[string]interface{} {
+) map[string]any {
 	// Start with empty map - matches TypeScript Object.assign({}, ...)
-	merged := make(map[string]interface{})
+	merged := make(map[string]any)
 
 	// Add operand options first - matches TypeScript Object.assign({}, input.options, ...)
-	for k, v := range operandOptions {
-		merged[k] = v
-	}
+	maps.Copy(merged, operandOptions)
 
 	// Add default options - matches TypeScript Object.assign(..., { localeMatcher: ctx.localeMatcher })
 	merged["localeMatcher"] = localeMatcher
 
 	// Add expression options (override operand options) - matches TypeScript Object.assign(..., exprOpt)
-	for k, v := range exprOptions {
-		merged[k] = v
-	}
+	maps.Copy(merged, exprOptions)
 
 	return merged
 }
@@ -461,10 +458,10 @@ func mergeNumberOptions(
 // parseJSONNumber parses a string as a JSON number (integer or float)
 // Matches TypeScript JSON.parse() behavior for numeric values
 // This function strictly follows JSON number format rules to match TypeScript behavior
-func parseJSONNumber(s string) (interface{}, error) {
+func parseJSONNumber(s string) (any, error) {
 	// Use JSON.Unmarshal to strictly validate JSON number format
 	// This will reject invalid JSON numbers like "00", "042", "1.", ".1", "+1", etc.
-	var jsonVal interface{}
+	var jsonVal any
 	if err := json.Unmarshal([]byte(s), &jsonVal); err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrNotValidJSONNumber, s)
 	}

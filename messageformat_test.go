@@ -2,6 +2,7 @@ package messageformat
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,8 +19,8 @@ import (
 func TestNew(t *testing.T) {
 	tests := []struct {
 		name        string
-		locales     interface{}
-		source      interface{}
+		locales     any
+		source      any
 		options     *MessageFormatOptions
 		expectError bool
 		errorMsg    string
@@ -141,7 +142,7 @@ func TestFormat(t *testing.T) {
 	tests := []struct {
 		name     string
 		source   string
-		values   map[string]interface{}
+		values   map[string]any
 		onError  func(error)
 		expected string
 	}{
@@ -155,14 +156,14 @@ func TestFormat(t *testing.T) {
 		{
 			name:     "with variable",
 			source:   "Hello {$name}",
-			values:   map[string]interface{}{"name": "Alice"},
+			values:   map[string]any{"name": "Alice"},
 			onError:  nil,
 			expected: "Hello Alice", // Changed: No bidi isolation by default (KISS principle)
 		},
 		{
 			name:     "missing variable",
 			source:   "Hello {$missing}",
-			values:   map[string]interface{}{},
+			values:   map[string]any{},
 			onError:  nil,
 			expected: "Hello {$missing}", // Changed: No bidi isolation by default
 		},
@@ -176,28 +177,28 @@ func TestFormat(t *testing.T) {
 		{
 			name:     "number formatting",
 			source:   "Count: {$count :number}",
-			values:   map[string]interface{}{"count": 1234.56},
+			values:   map[string]any{"count": 1234.56},
 			onError:  nil,
 			expected: "Count: 1,234.56",
 		},
 		{
 			name:     "integer formatting",
 			source:   "Items: {$items :integer}",
-			values:   map[string]interface{}{"items": 42.7},
+			values:   map[string]any{"items": 42.7},
 			onError:  nil,
 			expected: "Items: 43",
 		},
 		{
 			name:     "string function with different types",
 			source:   "Value: {$value :string}",
-			values:   map[string]interface{}{"value": 123},
+			values:   map[string]any{"value": 123},
 			onError:  nil,
 			expected: "Value: 123", // Changed: No bidi isolation by default
 		},
 		{
 			name:     "empty pattern",
 			source:   "",
-			values:   map[string]interface{}{"unused": "value"},
+			values:   map[string]any{"unused": "value"},
 			onError:  nil,
 			expected: "",
 		},
@@ -220,7 +221,7 @@ func TestFormatToPartsAPI(t *testing.T) {
 	tests := []struct {
 		name          string
 		source        string
-		values        map[string]interface{}
+		values        map[string]any
 		expectedParts int
 		expectedTypes []string
 	}{
@@ -234,14 +235,14 @@ func TestFormatToPartsAPI(t *testing.T) {
 		{
 			name:          "with variable",
 			source:        "Hello {$name}",
-			values:        map[string]interface{}{"name": "Alice"},
+			values:        map[string]any{"name": "Alice"},
 			expectedParts: 2,                          // Changed: No bidi isolation parts by default
 			expectedTypes: []string{"text", "string"}, // Changed: Clean output
 		},
 		{
 			name:          "missing variable",
 			source:        "Hello {$missing}",
-			values:        map[string]interface{}{},
+			values:        map[string]any{},
 			expectedParts: 2,                            // Changed: No bidi isolation parts by default
 			expectedTypes: []string{"text", "fallback"}, // Changed: Clean output
 		},
@@ -372,7 +373,7 @@ func TestDefaultFunctions(t *testing.T) {
 
 // TestCustomFunctionsAPI tests custom function integration
 func TestCustomFunctionsAPI(t *testing.T) {
-	customFunc := func(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+	customFunc := func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 		return messagevalue.NewStringValue("custom", "en", "custom")
 	}
 
@@ -400,7 +401,7 @@ func TestCustomFunctionsAPI(t *testing.T) {
 func TestLocaleHandling(t *testing.T) {
 	tests := []struct {
 		name        string
-		locales     interface{}
+		locales     any
 		expectedDir string
 	}{
 		{
@@ -446,7 +447,7 @@ func TestSelectPatterns(t *testing.T) {
 	tests := []struct {
 		name     string
 		pattern  string
-		values   map[string]interface{}
+		values   map[string]any
 		expected string
 	}{
 		{
@@ -456,7 +457,7 @@ func TestSelectPatterns(t *testing.T) {
 0   {{No items}}
 one {{One item}}
 *   {{{$count} items}}`,
-			values:   map[string]interface{}{"count": 0},
+			values:   map[string]any{"count": 0},
 			expected: "No items",
 		},
 		{
@@ -466,7 +467,7 @@ one {{One item}}
 0   {{No items}}
 one {{One item}}
 *   {{{$count} items}}`,
-			values:   map[string]interface{}{"count": 1},
+			values:   map[string]any{"count": 1},
 			expected: "One item",
 		},
 		{
@@ -476,7 +477,7 @@ one {{One item}}
 0   {{No items}}
 one {{One item}}
 *   {{{$count} items}}`,
-			values:   map[string]interface{}{"count": 5},
+			values:   map[string]any{"count": 5},
 			expected: "5 items",
 		},
 		{
@@ -493,7 +494,7 @@ one *      {{They have one item}}
 *   male   {{He has {$count} items}}
 *   female {{She has {$count} items}}
 *   *      {{They have {$count} items}}`,
-			values:   map[string]interface{}{"count": 3, "gender": "female"},
+			values:   map[string]any{"count": 3, "gender": "female"},
 			expected: "She has 3 items",
 		},
 	}
@@ -519,7 +520,7 @@ func TestLocalDeclarations(t *testing.T) {
 	mf, err := New("en", pattern)
 	require.NoError(t, err)
 
-	result, err := mf.Format(map[string]interface{}{"name": "World"})
+	result, err := mf.Format(map[string]any{"name": "World"})
 	require.NoError(t, err)
 	assert.Contains(t, result, "Hello")
 	assert.Contains(t, result, "World")
@@ -538,13 +539,13 @@ func TestErrorCallback(t *testing.T) {
 	require.NoError(t, err)
 
 	// Valid case - no errors should be captured
-	result, err := mf.Format(map[string]interface{}{"name": "World"}, onError)
+	result, err := mf.Format(map[string]any{"name": "World"}, onError)
 	require.NoError(t, err)
 	assert.Equal(t, "Hello World", result)
 	assert.Empty(t, capturedErrors)
 
 	// Missing variable case - should still work with fallback
-	result, err = mf.Format(map[string]interface{}{}, onError)
+	result, err = mf.Format(map[string]any{}, onError)
 	require.NoError(t, err)
 	assert.Equal(t, "Hello {$name}", result)
 	// Error callback behavior may vary based on implementation
@@ -607,15 +608,16 @@ func TestInvalidPatterns(t *testing.T) {
 func TestAPIEdgeCases(t *testing.T) {
 	t.Run("extremely long patterns", func(t *testing.T) {
 		// Test with very long pattern
-		longPattern := "Long message: "
+		var longPattern strings.Builder
+		longPattern.WriteString("Long message: ")
 		for i := range 100 {
-			longPattern += "{$var" + fmt.Sprintf("%d", i) + "} "
+			longPattern.WriteString("{$var" + fmt.Sprintf("%d", i) + "} ")
 		}
 
-		mf, err := New("en", longPattern)
+		mf, err := New("en", longPattern.String())
 		require.NoError(t, err)
 
-		values := make(map[string]interface{})
+		values := make(map[string]any)
 		for i := range 100 {
 			values[fmt.Sprintf("var%d", i)] = fmt.Sprintf("val%d", i)
 		}
@@ -630,7 +632,7 @@ func TestAPIEdgeCases(t *testing.T) {
 		mf, err := New("en", "Object: \\{key: {$value}\\}")
 		require.NoError(t, err)
 
-		result, err := mf.Format(map[string]interface{}{"value": "test"})
+		result, err := mf.Format(map[string]any{"value": "test"})
 		require.NoError(t, err)
 		assert.Contains(t, result, "{key:")
 	})
@@ -639,7 +641,7 @@ func TestAPIEdgeCases(t *testing.T) {
 		mf, err := New("zh-CN", "你好，{$name}！")
 		require.NoError(t, err)
 
-		result, err := mf.Format(map[string]interface{}{"name": "世界"})
+		result, err := mf.Format(map[string]any{"name": "世界"})
 		require.NoError(t, err)
 		assert.Contains(t, result, "你好")
 		assert.Contains(t, result, "世界")
@@ -658,7 +660,7 @@ func TestTypeScriptCompatibility(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		result, err := mf.Format(map[string]interface{}{"count": 5})
+		result, err := mf.Format(map[string]any{"count": 5})
 		require.NoError(t, err)
 		assert.Contains(t, result, "6") // 5 + 1 = 6
 	})
@@ -670,7 +672,7 @@ func TestTypeScriptCompatibility(t *testing.T) {
 		require.NoError(t, err)
 
 		var capturedErrors []error
-		result, err := mf.Format(map[string]interface{}{}, func(err error) {
+		result, err := mf.Format(map[string]any{}, func(err error) {
 			capturedErrors = append(capturedErrors, err)
 		})
 
@@ -686,7 +688,7 @@ func TestTypeScriptCompatibility(t *testing.T) {
 		mf, err := New("ar", pattern) // RTL locale
 		require.NoError(t, err)
 
-		result, err := mf.Format(map[string]interface{}{"name": "عالم"})
+		result, err := mf.Format(map[string]any{"name": "عالم"})
 		require.NoError(t, err)
 		// Should contain bidi isolation characters by default
 		assert.Contains(t, result, "Hello")
@@ -700,7 +702,7 @@ func TestTypeScriptCompatibility(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		parts, err := mf.FormatToParts(map[string]interface{}{"name": "World"})
+		parts, err := mf.FormatToParts(map[string]any{"name": "World"})
 		require.NoError(t, err)
 
 		// Should have structure similar to TypeScript: text, expression, text
@@ -726,7 +728,7 @@ func TestTypeScriptCompatibility(t *testing.T) {
 	t.Run("function registry behavior", func(t *testing.T) {
 		// Test that function registry works like TypeScript
 		customFuncs := map[string]functions.MessageFunction{
-			"test": func(ctx functions.MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+			"test": func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 				return messagevalue.NewStringValue("test-result", "", ctx.Locales()[0])
 			},
 		}
@@ -736,7 +738,7 @@ func TestTypeScriptCompatibility(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		result, err := mf.Format(map[string]interface{}{"val": "input"})
+		result, err := mf.Format(map[string]any{"val": "input"})
 		require.NoError(t, err)
 		assert.Contains(t, result, "test-result")
 	})
@@ -791,21 +793,21 @@ func TestBidiIsolationOptions(t *testing.T) {
 		name            string
 		bidiIsolation   BidiIsolation
 		source          string
-		values          map[string]interface{}
+		values          map[string]any
 		expectIsolation bool
 	}{
 		{
 			name:            "default bidi isolation",
 			bidiIsolation:   BidiDefault,
 			source:          "Hello {$name}",
-			values:          map[string]interface{}{"name": "World"},
+			values:          map[string]any{"name": "World"},
 			expectIsolation: true,
 		},
 		{
 			name:            "no bidi isolation",
 			bidiIsolation:   BidiNone,
 			source:          "Hello {$name}",
-			values:          map[string]interface{}{"name": "World"},
+			values:          map[string]any{"name": "World"},
 			expectIsolation: false,
 		},
 	}
@@ -840,43 +842,43 @@ func TestPatternSelectionFixes(t *testing.T) {
 	tests := []struct {
 		name     string
 		source   string
-		values   map[string]interface{}
+		values   map[string]any
 		expected string
 	}{
 		{
 			name:     "simple variable selector without $",
 			source:   ".match $status\nactive {{User is active}}\ninactive {{User is inactive}}\n* {{Unknown status}}",
-			values:   map[string]interface{}{"status": "active"},
+			values:   map[string]any{"status": "active"},
 			expected: "User is active",
 		},
 		{
 			name:     "simple variable selector with fallback",
 			source:   ".match $status\nactive {{User is active}}\ninactive {{User is inactive}}\n* {{Unknown status}}",
-			values:   map[string]interface{}{"status": "other"},
+			values:   map[string]any{"status": "other"},
 			expected: "Unknown status",
 		},
 		{
 			name:     "function-annotated selector",
 			source:   ".input {$count :integer select=cardinal}\n.match $count\n0 {{You have no items}}\n1 {{You have one item}}\n* {{You have {$count} items}}",
-			values:   map[string]interface{}{"count": 0},
+			values:   map[string]any{"count": 0},
 			expected: "You have no items",
 		},
 		{
 			name:     "function-annotated selector with variables",
 			source:   ".input {$count :integer select=cardinal}\n.match $count\n0 {{You have no items}}\n1 {{You have one item}}\n* {{You have {$count} items}}",
-			values:   map[string]interface{}{"count": 5},
+			values:   map[string]any{"count": 5},
 			expected: "You have 5 items",
 		},
 		{
 			name:     "multiple selectors",
 			source:   ".input {$gender :string}\n.input {$count :integer select=cardinal}\n.match $gender $count\nmale 0 {{He has no items}}\nmale 1 {{He has one item}}\nmale * {{He has {$count} items}}\nfemale 0 {{She has no items}}\nfemale 1 {{She has one item}}\nfemale * {{She has {$count} items}}\n* * {{They have {$count} items}}",
-			values:   map[string]interface{}{"gender": "male", "count": 0},
+			values:   map[string]any{"gender": "male", "count": 0},
 			expected: "He has no items",
 		},
 		{
 			name:     "multiple selectors with fallback",
 			source:   ".input {$gender :string}\n.input {$count :integer select=cardinal}\n.match $gender $count\nmale 0 {{He has no items}}\nmale 1 {{He has one item}}\nmale * {{He has {$count} items}}\nfemale 0 {{She has no items}}\nfemale 1 {{She has one item}}\nfemale * {{She has {$count} items}}\n* * {{They have {$count} items}}",
-			values:   map[string]interface{}{"gender": "other", "count": 5},
+			values:   map[string]any{"gender": "other", "count": 5},
 			expected: "They have 5 items",
 		},
 	}
@@ -899,37 +901,37 @@ func TestLocalDeclarationsFixes(t *testing.T) {
 	tests := []struct {
 		name     string
 		source   string
-		values   map[string]interface{}
+		values   map[string]any
 		expected string
 	}{
 		{
 			name:     "input declaration basic",
 			source:   ".input {$count :integer}\n{{You have {$count} items}}",
-			values:   map[string]interface{}{"count": 5},
+			values:   map[string]any{"count": 5},
 			expected: "You have 5 items",
 		},
 		{
 			name:     "local declaration referencing input",
 			source:   ".input {$price :number}\n.local $tax = {$price :number}\n{{Price: {$price}, Tax: {$tax}}}",
-			values:   map[string]interface{}{"price": 100.0},
+			values:   map[string]any{"price": 100.0},
 			expected: "Price: 100, Tax: 100",
 		},
 		{
 			name:     "local declaration in selector",
 			source:   ".input {$count :integer}\n.local $status = {$count :string}\n.match $status\n0 {{No items}}\n* {{Some items: {$count}}}",
-			values:   map[string]interface{}{"count": 0},
+			values:   map[string]any{"count": 0},
 			expected: "No items",
 		},
 		{
 			name:     "local declaration in selector non-zero",
 			source:   ".input {$count :integer}\n.local $status = {$count :string}\n.match $status\n0 {{No items}}\n* {{Some items: {$count}}}",
-			values:   map[string]interface{}{"count": 5},
+			values:   map[string]any{"count": 5},
 			expected: "Some items: 5",
 		},
 		{
 			name:     "multiple local declarations",
 			source:   ".input {$base :integer}\n.local $doubled = {$base :integer}\n.local $result = {$doubled :integer}\n{{Base: {$base}, Result: {$result}}}",
-			values:   map[string]interface{}{"base": 10},
+			values:   map[string]any{"base": 10},
 			expected: "Base: 10, Result: 10",
 		},
 	}
@@ -952,38 +954,38 @@ func TestMissingVariableHandlingFixes(t *testing.T) {
 	tests := []struct {
 		name     string
 		source   string
-		values   map[string]interface{}
+		values   map[string]any
 		expected string
 	}{
 		{
 			name:     "simple missing variable",
 			source:   "Hello {$name}!",
-			values:   map[string]interface{}{}, // missing 'name'
+			values:   map[string]any{}, // missing 'name'
 			expected: "Hello {$name}!",
 		},
 		{
 			name:     "null variable value",
 			source:   "Hello {$name}!",
-			values:   map[string]interface{}{"name": nil},
+			values:   map[string]any{"name": nil},
 			expected: "Hello {$name}!",
 		},
 		{
 			name:     "missing variable with function",
 			source:   "Count: {$count :integer}",
-			values:   map[string]interface{}{}, // missing 'count'
+			values:   map[string]any{}, // missing 'count'
 			expected: "Count: {$count}",
 		},
 		{
 			name:     "missing variable in selector falls back to catchall",
 			source:   ".match $status\nactive {{User is active}}\n* {{Unknown status}}",
-			values:   map[string]interface{}{}, // missing 'status'
+			values:   map[string]any{}, // missing 'status'
 			expected: "Unknown status",
 		},
 		{
 			name:     "missing local variable reference",
 			source:   ".local $missing = {$undefined :string}\n{{Result: {$missing}}}",
-			values:   map[string]interface{}{}, // missing 'undefined'
-			expected: "Result: ",               // Local variable with missing dependency resolves to empty
+			values:   map[string]any{}, // missing 'undefined'
+			expected: "Result: ",       // Local variable with missing dependency resolves to empty
 		},
 	}
 
@@ -1008,55 +1010,55 @@ func TestExpressionParsingFixes(t *testing.T) {
 	tests := []struct {
 		name     string
 		source   string
-		values   map[string]interface{}
+		values   map[string]any
 		expected string
 	}{
 		{
 			name:     "simple variable reference",
 			source:   "{$name}",
-			values:   map[string]interface{}{"name": "Alice"},
+			values:   map[string]any{"name": "Alice"},
 			expected: "Alice",
 		},
 		{
 			name:     "variable with underscore",
 			source:   "{$user_name}",
-			values:   map[string]interface{}{"user_name": "john_doe"},
+			values:   map[string]any{"user_name": "john_doe"},
 			expected: "john_doe",
 		},
 		{
 			name:     "variable with number",
 			source:   "{$item1}",
-			values:   map[string]interface{}{"item1": "First Item"},
+			values:   map[string]any{"item1": "First Item"},
 			expected: "First Item",
 		},
 		{
 			name:     "explicit variable reference",
 			source:   "{$name}",
-			values:   map[string]interface{}{"name": "Bob"},
+			values:   map[string]any{"name": "Bob"},
 			expected: "Bob",
 		},
 		{
 			name:     "quoted literal",
 			source:   "{|literal text|}",
-			values:   map[string]interface{}{},
+			values:   map[string]any{},
 			expected: "literal text",
 		},
 		{
 			name:     "numeric literal",
 			source:   "{123}",
-			values:   map[string]interface{}{},
+			values:   map[string]any{},
 			expected: "123",
 		},
 		{
 			name:     "function call on variable",
 			source:   "{$count :integer}",
-			values:   map[string]interface{}{"count": 42},
+			values:   map[string]any{"count": 42},
 			expected: "42",
 		},
 		{
 			name:     "function call on explicit variable",
 			source:   "{$count :integer}",
-			values:   map[string]interface{}{"count": 42},
+			values:   map[string]any{"count": 42},
 			expected: "42",
 		},
 	}

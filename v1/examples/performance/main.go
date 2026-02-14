@@ -71,7 +71,7 @@ func (mc *MessageCache) GetCompiledMessage(template string) (mf.MessageFunction,
 }
 
 // Format formats a message using the cached compiled version
-func (mc *MessageCache) Format(template string, data map[string]interface{}) (string, error) {
+func (mc *MessageCache) Format(template string, data map[string]any) (string, error) {
 	msg, err := mc.GetCompiledMessage(template)
 	if err != nil {
 		return "", err
@@ -108,22 +108,22 @@ func demonstrateBasicPerformance() {
 	templates := []struct {
 		name     string
 		template string
-		data     map[string]interface{}
+		data     map[string]any
 	}{
 		{
 			"Simple",
 			"Hello {name}!",
-			map[string]interface{}{"name": "World"},
+			map[string]any{"name": "World"},
 		},
 		{
 			"Plural",
 			"{count, plural, one {# item} other {# items}}",
-			map[string]interface{}{"count": 5},
+			map[string]any{"count": 5},
 		},
 		{
 			"Complex",
 			"{gender, select, male {He has {count, plural, one {# item} other {# items}}} female {She has {count, plural, one {# item} other {# items}}} other {They have {count, plural, one {# item} other {# items}}}}",
-			map[string]interface{}{"gender": "male", "count": 3},
+			map[string]any{"gender": "male", "count": 3},
 		},
 	}
 
@@ -156,7 +156,7 @@ func demonstrateBasicPerformance() {
 		// Measure throughput (multiple executions)
 		iterations := 10000
 		start = time.Now()
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			_, err := msg(test.data)
 			if err != nil {
 				log.Printf("Throughput test error: %v", err)
@@ -193,7 +193,7 @@ func demonstrateCaching() {
 		"Order #{id} has {items, plural, one {# item} other {# items}}",
 	}
 
-	data := []map[string]interface{}{
+	data := []map[string]any{
 		{"name": "Alice"},
 		{"count": 5},
 		{"status": "online"},
@@ -215,7 +215,7 @@ func demonstrateCaching() {
 	// Test cached performance
 	fmt.Printf("\nTesting cached performance (%d iterations)...\n", iterations)
 	start := time.Now()
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		templateIdx := i % len(templates)
 		_, err := cache.Format(templates[templateIdx], data[templateIdx])
 		if err != nil {
@@ -229,7 +229,7 @@ func demonstrateCaching() {
 	// Test non-cached performance (compile every time)
 	fmt.Printf("Testing non-cached performance (%d iterations)...\n", iterations)
 	start = time.Now()
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		templateIdx := i % len(templates)
 		msg, err := messageFormat.Compile(templates[templateIdx])
 		if err != nil {
@@ -269,7 +269,7 @@ func demonstrateConcurrency() {
 	template := "{user} sent {count, plural, one {# message} other {# messages}} to {recipient}"
 
 	// Warm up cache
-	_, err = cache.Format(template, map[string]interface{}{
+	_, err = cache.Format(template, map[string]any{
 		"user": "Alice", "count": 1, "recipient": "Bob",
 	})
 	if err != nil {
@@ -287,13 +287,13 @@ func demonstrateConcurrency() {
 
 		start := time.Now()
 
-		for g := 0; g < numGoroutines; g++ {
+		for g := range numGoroutines {
 			wg.Add(1)
 			go func(goroutineID int) {
 				defer wg.Done()
 
-				for i := 0; i < iterationsPerGoroutine; i++ {
-					data := map[string]interface{}{
+				for i := range iterationsPerGoroutine {
+					data := map[string]any{
 						"user":      fmt.Sprintf("User%d", goroutineID),
 						"count":     i%10 + 1,
 						"recipient": fmt.Sprintf("Recipient%d", i%5),
@@ -339,9 +339,9 @@ func demonstrateMemoryEfficiency() {
 	numTemplates := 1000
 	fmt.Printf("Compiling %d unique templates...\n", numTemplates)
 
-	for i := 0; i < numTemplates; i++ {
+	for i := range numTemplates {
 		template := fmt.Sprintf("Message %d: {name} has {count, plural, one {# item} other {# items}} in category %d", i, i%10)
-		data := map[string]interface{}{
+		data := map[string]any{
 			"name":  fmt.Sprintf("User%d", i),
 			"count": i%5 + 1,
 		}

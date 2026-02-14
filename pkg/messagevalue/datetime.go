@@ -25,13 +25,13 @@ type DateTimeValue struct {
 	locale  string
 	dir     bidi.Direction
 	source  string
-	options map[string]interface{}
+	options map[string]any
 }
 
 // NewDateTimeValue creates a new datetime value
-func NewDateTimeValue(value time.Time, locale, source string, options map[string]interface{}) *DateTimeValue {
+func NewDateTimeValue(value time.Time, locale, source string, options map[string]any) *DateTimeValue {
 	if options == nil {
-		options = make(map[string]interface{})
+		options = make(map[string]any)
 	}
 
 	return &DateTimeValue{
@@ -44,9 +44,9 @@ func NewDateTimeValue(value time.Time, locale, source string, options map[string
 }
 
 // NewDateTimeValueWithDir creates a new datetime value with explicit direction
-func NewDateTimeValueWithDir(value time.Time, locale, source string, dir bidi.Direction, options map[string]interface{}) *DateTimeValue {
+func NewDateTimeValueWithDir(value time.Time, locale, source string, dir bidi.Direction, options map[string]any) *DateTimeValue {
 	if options == nil {
-		options = make(map[string]interface{})
+		options = make(map[string]any)
 	}
 
 	return &DateTimeValue{
@@ -74,7 +74,7 @@ func (dtv *DateTimeValue) Locale() string {
 	return dtv.locale
 }
 
-func (dtv *DateTimeValue) Options() map[string]interface{} {
+func (dtv *DateTimeValue) Options() map[string]any {
 	return dtv.options
 }
 
@@ -101,7 +101,7 @@ func (dtv *DateTimeValue) ToParts() ([]MessagePart, error) {
 	}, nil
 }
 
-func (dtv *DateTimeValue) ValueOf() (interface{}, error) {
+func (dtv *DateTimeValue) ValueOf() (any, error) {
 	return dtv.value, nil
 }
 
@@ -153,7 +153,7 @@ func (dtv *DateTimeValue) formatDateTime() (string, error) {
 }
 
 // buildDateTimeFormat builds Carbon format string from new LDML 48 options
-func buildDateTimeFormat(options map[string]interface{}) string {
+func buildDateTimeFormat(options map[string]any) string {
 	var parts []string
 
 	// Date part (if dateFields is specified)
@@ -194,7 +194,7 @@ func buildDateTimeFormat(options map[string]interface{}) string {
 // buildDateFormat creates Carbon format string for date portion
 func buildDateFormat(fields string, length string) string {
 	fieldSet := make(map[string]bool)
-	for _, f := range strings.Split(fields, "-") {
+	for f := range strings.SplitSeq(fields, "-") {
 		fieldSet[f] = true
 	}
 
@@ -255,7 +255,7 @@ func (dtp *DateTimePart) Type() string {
 	return "datetime"
 }
 
-func (dtp *DateTimePart) Value() interface{} {
+func (dtp *DateTimePart) Value() any {
 	return dtp.value
 }
 

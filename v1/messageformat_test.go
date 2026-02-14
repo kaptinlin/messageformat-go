@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -26,13 +27,7 @@ func TestStaticMessageFormat(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, lc)
 
-		hasUnsupported := false
-		for _, locale := range lc {
-			if locale == "xx" {
-				hasUnsupported = true
-				break
-			}
-		}
+		hasUnsupported := slices.Contains(lc, "xx")
 		assert.False(t, hasUnsupported, "Should not include unsupported locale 'xx'")
 	})
 
@@ -116,8 +111,8 @@ func TestMessageFormatOptions(t *testing.T) {
 	})
 
 	t.Run("should apply custom formatters", func(t *testing.T) {
-		formatters := map[string]interface{}{
-			"upper": func(value interface{}, locale string, arg *string) interface{} {
+		formatters := map[string]any{
+			"upper": func(value any, locale string, arg *string) any {
 				return strings.ToUpper(value.(string))
 			},
 		}
@@ -130,7 +125,7 @@ func TestMessageFormatOptions(t *testing.T) {
 		msgFunc, err := mf.Compile("{text, upper}")
 		require.NoError(t, err)
 
-		result, err := msgFunc(map[string]interface{}{"text": "hello"})
+		result, err := msgFunc(map[string]any{"text": "hello"})
 		require.NoError(t, err)
 		assert.Equal(t, "HELLO", result)
 	})
@@ -182,7 +177,7 @@ func TestNumberSkeletonTypeSafety(t *testing.T) {
 			RoundingMode: RoundingHalfUp,
 			Unit: &UnitConfig{
 				Style:    UnitCurrency,
-				Currency: Ptr("EUR"),
+				Currency: new("EUR"),
 			},
 			Notation: &NotationConfig{
 				Style: NotationCompactShort,
@@ -198,11 +193,11 @@ func TestNumberSkeletonTypeSafety(t *testing.T) {
 	})
 
 	t.Run("Helper Functions", func(t *testing.T) {
-		assert.Equal(t, "EUR", *Ptr("EUR"))
-		assert.True(t, *Ptr(true))
-		assert.Equal(t, 2, *Ptr(2))
-		assert.Equal(t, ReturnTypeValues, *Ptr(ReturnTypeValues))
-		assert.Equal(t, SignAlways, *Ptr(SignAlways))
+		assert.Equal(t, "EUR", *new("EUR"))
+		assert.True(t, *new(true))
+		assert.Equal(t, 2, *new(2))
+		assert.Equal(t, ReturnTypeValues, *new(ReturnTypeValues))
+		assert.Equal(t, SignAlways, *new(SignAlways))
 	})
 }
 
@@ -223,7 +218,7 @@ func TestMessageExecution(t *testing.T) {
 		msgFunc, err := mf.Compile("Hello {name}")
 		require.NoError(t, err)
 
-		result, err := msgFunc(map[string]interface{}{"name": "World"})
+		result, err := msgFunc(map[string]any{"name": "World"})
 		require.NoError(t, err)
 		assert.Equal(t, "Hello World", result)
 	})
@@ -232,11 +227,11 @@ func TestMessageExecution(t *testing.T) {
 		msgFunc, err := mf.Compile("{count, plural, one{1 item} other{# items}}")
 		require.NoError(t, err)
 
-		result, err := msgFunc(map[string]interface{}{"count": 1})
+		result, err := msgFunc(map[string]any{"count": 1})
 		require.NoError(t, err)
 		assert.Equal(t, "1 item", result)
 
-		result, err = msgFunc(map[string]interface{}{"count": 3})
+		result, err = msgFunc(map[string]any{"count": 3})
 		require.NoError(t, err)
 		assert.Equal(t, "3 items", result)
 	})
@@ -245,11 +240,11 @@ func TestMessageExecution(t *testing.T) {
 		msgFunc, err := mf.Compile("{gender, select, male{He} female{She} other{They}} liked this.")
 		require.NoError(t, err)
 
-		result, err := msgFunc(map[string]interface{}{"gender": "male"})
+		result, err := msgFunc(map[string]any{"gender": "male"})
 		require.NoError(t, err)
 		assert.Equal(t, "He liked this.", result)
 
-		result, err = msgFunc(map[string]interface{}{"gender": "unknown"})
+		result, err = msgFunc(map[string]any{"gender": "unknown"})
 		require.NoError(t, err)
 		assert.Equal(t, "They liked this.", result)
 	})
@@ -258,7 +253,7 @@ func TestMessageExecution(t *testing.T) {
 type octothorpeTestCase struct {
 	name     string
 	message  string
-	params   map[string]interface{}
+	params   map[string]any
 	expected string
 }
 
@@ -270,31 +265,31 @@ func TestOctothorpeReplacement(t *testing.T) {
 		{
 			name:     "Basic plural with octothorpe - singular",
 			message:  "{count, plural, one {# item} other {# items}}",
-			params:   map[string]interface{}{"count": 1},
+			params:   map[string]any{"count": 1},
 			expected: "1 item",
 		},
 		{
 			name:     "Basic plural with octothorpe - plural",
 			message:  "{count, plural, one {# item} other {# items}}",
-			params:   map[string]interface{}{"count": 3},
+			params:   map[string]any{"count": 3},
 			expected: "3 items",
 		},
 		{
 			name:     "Multiple octothorpes",
 			message:  "{count, plural, one {# item (total: #)} other {# items (total: #)}}",
-			params:   map[string]interface{}{"count": 2},
+			params:   map[string]any{"count": 2},
 			expected: "2 items (total: 2)",
 		},
 		{
 			name:     "Octothorpe outside plural context",
 			message:  "Hash symbol: # and {count, plural, one {# item} other {# items}}",
-			params:   map[string]interface{}{"count": 1},
+			params:   map[string]any{"count": 1},
 			expected: "Hash symbol: # and 1 item",
 		},
 		{
 			name:     "Selectordinal with octothorpe",
 			message:  "{pos, selectordinal, one {#st place} two {#nd place} few {#rd place} other {#th place}}",
-			params:   map[string]interface{}{"pos": 3},
+			params:   map[string]any{"pos": 3},
 			expected: "3rd place",
 		},
 	}
@@ -320,19 +315,19 @@ func TestOctothorpeEdgeCases(t *testing.T) {
 		{
 			name:     "Zero value",
 			message:  "{count, plural, =0 {no items} one {# item} other {# items}}",
-			params:   map[string]interface{}{"count": 0},
+			params:   map[string]any{"count": 0},
 			expected: "no items",
 		},
 		{
 			name:     "Negative value",
 			message:  "{count, plural, one {# item} other {# items}}",
-			params:   map[string]interface{}{"count": -2},
+			params:   map[string]any{"count": -2},
 			expected: "-2 items",
 		},
 		{
 			name:     "Float value",
 			message:  "{count, plural, one {# item} other {# items}}",
-			params:   map[string]interface{}{"count": 2.5},
+			params:   map[string]any{"count": 2.5},
 			expected: "2.5 items",
 		},
 	}
@@ -381,25 +376,25 @@ func TestRealWorldCompatibility(t *testing.T) {
 		tests := []struct {
 			name     string
 			message  string
-			params   map[string]interface{}
+			params   map[string]any
 			expected string
 		}{
 			{
 				name:     "Shopping cart",
 				message:  "You have {itemCount, plural, =0 {no items} one {# item} other {# items}} in your cart.",
-				params:   map[string]interface{}{"itemCount": 2},
+				params:   map[string]any{"itemCount": 2},
 				expected: "You have 2 items in your cart.",
 			},
 			{
 				name:     "Notification count",
 				message:  "{count, plural, =0 {No new messages} one {# new message} other {# new messages}}",
-				params:   map[string]interface{}{"count": 5},
+				params:   map[string]any{"count": 5},
 				expected: "5 new messages",
 			},
 			{
 				name:     "File upload progress",
 				message:  "{completed, plural, one {# file uploaded} other {# files uploaded}} of {total}",
-				params:   map[string]interface{}{"completed": 3, "total": 10},
+				params:   map[string]any{"completed": 3, "total": 10},
 				expected: "3 files uploaded of 10",
 			},
 		}

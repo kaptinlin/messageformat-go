@@ -25,7 +25,7 @@ func TestBasicFunctionality(t *testing.T) {
 		mf, err := messageformat.New("en", "Hello {$name}!", options)
 		require.NoError(t, err)
 
-		params := map[string]interface{}{
+		params := map[string]any{
 			"name": "world",
 		}
 		result, err := mf.Format(params, nil)

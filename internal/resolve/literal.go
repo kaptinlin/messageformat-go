@@ -40,5 +40,5 @@ func ResolveLiteral(ctx *Context, literal *datamodel.Literal) messagevalue.Messa
 	}
 
 	// matches TypeScript: return string(msgCtx, {}, lit.value);
-	return stringFunc(msgCtx, make(map[string]interface{}), literal.Value())
+	return stringFunc(msgCtx, make(map[string]any), literal.Value())
 }

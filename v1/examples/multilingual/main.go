@@ -54,7 +54,7 @@ var ErrUnsupportedLocale = errors.New("locale not supported")
 var ErrTemplateNotFound = errors.New("template not found for locale")
 
 // Format formats a message for the given locale
-func (lm *LocalizedMessage) Format(locale string, data map[string]interface{}) (string, error) {
+func (lm *LocalizedMessage) Format(locale string, data map[string]any) (string, error) {
 	formatter, exists := lm.formatters[locale]
 	if !exists {
 		return "", fmt.Errorf("locale %s: %w", locale, ErrUnsupportedLocale)
@@ -126,7 +126,7 @@ func demonstratePlurals() {
 	for locale := range locales {
 		fmt.Printf("\n%s locale:\n", locale)
 		for _, count := range counts {
-			result, err := pluralMessage.Format(locale, map[string]interface{}{
+			result, err := pluralMessage.Format(locale, map[string]any{
 				"count": count,
 			})
 			if err != nil {
@@ -193,7 +193,7 @@ func demonstrateComplexMessages() {
 	for locale := range templates {
 		fmt.Printf("\n%s locale:\n", locale)
 		for _, scenario := range scenarios {
-			result, err := notificationMessage.Format(locale, map[string]interface{}{
+			result, err := notificationMessage.Format(locale, map[string]any{
 				"gender":    scenario.gender,
 				"itemCount": scenario.itemCount,
 				"location":  scenario.location,
@@ -240,7 +240,7 @@ func demonstrateReturnTypes() {
 		log.Fatal(err)
 	}
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"name":  "Alice",
 		"count": 3,
 	}

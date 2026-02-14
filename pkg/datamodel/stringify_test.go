@@ -180,7 +180,7 @@ func TestStringifyExpression(t *testing.T) {
 			name: "expression with function and options",
 			expr: NewExpression(
 				NewVariableRef("price"),
-				NewFunctionRef("number", ConvertMapToOptions(map[string]interface{}{
+				NewFunctionRef("number", ConvertMapToOptions(map[string]any{
 					"style":    NewLiteral("currency"),
 					"currency": NewLiteral("USD"),
 				})),
@@ -193,7 +193,7 @@ func TestStringifyExpression(t *testing.T) {
 			expr: NewExpression(
 				NewVariableRef("value"),
 				nil,
-				ConvertMapToAttributes(map[string]interface{}{
+				ConvertMapToAttributes(map[string]any{
 					"id": NewLiteral("test"),
 				}),
 			),
@@ -204,7 +204,7 @@ func TestStringifyExpression(t *testing.T) {
 			expr: NewExpression(
 				NewVariableRef("value"),
 				nil,
-				ConvertMapToAttributes(map[string]interface{}{
+				ConvertMapToAttributes(map[string]any{
 					"checked": true,
 				}),
 			),
@@ -314,21 +314,21 @@ func TestStringifyMarkup(t *testing.T) {
 		},
 		{
 			name: "markup with options",
-			markup: NewMarkup("open", "link", ConvertMapToOptions(map[string]interface{}{
+			markup: NewMarkup("open", "link", ConvertMapToOptions(map[string]any{
 				"href": NewLiteral("https://example.com"),
 			}), nil),
 			expected: "{#link href=|https://example.com|}",
 		},
 		{
 			name: "markup with attributes",
-			markup: NewMarkup("open", "img", nil, ConvertMapToAttributes(map[string]interface{}{
+			markup: NewMarkup("open", "img", nil, ConvertMapToAttributes(map[string]any{
 				"alt": NewLiteral("Image"),
 			})),
 			expected: "{#img @alt=Image}",
 		},
 		{
 			name: "markup with boolean attribute",
-			markup: NewMarkup("open", "input", nil, ConvertMapToAttributes(map[string]interface{}{
+			markup: NewMarkup("open", "input", nil, ConvertMapToAttributes(map[string]any{
 				"required": true,
 			})),
 			expected: "{#input @required}",
@@ -454,14 +454,14 @@ func TestStringifyFunctionRef(t *testing.T) {
 		},
 		{
 			name: "function with single option",
-			funcRef: NewFunctionRef("number", ConvertMapToOptions(map[string]interface{}{
+			funcRef: NewFunctionRef("number", ConvertMapToOptions(map[string]any{
 				"style": NewLiteral("decimal"),
 			})),
 			expected: ":number",
 		},
 		{
 			name: "function with multiple options",
-			funcRef: NewFunctionRef("number", ConvertMapToOptions(map[string]interface{}{
+			funcRef: NewFunctionRef("number", ConvertMapToOptions(map[string]any{
 				"style":    NewLiteral("currency"),
 				"currency": NewLiteral("USD"),
 			})),
@@ -470,7 +470,7 @@ func TestStringifyFunctionRef(t *testing.T) {
 		},
 		{
 			name: "function with variable option",
-			funcRef: NewFunctionRef("number", ConvertMapToOptions(map[string]interface{}{
+			funcRef: NewFunctionRef("number", ConvertMapToOptions(map[string]any{
 				"minDigits": NewVariableRef("digits"),
 			})),
 			expected: ":number",
@@ -501,7 +501,7 @@ func TestStringifyOption(t *testing.T) {
 	tests := []struct {
 		name     string
 		optName  string
-		optValue interface{}
+		optValue any
 		expected string
 	}{
 		{
@@ -536,7 +536,7 @@ func TestStringifyAttribute(t *testing.T) {
 	tests := []struct {
 		name     string
 		attrName string
-		attrVal  interface{}
+		attrVal  any
 		expected string
 	}{
 		{
@@ -741,7 +741,7 @@ func TestStringifyComplexMessages(t *testing.T) {
 						"tax",
 						NewExpression(
 							NewVariableRef("price"),
-							NewFunctionRef("number", ConvertMapToOptions(map[string]interface{}{
+							NewFunctionRef("number", ConvertMapToOptions(map[string]any{
 								"style": NewLiteral("percent"),
 							})),
 							nil,

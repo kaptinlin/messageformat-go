@@ -12,11 +12,11 @@ import (
 )
 
 func TestGetValue(t *testing.T) {
-	scope := map[string]interface{}{
+	scope := map[string]any{
 		"name":    "Alice",
 		"age":     30,
 		"user.id": 123,
-		"settings": map[string]interface{}{
+		"settings": map[string]any{
 			"theme": "dark",
 			"lang":  "en",
 		},
@@ -44,7 +44,7 @@ func TestLookupVariableRef(t *testing.T) {
 		map[string]functions.MessageFunction{
 			"string": functions.StringFunction,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"name": "Alice",
 			"age":  30,
 		},
@@ -69,7 +69,7 @@ func TestResolveVariableRef(t *testing.T) {
 			"string": functions.StringFunction,
 			"number": functions.NumberFunction,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"name": "Alice",
 			"age":  30,
 		},
@@ -98,7 +98,7 @@ func TestUnresolvedExpression(t *testing.T) {
 		nil,
 		nil,
 	)
-	scope := map[string]interface{}{"key": "value"}
+	scope := map[string]any{"key": "value"}
 
 	unresolved := NewUnresolvedExpression(expr, scope)
 
@@ -108,8 +108,8 @@ func TestUnresolvedExpression(t *testing.T) {
 
 func TestIsScope(t *testing.T) {
 	// Valid scopes
-	assert.True(t, isScope(map[string]interface{}{}))
-	assert.True(t, isScope(map[interface{}]interface{}{}))
+	assert.True(t, isScope(map[string]any{}))
+	assert.True(t, isScope(map[any]any{}))
 	assert.True(t, isScope(struct{}{}))
 
 	// Invalid scopes
@@ -139,7 +139,7 @@ func TestGetFirstLocale(t *testing.T) {
 //	  });
 func TestVariables(t *testing.T) {
 	// Helper function to create a variable expression and resolve it
-	resolveVariable := func(t *testing.T, value interface{}) messagevalue.MessageValue {
+	resolveVariable := func(t *testing.T, value any) messagevalue.MessageValue {
 		// Create a variable reference expression
 		varRef := datamodel.NewVariableRef("val")
 
@@ -147,7 +147,7 @@ func TestVariables(t *testing.T) {
 		ctx := NewContext(
 			[]string{"en"},
 			functions.DefaultFunctions,
-			map[string]interface{}{
+			map[string]any{
 				"val": value,
 			},
 			nil,
@@ -158,7 +158,7 @@ func TestVariables(t *testing.T) {
 	}
 
 	// Helper function to format variable to parts
-	formatToParts := func(t *testing.T, value interface{}) []messagevalue.MessagePart {
+	formatToParts := func(t *testing.T, value any) []messagevalue.MessagePart {
 		mv := resolveVariable(t, value)
 		parts, err := mv.ToParts()
 		require.NoError(t, err)
@@ -166,7 +166,7 @@ func TestVariables(t *testing.T) {
 	}
 
 	// Helper function to format variable to string
-	formatToString := func(t *testing.T, value interface{}) string {
+	formatToString := func(t *testing.T, value any) string {
 		mv := resolveVariable(t, value)
 		str, err := mv.ToString()
 		require.NoError(t, err)
@@ -271,7 +271,7 @@ func TestVariables(t *testing.T) {
 		// This tests the number formatting with specific options
 
 		// Create a NumberValue with options
-		options := map[string]interface{}{
+		options := map[string]any{
 			"minimumFractionDigits": 1,
 		}
 		nv := messagevalue.NewNumberValue(42, "en", "test", options)
@@ -300,7 +300,7 @@ func TestVariables(t *testing.T) {
 //	  });
 func TestVariablePaths(t *testing.T) {
 	// Helper function to resolve a variable path
-	resolveVariablePath := func(t *testing.T, varName string, values map[string]interface{}) []messagevalue.MessagePart {
+	resolveVariablePath := func(t *testing.T, varName string, values map[string]any) []messagevalue.MessagePart {
 		// Create a variable reference expression
 		varRef := datamodel.NewVariableRef(varName)
 
@@ -330,7 +330,7 @@ func TestVariablePaths(t *testing.T) {
 		//     }
 		//   ]);
 
-		values := map[string]interface{}{
+		values := map[string]any{
 			"user.name": 42,
 		}
 
@@ -352,8 +352,8 @@ func TestVariablePaths(t *testing.T) {
 		//     }
 		//   ]);
 
-		values := map[string]interface{}{
-			"user": map[string]interface{}{
+		values := map[string]any{
+			"user": map[string]any{
 				"name": 42,
 			},
 		}
@@ -376,8 +376,8 @@ func TestVariablePaths(t *testing.T) {
 		//     }
 		//   ]);
 
-		values := map[string]interface{}{
-			"user": map[string]interface{}{
+		values := map[string]any{
+			"user": map[string]any{
 				"name": 13,
 			},
 			"user.name": 42,

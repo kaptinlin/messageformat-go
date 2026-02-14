@@ -68,8 +68,8 @@ import (
 //	}
 func PercentFunction(
 	ctx MessageFunctionContext,
-	options map[string]interface{},
-	operand interface{},
+	options map[string]any,
+	operand any,
 ) messagevalue.MessageValue {
 	// Read numeric operand - matches TypeScript: const input = readNumericOperand(operand);
 	numInput, err := readNumericOperand(operand, ctx.Source())

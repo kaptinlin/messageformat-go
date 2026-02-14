@@ -30,13 +30,13 @@ type ValidationResult struct {
 //	}
 //
 // )
-func ValidateMessage(msg Message, onError func(string, interface{})) (*ValidationResult, error) {
+func ValidateMessage(msg Message, onError func(string, any)) (*ValidationResult, error) {
 	if onError == nil {
-		onError = func(string, interface{}) {}
+		onError = func(string, any) {}
 	}
 
 	var validationErrors []error
-	errorHandler := func(errType string, node interface{}) {
+	errorHandler := func(errType string, node any) {
 		var err error
 		end := 1
 		switch errType {
@@ -91,7 +91,7 @@ func ValidateMessage(msg Message, onError func(string, interface{})) (*Validatio
 //	  let setArgAsDeclared = true;
 //	  visit(msg, { ... });
 //	}
-func validateMessage(msg Message, onError func(string, interface{})) *ValidationResult {
+func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 	// Add nil check to prevent null pointer dereference
 	if msg == nil {
 		// Call onError to report the nil message error
@@ -104,7 +104,7 @@ func validateMessage(msg Message, onError func(string, interface{})) *Validation
 	}
 
 	selectorCount := 0
-	var missingFallback interface{}
+	var missingFallback any
 
 	// Tracks directly & indirectly annotated variables for missing-selector-annotation
 	annotated := make(map[string]bool)
@@ -254,7 +254,7 @@ func validateMessage(msg Message, onError func(string, interface{})) *Validation
 
 			// Check for duplicate variants
 			// TypeScript: const strKeys = JSON.stringify(keys.map(key => (key.type === 'literal' ? key.value : 0)));
-			keyStrs := make([]interface{}, len(keys))
+			keyStrs := make([]any, len(keys))
 			allCatchall := true
 			for i, key := range keys {
 				switch {
@@ -441,7 +441,7 @@ func selectorHasFunction(selector VariableRef) bool {
 }
 
 // visitPattern visits a pattern for expressions
-func visitPattern(pattern Pattern, functions, variables map[string]bool, onError func(string, interface{})) {
+func visitPattern(pattern Pattern, functions, variables map[string]bool, onError func(string, any)) {
 	for _, elem := range pattern.Elements() {
 		switch e := elem.(type) {
 		case *Expression:
@@ -477,7 +477,7 @@ func visitPattern(pattern Pattern, functions, variables map[string]bool, onError
 }
 
 // checkDuplicateOptions checks for duplicate option names in a function reference
-func checkDuplicateOptions(funcRef *FunctionRef, onError func(string, interface{})) {
+func checkDuplicateOptions(funcRef *FunctionRef, onError func(string, any)) {
 	if funcRef.Options() == nil {
 		return
 	}

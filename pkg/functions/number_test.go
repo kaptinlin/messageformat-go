@@ -12,10 +12,10 @@ import (
 func TestReadNumericOperand(t *testing.T) {
 	tests := []struct {
 		name      string
-		input     interface{}
+		input     any
 		source    string
 		expectErr bool
-		expected  interface{}
+		expected  any
 	}{
 		{"integer", 42, "test", false, 42},
 		{"float", 3.14, "test", false, 3.14},
@@ -51,7 +51,7 @@ func TestNumberFunction(t *testing.T) {
 		"",
 	)
 
-	options := map[string]interface{}{
+	options := map[string]any{
 		"style": "decimal",
 	}
 
@@ -72,7 +72,7 @@ func TestIntegerFunction(t *testing.T) {
 		"",
 	)
 
-	options := map[string]interface{}{}
+	options := map[string]any{}
 
 	t.Run("integer input", func(t *testing.T) {
 		result := IntegerFunction(ctx, options, 42)
@@ -91,11 +91,11 @@ func TestIntegerFunction(t *testing.T) {
 }
 
 func TestMergeNumberOptions(t *testing.T) {
-	operandOptions := map[string]interface{}{
+	operandOptions := map[string]any{
 		"style": "currency",
 	}
 
-	exprOptions := map[string]interface{}{
+	exprOptions := map[string]any{
 		"minimumFractionDigits": 2,
 		"style":                 "decimal", // Should override operand
 	}
@@ -170,7 +170,7 @@ func TestNumberSoftFailForIntegerOptions(t *testing.T) {
 		"",
 	)
 
-	options := map[string]interface{}{
+	options := map[string]any{
 		"minimumFractionDigits": "foo", // Invalid value
 	}
 
@@ -224,7 +224,7 @@ func TestNumberSelection(t *testing.T) {
 		"",
 	)
 
-	options := map[string]interface{}{
+	options := map[string]any{
 		"select": "exact", // This should cause a bad-option error since it's not literal
 	}
 
@@ -256,7 +256,7 @@ func TestNumberBasicFunctionality(t *testing.T) {
 			"",
 		)
 
-		options := map[string]interface{}{
+		options := map[string]any{
 			"style": "decimal",
 		}
 
@@ -280,7 +280,7 @@ func TestNumberBasicFunctionality(t *testing.T) {
 			"",
 		)
 
-		options := map[string]interface{}{
+		options := map[string]any{
 			"minimumFractionDigits": 2,
 			"maximumFractionDigits": 2,
 		}
@@ -305,7 +305,7 @@ func TestNumberBasicFunctionality(t *testing.T) {
 			"",
 		)
 
-		options := map[string]interface{}{
+		options := map[string]any{
 			"signDisplay": "always",
 		}
 
@@ -334,7 +334,7 @@ func TestNumberBasicFunctionality(t *testing.T) {
 			"",
 		)
 
-		options := map[string]interface{}{
+		options := map[string]any{
 			"minimumFractionDigits": "invalid",
 			"signDisplay":           123, // Should be string
 		}
@@ -367,7 +367,7 @@ func TestNumberTypeScriptCompatibility(t *testing.T) {
 
 		// Test with big.Int to match TypeScript BigInt behavior
 		bigInt := big.NewInt(9223372036854775807)
-		result := NumberFunction(ctx, map[string]interface{}{}, bigInt)
+		result := NumberFunction(ctx, map[string]any{}, bigInt)
 		require.NotNil(t, result)
 		assert.Equal(t, "number", result.Type())
 	})
@@ -385,12 +385,12 @@ func TestNumberTypeScriptCompatibility(t *testing.T) {
 		)
 
 		// Use a simple number value instead of function since Go doesn't have valueOf pattern
-		operand := map[string]interface{}{
+		operand := map[string]any{
 			"valueOf": 42,
-			"options": map[string]interface{}{"style": "decimal"},
+			"options": map[string]any{"style": "decimal"},
 		}
 
-		result := NumberFunction(ctx, map[string]interface{}{}, operand)
+		result := NumberFunction(ctx, map[string]any{}, operand)
 		require.NotNil(t, result)
 		assert.Equal(t, "number", result.Type())
 	})
@@ -407,7 +407,7 @@ func TestNumberTypeScriptCompatibility(t *testing.T) {
 			"",
 		)
 
-		result := NumberFunction(ctx, map[string]interface{}{"style": "currency", "currency": "USD"}, 1234.56)
+		result := NumberFunction(ctx, map[string]any{"style": "currency", "currency": "USD"}, 1234.56)
 		require.NotNil(t, result)
 
 		// Should have toParts method like TypeScript
@@ -428,7 +428,7 @@ func TestNumberTypeScriptCompatibility(t *testing.T) {
 			"",
 		)
 
-		result := NumberFunction(ctx, map[string]interface{}{"select": "cardinal"}, 1)
+		result := NumberFunction(ctx, map[string]any{"select": "cardinal"}, 1)
 		require.NotNil(t, result)
 
 		// Should be able to select like TypeScript (check if SelectValue interface is available)
@@ -456,7 +456,7 @@ func TestNumberTypeScriptCompatibility(t *testing.T) {
 			"",
 		)
 
-		result := NumberFunction(ctx, map[string]interface{}{}, 1234.56)
+		result := NumberFunction(ctx, map[string]any{}, 1234.56)
 		require.NotNil(t, result)
 
 		str, err := result.ToString()
@@ -479,7 +479,7 @@ func TestNumberTypeScriptCompatibility(t *testing.T) {
 		)
 
 		// Invalid operand should generate error like TypeScript
-		result := NumberFunction(ctx, map[string]interface{}{}, "not-a-number")
+		result := NumberFunction(ctx, map[string]any{}, "not-a-number")
 		require.NotNil(t, result)
 
 		// Should have captured error

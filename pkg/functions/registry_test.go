@@ -46,7 +46,7 @@ func TestFunctionRegistryRegister(t *testing.T) {
 	registry := NewFunctionRegistry()
 
 	// Register a custom function
-	customFunc := func(ctx MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+	customFunc := func(ctx MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 		return messagevalue.NewStringValue("custom", "en", "test")
 	}
 
@@ -79,7 +79,7 @@ func TestFunctionRegistryClone(t *testing.T) {
 	registry := NewFunctionRegistry()
 
 	// Add a custom function
-	customFunc := func(ctx MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+	customFunc := func(ctx MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 		return messagevalue.NewStringValue("custom", "en", "test")
 	}
 	registry.Register("custom", customFunc)
@@ -106,10 +106,10 @@ func TestFunctionRegistryMerge(t *testing.T) {
 	registry2 := NewFunctionRegistry()
 
 	// Add different functions to each registry
-	customFunc1 := func(ctx MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+	customFunc1 := func(ctx MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 		return messagevalue.NewStringValue("custom1", "en", "test")
 	}
-	customFunc2 := func(ctx MessageFunctionContext, options map[string]interface{}, operand interface{}) messagevalue.MessageValue {
+	customFunc2 := func(ctx MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
 		return messagevalue.NewStringValue("custom2", "en", "test")
 	}
 

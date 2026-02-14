@@ -20,11 +20,11 @@ import (
 //	  exp: Array<[any, string | RegExp | { error: true | string | RegExp } | any[]]>;
 //	};
 type TypeScriptTestCase struct {
-	Locale  string                 `json:"locale,omitempty"`
-	Options map[string]interface{} `json:"options,omitempty"`
-	Skip    []string               `json:"skip,omitempty"`
-	Src     string                 `json:"src"`
-	Exp     [][]interface{}        `json:"exp"`
+	Locale  string         `json:"locale,omitempty"`
+	Options map[string]any `json:"options,omitempty"`
+	Skip    []string       `json:"skip,omitempty"`
+	Src     string         `json:"src"`
+	Exp     [][]any        `json:"exp"`
 }
 
 type TypeScriptTestSuite map[string][]TypeScriptTestCase
@@ -36,13 +36,13 @@ func loadTypeScriptTestCases() TypeScriptTestSuite {
 		"Basic messages": {
 			{
 				Src: "This is a string.",
-				Exp: [][]interface{}{{nil, "This is a string."}},
+				Exp: [][]any{{nil, "This is a string."}},
 			},
 			{
 				Src: "{foo}",
-				Exp: [][]interface{}{
-					{nil, map[string]interface{}{"error": true}},
-					{map[string]interface{}{"foo": "FOO"}, "FOO"},
+				Exp: [][]any{
+					{nil, map[string]any{"error": true}},
+					{map[string]any{"foo": "FOO"}, "FOO"},
 				},
 			},
 		},
@@ -51,21 +51,21 @@ func loadTypeScriptTestCases() TypeScriptTestSuite {
 			{
 				Locale: "cy", // Welsh - Complex plural rules test
 				Src:    "{NUM, plural, zero{a} one{b} two{c} few{d} many{e} other{f} =42{omg42}}",
-				Exp: [][]interface{}{
-					{map[string]interface{}{"NUM": 0}, "a"},
-					{map[string]interface{}{"NUM": 1}, "b"},
-					{map[string]interface{}{"NUM": 2}, "c"},
-					{map[string]interface{}{"NUM": 3}, "d"},
-					{map[string]interface{}{"NUM": 6}, "e"},
-					{map[string]interface{}{"NUM": 15}, "f"},
-					{map[string]interface{}{"NUM": 42}, "omg42"},
+				Exp: [][]any{
+					{map[string]any{"NUM": 0}, "a"},
+					{map[string]any{"NUM": 1}, "b"},
+					{map[string]any{"NUM": 2}, "c"},
+					{map[string]any{"NUM": 3}, "d"},
+					{map[string]any{"NUM": 6}, "e"},
+					{map[string]any{"NUM": 15}, "f"},
+					{map[string]any{"NUM": 42}, "omg42"},
 				},
 			},
 			{
 				Locale: "cy",
 				Src:    "{num, selectordinal, zero{0,7,8,9} one{1} two{2} few{3,4} many{5,6} other{+}}",
-				Exp: [][]interface{}{
-					{map[string]interface{}{"num": 5}, "5,6"},
+				Exp: [][]any{
+					{map[string]any{"num": 5}, "5,6"},
 				},
 			},
 		},
@@ -73,15 +73,15 @@ func loadTypeScriptTestCases() TypeScriptTestSuite {
 		"Octothorpe replacement": {
 			{
 				Src: "{count, plural, one{# item} other{# items}}",
-				Exp: [][]interface{}{
-					{map[string]interface{}{"count": 1}, "1 item"},
-					{map[string]interface{}{"count": 5}, "5 items"},
+				Exp: [][]any{
+					{map[string]any{"count": 1}, "1 item"},
+					{map[string]any{"count": 5}, "5 items"},
 				},
 			},
 			{
 				Src: "{count, plural, one{# item (total: #)} other{# items (total: #)}}",
-				Exp: [][]interface{}{
-					{map[string]interface{}{"count": 2}, "2 items (total: 2)"},
+				Exp: [][]any{
+					{map[string]any{"count": 2}, "2 items (total: 2)"},
 				},
 			},
 		},
@@ -89,10 +89,10 @@ func loadTypeScriptTestCases() TypeScriptTestSuite {
 		"Select statements": {
 			{
 				Src: "{gender, select, male{He} female{She} other{They}} went home.",
-				Exp: [][]interface{}{
-					{map[string]interface{}{"gender": "male"}, "He went home."},
-					{map[string]interface{}{"gender": "female"}, "She went home."},
-					{map[string]interface{}{"gender": "unknown"}, "They went home."},
+				Exp: [][]any{
+					{map[string]any{"gender": "male"}, "He went home."},
+					{map[string]any{"gender": "female"}, "She went home."},
+					{map[string]any{"gender": "unknown"}, "They went home."},
 				},
 			},
 		},
@@ -100,47 +100,47 @@ func loadTypeScriptTestCases() TypeScriptTestSuite {
 		"Nested messages": {
 			{
 				Src: "{gender, select, male{{count, plural, one{He has # item} other{He has # items}}} female{{count, plural, one{She has # item} other{She has # items}}} other{{count, plural, one{They have # item} other{They have # items}}}}",
-				Exp: [][]interface{}{
-					{map[string]interface{}{"gender": "male", "count": 1}, "He has 1 item"},
-					{map[string]interface{}{"gender": "female", "count": 3}, "She has 3 items"},
-					{map[string]interface{}{"gender": "other", "count": 2}, "They have 2 items"},
+				Exp: [][]any{
+					{map[string]any{"gender": "male", "count": 1}, "He has 1 item"},
+					{map[string]any{"gender": "female", "count": 3}, "She has 3 items"},
+					{map[string]any{"gender": "other", "count": 2}, "They have 2 items"},
 				},
 			},
 		},
 
 		"Error handling": {
 			{
-				Options: map[string]interface{}{"requireAllArguments": true},
+				Options: map[string]any{"requireAllArguments": true},
 				Src:     "{missing}",
-				Exp: [][]interface{}{
-					{map[string]interface{}{}, map[string]interface{}{"error": true}},
+				Exp: [][]any{
+					{map[string]any{}, map[string]any{"error": true}},
 				},
 			},
 		},
 
 		"Return type variations": {
 			{
-				Options: map[string]interface{}{"returnType": "string"},
+				Options: map[string]any{"returnType": "string"},
 				Src:     "Hello {name}!",
-				Exp: [][]interface{}{
-					{map[string]interface{}{"name": "World"}, "Hello World!"},
+				Exp: [][]any{
+					{map[string]any{"name": "World"}, "Hello World!"},
 				},
 			},
 			{
-				Options: map[string]interface{}{"returnType": "values"},
+				Options: map[string]any{"returnType": "values"},
 				Src:     "Hello {name}!",
-				Exp: [][]interface{}{
-					{map[string]interface{}{"name": "World"}, []interface{}{"Hello ", "World", "!"}},
+				Exp: [][]any{
+					{map[string]any{"name": "World"}, []any{"Hello ", "World", "!"}},
 				},
 			},
 		},
 
 		"Strict mode": {
 			{
-				Options: map[string]interface{}{"strict": true},
+				Options: map[string]any{"strict": true},
 				Src:     "{foo, invalid}",
-				Exp: [][]interface{}{
-					{map[string]interface{}{"foo": "bar"}, map[string]interface{}{"error": true}},
+				Exp: [][]any{
+					{map[string]any{"foo": "bar"}, map[string]any{"error": true}},
 				},
 			},
 		},
@@ -187,7 +187,7 @@ func TestTypeScriptCompatibilityOfficial(t *testing.T) {
 					if err != nil {
 						for _, exp := range testCase.Exp {
 							if len(exp) >= 2 {
-								if errMap, ok := exp[1].(map[string]interface{}); ok {
+								if errMap, ok := exp[1].(map[string]any); ok {
 									if errMap["error"] == true {
 										return // Expected compilation error
 									}
@@ -207,7 +207,7 @@ func TestTypeScriptCompatibilityOfficial(t *testing.T) {
 
 						result, err := compiled(params)
 
-						if errMap, ok := expected.(map[string]interface{}); ok && errMap["error"] == true {
+						if errMap, ok := expected.(map[string]any); ok && errMap["error"] == true {
 							assert.Error(t, err, "Expected error for params %v, message: %s", params, testCase.Src)
 							continue
 						}
@@ -216,7 +216,7 @@ func TestTypeScriptCompatibilityOfficial(t *testing.T) {
 
 						if expectedStr, ok := expected.(string); ok {
 							assert.Equal(t, expectedStr, result, "Mismatch for exp[%d], params %v, message: %s", expIndex, params, testCase.Src)
-						} else if expectedSlice, ok := expected.([]interface{}); ok {
+						} else if expectedSlice, ok := expected.([]any); ok {
 							if options.ReturnType == ReturnTypeValues {
 								assert.Equal(t, expectedSlice, result, "Values mismatch for exp[%d], params %v, message: %s", expIndex, params, testCase.Src)
 							} else {
@@ -255,7 +255,7 @@ func TestTypeScriptCompatibilityStaticMethods(t *testing.T) {
 
 	t.Run("SupportedLocalesOf function", func(t *testing.T) {
 		testCases := []struct {
-			locales  interface{}
+			locales  any
 			expected []string
 		}{
 			{[]string{"en", "fr", "de"}, []string{"en", "fr", "de"}},
@@ -293,31 +293,31 @@ func BenchmarkTypeScriptCompatibilityPerformance(b *testing.B) {
 		name    string
 		locale  string
 		message string
-		params  map[string]interface{}
+		params  map[string]any
 	}{
 		{
 			name:    "SimpleInterpolation",
 			locale:  "en",
 			message: "Hello {name}!",
-			params:  map[string]interface{}{"name": "World"},
+			params:  map[string]any{"name": "World"},
 		},
 		{
 			name:    "BasicPlural",
 			locale:  "en",
 			message: "{count, plural, one{# item} other{# items}}",
-			params:  map[string]interface{}{"count": 5},
+			params:  map[string]any{"count": 5},
 		},
 		{
 			name:    "ComplexNested",
 			locale:  "en",
 			message: "{gender, select, male{He has {count, plural, one{# item} other{# items}}} other{They have items}}",
-			params:  map[string]interface{}{"gender": "male", "count": 3},
+			params:  map[string]any{"gender": "male", "count": 3},
 		},
 		{
 			name:    "WelshPlurals",
 			locale:  "cy",
 			message: "{NUM, plural, zero{zero} one{one} two{two} few{few} many{many} other{other}}",
-			params:  map[string]interface{}{"NUM": 6},
+			params:  map[string]any{"NUM": 6},
 		},
 	}
 

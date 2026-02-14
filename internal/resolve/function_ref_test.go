@@ -45,8 +45,8 @@ func TestCustomFunction(t *testing.T) {
 	// Create a custom function that mimics the TypeScript behavior
 	customFunc := func(
 		ctx functions.MessageFunctionContext,
-		options map[string]interface{},
-		input interface{},
+		options map[string]any,
+		input any,
 	) messagevalue.MessageValue {
 		locale := "en"
 		if len(ctx.Locales()) > 0 {
@@ -73,7 +73,7 @@ func TestCustomFunction(t *testing.T) {
 		map[string]functions.MessageFunction{
 			"custom": customFunc,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"var": 42,
 		},
 		nil,
@@ -110,7 +110,7 @@ type customMessageValue struct {
 	source string
 	dir    string
 	locale string
-	input  interface{}
+	input  any
 }
 
 func (cv *customMessageValue) Type() string   { return cv.typ }
@@ -126,8 +126,8 @@ func (cv *customMessageValue) Dir() bidi.Direction {
 	}
 }
 func (cv *customMessageValue) Locale() string                             { return cv.locale }
-func (cv *customMessageValue) Options() map[string]interface{}            { return nil }
-func (cv *customMessageValue) ValueOf() (interface{}, error)              { return cv.input, nil }
+func (cv *customMessageValue) Options() map[string]any                    { return nil }
+func (cv *customMessageValue) ValueOf() (any, error)                      { return cv.input, nil }
 func (cv *customMessageValue) SelectKeys(keys []string) ([]string, error) { return nil, nil }
 
 func (cv *customMessageValue) ToString() (string, error) {
@@ -152,7 +152,7 @@ type customMessagePart struct {
 }
 
 func (cp *customMessagePart) Type() string        { return cp.typ }
-func (cp *customMessagePart) Value() interface{}  { return cp.value }
+func (cp *customMessagePart) Value() any          { return cp.value }
 func (cp *customMessagePart) Source() string      { return "" }
 func (cp *customMessagePart) Locale() string      { return cp.locale }
 func (cp *customMessagePart) Dir() bidi.Direction { return bidi.DirAuto }
@@ -182,7 +182,7 @@ func TestInputsWithOptions(t *testing.T) {
 		// We'll test that options from the operand are preserved and merged with expression options
 
 		// Create a NumberValue with specific options (simulating the local variable)
-		operandOptions := map[string]interface{}{
+		operandOptions := map[string]any{
 			"useGrouping": "never",
 		}
 		numberValue := messagevalue.NewNumberValue(12345678, "en", "test", operandOptions)
@@ -193,7 +193,7 @@ func TestInputsWithOptions(t *testing.T) {
 			map[string]functions.MessageFunction{
 				"number": functions.NumberFunction,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"val": numberValue,
 			},
 			nil,
@@ -241,7 +241,7 @@ func TestInputsWithOptions(t *testing.T) {
 		//   });
 
 		// Create a NumberValue with operand options
-		operandOptions := map[string]interface{}{
+		operandOptions := map[string]any{
 			"minimumFractionDigits": 4,
 			"useGrouping":           false,
 		}
@@ -253,7 +253,7 @@ func TestInputsWithOptions(t *testing.T) {
 			map[string]functions.MessageFunction{
 				"number": functions.NumberFunction,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"val": numberValue,
 			},
 			nil,
@@ -310,8 +310,8 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 		// Create a mock datetime function for testing
 		datetimeFunc := func(
 			ctx functions.MessageFunctionContext,
-			options map[string]interface{},
-			operand interface{},
+			options map[string]any,
+			operand any,
 		) messagevalue.MessageValue {
 			// Mock implementation that respects hour12 option
 			hour12 := options["hour12"]
@@ -332,7 +332,7 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 			map[string]functions.MessageFunction{
 				"datetime": datetimeFunc,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"date": date,
 			},
 			nil,
@@ -355,7 +355,7 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 			map[string]functions.MessageFunction{
 				"datetime": datetimeFunc,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"date": date,
 			},
 			nil,
@@ -388,8 +388,8 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 		// Create a mock datetime function that handles variable hour12 values
 		datetimeFunc := func(
 			ctx functions.MessageFunctionContext,
-			options map[string]interface{},
-			operand interface{},
+			options map[string]any,
+			operand any,
 		) messagevalue.MessageValue {
 			hour12 := options["hour12"]
 
@@ -410,7 +410,7 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 			map[string]functions.MessageFunction{
 				"datetime": datetimeFunc,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"date":   date,
 				"hour12": "false",
 			},
@@ -434,7 +434,7 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 			map[string]functions.MessageFunction{
 				"datetime": datetimeFunc,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"date":   date,
 				"hour12": false,
 			},
@@ -475,8 +475,8 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 		// Create a function that returns an invalid MessageValue (missing required methods)
 		failFunc := func(
 			ctx functions.MessageFunctionContext,
-			options map[string]interface{},
-			operand interface{},
+			options map[string]any,
+			operand any,
 		) messagevalue.MessageValue {
 			// Return nil to simulate invalid return
 			return nil
@@ -492,7 +492,7 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 			map[string]functions.MessageFunction{
 				"fail": failFunc,
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			onError,
 		)
 
@@ -528,8 +528,8 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 		// Create a function that returns nil
 		failFunc := func(
 			ctx functions.MessageFunctionContext,
-			options map[string]interface{},
-			operand interface{},
+			options map[string]any,
+			operand any,
 		) messagevalue.MessageValue {
 			return nil
 		}
@@ -544,7 +544,7 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 			map[string]functions.MessageFunction{
 				"fail": failFunc,
 			},
-			map[string]interface{}{},
+			map[string]any{},
 			onError,
 		)
 
@@ -585,7 +585,7 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 		ctx := NewContext(
 			[]string{"en"},
 			map[string]functions.MessageFunction{}, // Empty functions map
-			map[string]interface{}{},
+			map[string]any{},
 			onError,
 		)
 

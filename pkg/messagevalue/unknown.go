@@ -33,12 +33,12 @@ import (
 //	});
 type UnknownValue struct {
 	source string
-	value  interface{}
+	value  any
 	locale string
 }
 
 // NewUnknownValue creates a new unknown value
-func NewUnknownValue(source string, value interface{}, locale string) *UnknownValue {
+func NewUnknownValue(source string, value any, locale string) *UnknownValue {
 	return &UnknownValue{
 		source: source,
 		value:  value,
@@ -62,7 +62,7 @@ func (uv *UnknownValue) Locale() string {
 	return uv.locale
 }
 
-func (uv *UnknownValue) Options() map[string]interface{} {
+func (uv *UnknownValue) Options() map[string]any {
 	return nil
 }
 
@@ -80,7 +80,7 @@ func (uv *UnknownValue) ToParts() ([]MessagePart, error) {
 	}, nil
 }
 
-func (uv *UnknownValue) ValueOf() (interface{}, error) {
+func (uv *UnknownValue) ValueOf() (any, error) {
 	return uv.value, nil // TypeScript: valueOf: () => input
 }
 
@@ -98,12 +98,12 @@ func (uv *UnknownValue) SelectKeys(keys []string) ([]string, error) {
 //	}
 type UnknownPart struct {
 	source string
-	value  interface{}
+	value  any
 	locale string
 }
 
 // NewUnknownPart creates a new unknown part
-func NewUnknownPart(source string, value interface{}, locale string) *UnknownPart {
+func NewUnknownPart(source string, value any, locale string) *UnknownPart {
 	return &UnknownPart{
 		source: source,
 		value:  value,
@@ -115,7 +115,7 @@ func (up *UnknownPart) Type() string {
 	return "unknown"
 }
 
-func (up *UnknownPart) Value() interface{} {
+func (up *UnknownPart) Value() any {
 	return up.value
 }
 

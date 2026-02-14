@@ -65,8 +65,8 @@ func TestDeclarations(t *testing.T) {
 
 func TestExpression(t *testing.T) {
 	literal := NewLiteral("test")
-	funcRef := NewFunctionRef("number", ConvertMapToOptions(map[string]interface{}{"style": "decimal"}))
-	attrs := ConvertMapToAttributes(map[string]interface{}{"id": "test"})
+	funcRef := NewFunctionRef("number", ConvertMapToOptions(map[string]any{"style": "decimal"}))
+	attrs := ConvertMapToAttributes(map[string]any{"id": "test"})
 
 	expr := NewExpression(literal, funcRef, attrs)
 
@@ -92,7 +92,7 @@ func TestVariableRef(t *testing.T) {
 }
 
 func TestFunctionRef(t *testing.T) {
-	options := ConvertMapToOptions(map[string]interface{}{
+	options := ConvertMapToOptions(map[string]any{
 		"style":    "currency",
 		"currency": "USD",
 	})
@@ -104,8 +104,8 @@ func TestFunctionRef(t *testing.T) {
 }
 
 func TestMarkup(t *testing.T) {
-	options := ConvertMapToOptions(map[string]interface{}{"href": "https://example.com"})
-	attrs := ConvertMapToAttributes(map[string]interface{}{"target": "_blank"})
+	options := ConvertMapToOptions(map[string]any{"href": "https://example.com"})
+	attrs := ConvertMapToAttributes(map[string]any{"target": "_blank"})
 
 	markup := NewMarkup("open", "link", options, attrs)
 

@@ -18,7 +18,7 @@ func createTestContext() *resolve.Context {
 			"string": functions.StringFunction,
 			"number": functions.NumberFunction,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"count": 1,
 			"name":  "Alice",
 		},

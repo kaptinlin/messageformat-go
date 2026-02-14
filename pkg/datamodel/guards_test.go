@@ -9,7 +9,7 @@ import (
 func TestIsCatchallKey(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected bool
 	}{
 		{"valid catchall key", NewCatchallKey(""), true},
@@ -31,7 +31,7 @@ func TestIsCatchallKey(t *testing.T) {
 func TestIsExpression(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected bool
 	}{
 		{"valid expression", NewExpression(nil, nil, nil), true},
@@ -52,11 +52,11 @@ func TestIsExpression(t *testing.T) {
 func TestIsFunctionRef(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected bool
 	}{
 		{"valid function ref", NewFunctionRef("number", nil), true},
-		{"function ref with options", NewFunctionRef("number", ConvertMapToOptions(map[string]interface{}{"style": "decimal"})), true},
+		{"function ref with options", NewFunctionRef("number", ConvertMapToOptions(map[string]any{"style": "decimal"})), true},
 		{"literal", NewLiteral("test"), false},
 		{"nil", nil, false},
 		{"string", "test", false},
@@ -73,7 +73,7 @@ func TestIsFunctionRef(t *testing.T) {
 func TestIsLiteral(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected bool
 	}{
 		{"valid literal", NewLiteral("test"), true},
@@ -94,7 +94,7 @@ func TestIsLiteral(t *testing.T) {
 func TestIsMarkup(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected bool
 	}{
 		{"valid markup", NewMarkup("open", "b", nil, nil), true},
@@ -120,7 +120,7 @@ func TestIsMessage(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected bool
 	}{
 		{"pattern message", patternMsg, true},
@@ -185,7 +185,7 @@ func TestIsSelectMessage(t *testing.T) {
 func TestIsVariableRef(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected bool
 	}{
 		{"valid variable ref", NewVariableRef("test"), true},
@@ -298,7 +298,7 @@ func TestNilInputs(t *testing.T) {
 func TestIsVariantKey(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected bool
 	}{
 		{"literal key", NewLiteral("one"), true},
@@ -324,7 +324,7 @@ func TestIsPatternElement(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected bool
 	}{
 		{"text element", textElem, true},
@@ -355,7 +355,7 @@ func TestIsNode(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected bool
 	}{
 		{"literal", literal, true},
@@ -385,7 +385,7 @@ func TestIsBooleanAttribute(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected bool
 	}{
 		{"boolean attribute", boolAttr, true},
@@ -410,7 +410,7 @@ func TestIsVariableRefExpression(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expected bool
 	}{
 		{"variable ref expression", varRefExpr, true},

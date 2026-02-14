@@ -26,14 +26,14 @@ import (
 //	}
 type UnresolvedExpression struct {
 	Expression *datamodel.Expression
-	Scope      map[string]interface{}
+	Scope      map[string]any
 }
 
 // NewUnresolvedExpression creates a new unresolved expression
 // TypeScript original code: UnresolvedExpression constructor
 func NewUnresolvedExpression(
 	expression *datamodel.Expression,
-	scope map[string]interface{},
+	scope map[string]any,
 ) *UnresolvedExpression {
 	return &UnresolvedExpression{
 		Expression: expression,
@@ -46,12 +46,12 @@ func NewUnresolvedExpression(
 // const isScope = (scope: unknown): scope is Record<string, unknown> =>
 //
 //	scope !== null && (typeof scope === 'object' || typeof scope === 'function');
-func isScope(scope interface{}) bool {
+func isScope(scope any) bool {
 	if scope == nil {
 		return false
 	}
 	switch reflect.ValueOf(scope).Kind() {
-	case reflect.Map, reflect.Struct, reflect.Ptr, reflect.Func:
+	case reflect.Map, reflect.Struct, reflect.Pointer, reflect.Func:
 		return true
 	default:
 		return false
@@ -81,13 +81,13 @@ func isScope(scope interface{}) bool {
 //
 //	  return undefined;
 //	}
-func getValue(scope interface{}, name string) interface{} {
+func getValue(scope any, name string) any {
 	if !isScope(scope) {
 		return nil
 	}
 
 	// Handle map types
-	if m, ok := scope.(map[string]interface{}); ok {
+	if m, ok := scope.(map[string]any); ok {
 		// Direct lookup - matches TypeScript: if (name in scope) return scope[name];
 		if value, exists := m[name]; exists {
 			return value
@@ -108,7 +108,7 @@ func getValue(scope interface{}, name string) interface{} {
 	}
 
 	// Handle map[interface{}]interface{} types
-	if m, ok := scope.(map[interface{}]interface{}); ok {
+	if m, ok := scope.(map[any]any); ok {
 		if value, exists := m[name]; exists {
 			return value
 		}
@@ -137,7 +137,7 @@ func getValue(scope interface{}, name string) interface{} {
 //	  }
 //	  return value;
 //	}
-func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) interface{} {
+func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) any {
 	name := ref.Name()
 	value := getValue(ctx.Scope, name)
 
@@ -173,7 +173,7 @@ func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) interface{} {
 				// Also check for Unicode normalization cases - if the variable names normalize to the same value
 				// we should look for any non-unresolved value in the scope
 				// But only if there's exactly one non-unresolved value (to avoid ambiguity)
-				var nonUnresolvedValue interface{}
+				var nonUnresolvedValue any
 				var count int
 				for _, scopeValue := range unresolvedExpr.Scope {
 					if _, isUnresolved := scopeValue.(*UnresolvedExpression); !isUnresolved {
@@ -313,7 +313,7 @@ func ResolveVariableRef(ctx *Context, ref *datamodel.VariableRef) messagevalue.M
 				"",
 			)
 			// matches TypeScript: return ctx.functions.number(msgCtx, {}, value);
-			return numberFunc(msgCtx, make(map[string]interface{}), value)
+			return numberFunc(msgCtx, make(map[string]any), value)
 		}
 	case "string":
 		// matches TypeScript: const msgCtx = new MessageFunctionContext(ctx, source);
@@ -328,7 +328,7 @@ func ResolveVariableRef(ctx *Context, ref *datamodel.VariableRef) messagevalue.M
 				"",
 			)
 			// matches TypeScript: return ctx.functions.string(msgCtx, {}, value);
-			return stringFunc(msgCtx, make(map[string]interface{}), value)
+			return stringFunc(msgCtx, make(map[string]any), value)
 		}
 	}
 
@@ -344,7 +344,7 @@ func ResolveVariableRef(ctx *Context, ref *datamodel.VariableRef) messagevalue.M
 
 // getValueType determines the type of a value similar to TypeScript typeof
 // TypeScript original code: typeof value
-func getValueType(value interface{}) string {
+func getValueType(value any) string {
 	if value == nil {
 		return "undefined"
 	}
@@ -356,7 +356,7 @@ func getValueType(value interface{}) string {
 		return "number"
 	case string:
 		return "string"
-	case func(...interface{}) interface{}:
+	case func(...any) any:
 		return "function"
 	default:
 		return "object"

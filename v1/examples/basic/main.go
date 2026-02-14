@@ -34,7 +34,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result, err := simpleMsg(map[string]interface{}{
+	result, err := simpleMsg(map[string]any{
 		"name": "Alice",
 	})
 	if err != nil {
@@ -51,7 +51,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result, err = multiMsg(map[string]interface{}{
+	result, err = multiMsg(map[string]any{
 		"firstName":    "John",
 		"lastName":     "Doe",
 		"messageCount": 3,
@@ -71,7 +71,7 @@ func main() {
 	// Test with different counts
 	counts := []int{0, 1, 2, 5}
 	for _, count := range counts {
-		result, err := pluralMsg(map[string]interface{}{
+		result, err := pluralMsg(map[string]any{
 			"count": count,
 		})
 		if err != nil {
@@ -89,7 +89,7 @@ func main() {
 
 	genders := []string{"male", "female", "other", "unknown"}
 	for _, gender := range genders {
-		result, err := selectMsg(map[string]interface{}{
+		result, err := selectMsg(map[string]any{
 			"gender": gender,
 		})
 		if err != nil {

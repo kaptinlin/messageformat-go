@@ -6,39 +6,40 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
 // TestParam represents a parameter in the test
 type TestParam struct {
-	Name  string      `json:"name"`
-	Value interface{} `json:"value"`
+	Name  string `json:"name"`
+	Value any    `json:"value"`
 }
 
 // Test represents a single test case from the MessageFormat Working Group test suite
 type Test struct {
-	Src           string        `json:"src"`
-	Locale        string        `json:"locale,omitempty"`
-	Params        []TestParam   `json:"params,omitempty"`
-	Exp           interface{}   `json:"exp,omitempty"`
-	ExpErrors     interface{}   `json:"expErrors,omitempty"`
-	ExpParts      []interface{} `json:"expParts,omitempty"`
-	BidiIsolation *bool         `json:"bidiIsolation,omitempty"`
-	Only          bool          `json:"only,omitempty"`
-	Tags          []string      `json:"tags,omitempty"`
-	Description   string        `json:"description,omitempty"`
+	Src           string      `json:"src"`
+	Locale        string      `json:"locale,omitempty"`
+	Params        []TestParam `json:"params,omitempty"`
+	Exp           any         `json:"exp,omitempty"`
+	ExpErrors     any         `json:"expErrors,omitempty"`
+	ExpParts      []any       `json:"expParts,omitempty"`
+	BidiIsolation *bool       `json:"bidiIsolation,omitempty"`
+	Only          bool        `json:"only,omitempty"`
+	Tags          []string    `json:"tags,omitempty"`
+	Description   string      `json:"description,omitempty"`
 
 	// Internal field to store the original bidi isolation value
-	BidiIsolationRaw interface{} `json:"-"`
+	BidiIsolationRaw any `json:"-"`
 }
 
 // GetParamsMap converts the params array to a map for easier use
-func (t Test) GetParamsMap() map[string]interface{} {
+func (t Test) GetParamsMap() map[string]any {
 	if t.Params == nil {
 		return nil
 	}
 
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	for _, param := range t.Params {
 		result[param.Name] = param.Value
 	}
@@ -81,9 +82,9 @@ func TestName(tc Test) string {
 func GetTestType(tc Test) TestType {
 	if tc.ExpErrors != nil {
 		// Check if it's specifically a syntax error or data model error
-		if errSlice, ok := tc.ExpErrors.([]interface{}); ok {
+		if errSlice, ok := tc.ExpErrors.([]any); ok {
 			for _, err := range errSlice {
-				if errMap, ok := err.(map[string]interface{}); ok {
+				if errMap, ok := err.(map[string]any); ok {
 					if errType, exists := errMap["type"]; exists {
 						if errType == "syntax-error" {
 							return TestTypeSyntaxError
@@ -100,7 +101,7 @@ func GetTestType(tc Test) TestType {
 					}
 				}
 			}
-		} else if errMap, ok := tc.ExpErrors.(map[string]interface{}); ok {
+		} else if errMap, ok := tc.ExpErrors.(map[string]any); ok {
 			if errType, exists := errMap["type"]; exists {
 				if errType == "syntax-error" {
 					return TestTypeSyntaxError
@@ -132,11 +133,11 @@ func GetTestType(tc Test) TestType {
 
 // TestFile represents the structure of a test JSON file
 type TestFile struct {
-	Schema                string                 `json:"$schema,omitempty"`
-	Scenario              string                 `json:"scenario"`
-	Description           string                 `json:"description,omitempty"`
-	DefaultTestProperties map[string]interface{} `json:"defaultTestProperties,omitempty"`
-	Tests                 []Test                 `json:"tests"`
+	Schema                string         `json:"$schema,omitempty"`
+	Scenario              string         `json:"scenario"`
+	Description           string         `json:"description,omitempty"`
+	DefaultTestProperties map[string]any `json:"defaultTestProperties,omitempty"`
+	Tests                 []Test         `json:"tests"`
 }
 
 // TestScenarios loads all test scenarios from a directory
@@ -222,12 +223,7 @@ func TestCases(scenario TestScenario) []Test {
 
 // HasTag checks if a test has a specific tag
 func HasTag(tc Test, tag string) bool {
-	for _, t := range tc.Tags {
-		if t == tag {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(tc.Tags, tag)
 }
 
 // ShouldSkip determines if a test should be skipped based on tags
@@ -275,26 +271,26 @@ func ExpectedString(tc Test) (string, bool) {
 }
 
 // ExpectedErrors returns the expected errors in a normalized format
-func ExpectedErrors(tc Test) []map[string]interface{} {
+func ExpectedErrors(tc Test) []map[string]any {
 	if tc.ExpErrors == nil {
 		return nil
 	}
 
-	var errors []map[string]interface{}
+	var errors []map[string]any
 
 	switch v := tc.ExpErrors.(type) {
-	case []interface{}:
+	case []any:
 		for _, err := range v {
-			if errMap, ok := err.(map[string]interface{}); ok {
+			if errMap, ok := err.(map[string]any); ok {
 				errors = append(errors, errMap)
 			}
 		}
-	case map[string]interface{}:
+	case map[string]any:
 		errors = append(errors, v)
 	case bool:
 		if v {
 			// If expErrors is true, we expect some error but don't know the details
-			errors = append(errors, map[string]interface{}{"type": "unknown"})
+			errors = append(errors, map[string]any{"type": "unknown"})
 		}
 	}
 
@@ -302,7 +298,7 @@ func ExpectedErrors(tc Test) []map[string]interface{} {
 }
 
 // ExpectedParts returns the expected parts if available
-func ExpectedParts(tc Test) []interface{} {
+func ExpectedParts(tc Test) []any {
 	return tc.ExpParts
 }
 

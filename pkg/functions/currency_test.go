@@ -34,7 +34,7 @@ import (
 //	  }
 //	});
 func TestCurrencyFractionDigits(t *testing.T) {
-	fractionDigitsValues := []interface{}{0, 2, "auto"}
+	fractionDigitsValues := []any{0, 2, "auto"}
 
 	for _, fd := range fractionDigitsValues {
 		t.Run("fractionDigits="+toString(fd), func(t *testing.T) {
@@ -49,7 +49,7 @@ func TestCurrencyFractionDigits(t *testing.T) {
 				"",
 			)
 
-			options := map[string]interface{}{
+			options := map[string]any{
 				"currency":       "EUR",
 				"fractionDigits": fd,
 			}
@@ -133,7 +133,7 @@ func TestCurrencyCurrencyDisplay(t *testing.T) {
 				"",
 			)
 
-			options := map[string]interface{}{
+			options := map[string]any{
 				"currency":        "EUR",
 				"currencyDisplay": cd,
 			}
@@ -200,7 +200,7 @@ func TestCurrencySelection(t *testing.T) {
 		"",
 	)
 
-	options := map[string]interface{}{
+	options := map[string]any{
 		"currency": "EUR",
 	}
 
@@ -253,7 +253,7 @@ func TestCurrencyComplexOperand(t *testing.T) {
 			"",
 		)
 
-		options := map[string]interface{}{
+		options := map[string]any{
 			"currency":            "USD",
 			"currencySign":        "accounting",
 			"trailingZeroDisplay": "stripIfInteger",
@@ -300,12 +300,12 @@ func TestCurrencyComplexOperand(t *testing.T) {
 
 		// TypeScript original code: const n = { valueOf: () => 42, options: { currency: 'EUR' } };
 		// In Go, we simulate this with a map containing valueOf and options
-		operand := map[string]interface{}{
+		operand := map[string]any{
 			"valueOf": 42,
-			"options": map[string]interface{}{"currency": "EUR"},
+			"options": map[string]any{"currency": "EUR"},
 		}
 
-		options := map[string]interface{}{} // No explicit options, should use operand options
+		options := map[string]any{} // No explicit options, should use operand options
 
 		// TypeScript original code: expect(mf.format({ n })).toEqual(nf.format(42));
 		result := CurrencyFunction(ctx, options, operand)
@@ -332,7 +332,7 @@ func TestCurrencyBasicFunctionality(t *testing.T) {
 			"",
 		)
 
-		options := map[string]interface{}{
+		options := map[string]any{
 			"currency": "USD",
 		}
 
@@ -362,7 +362,7 @@ func TestCurrencyBasicFunctionality(t *testing.T) {
 			"",
 		)
 
-		options := map[string]interface{}{} // No currency option
+		options := map[string]any{} // No currency option
 
 		result := CurrencyFunction(ctx, options, 42)
 		require.NotNil(t, result)
