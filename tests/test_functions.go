@@ -40,7 +40,7 @@ type testValue struct {
 	source        string
 	input         float64
 	canFormat     bool
-	canSelect     bool
+	selectable    bool
 	decimalPlaces int
 	failsFormat   bool
 	failsSelect   bool
@@ -81,7 +81,7 @@ func (tv *testValue) ValueOf() (any, error) {
 
 // SelectKeys performs selection for the test value
 func (tv *testValue) SelectKeys(keys []string) ([]string, error) {
-	if !tv.canSelect {
+	if !tv.selectable {
 		return nil, ErrNotSelectable
 	}
 	if tv.badOption {
@@ -191,7 +191,7 @@ func testFormatFunction(ctx functions.MessageFunctionContext, options map[string
 }
 
 // createTestValue creates a test value with the specified capabilities
-func createTestValue(ctx functions.MessageFunctionContext, options map[string]any, operand any, canFormat, canSelect bool) messagevalue.MessageValue {
+func createTestValue(ctx functions.MessageFunctionContext, options map[string]any, operand any, canFormat, selectable bool) messagevalue.MessageValue {
 	// Get locale from context
 	locale := "en"
 	if locales := ctx.Locales(); len(locales) > 0 {
@@ -201,7 +201,7 @@ func createTestValue(ctx functions.MessageFunctionContext, options map[string]an
 	tv := &testValue{
 		source:        ctx.Source(),
 		canFormat:     canFormat,
-		canSelect:     canSelect,
+		selectable:    selectable,
 		decimalPlaces: 0,
 		failsFormat:   false,
 		failsSelect:   false,

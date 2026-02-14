@@ -41,7 +41,7 @@ type NumberValue struct {
 	dir       bidi.Direction
 	source    string
 	options   map[string]any
-	canSelect bool // whether this number value supports selection
+	selectable bool // whether this number value supports selection
 }
 
 // NewNumberValue creates a new number value
@@ -56,7 +56,7 @@ func NewNumberValue(value any, locale, source string, options map[string]any) *N
 		dir:       bidi.DirAuto,
 		source:    source,
 		options:   options,
-		canSelect: true, // default to supporting selection
+		selectable: true, // default to supporting selection
 	}
 }
 
@@ -72,13 +72,13 @@ func NewNumberValueWithDir(value any, locale, source string, dir bidi.Direction,
 		dir:       dir,
 		source:    source,
 		options:   options,
-		canSelect: true, // default to supporting selection
+		selectable: true, // default to supporting selection
 	}
 }
 
 // NewNumberValueWithSelection creates a new number value with specified selection capability
-// TypeScript original code: new NumberValue(source, value, locale, dir, options) with canSelect parameter
-func NewNumberValueWithSelection(value any, locale, source string, dir bidi.Direction, options map[string]any, canSelect bool) *NumberValue {
+// TypeScript original code: new NumberValue(source, value, locale, dir, options) with selectable parameter
+func NewNumberValueWithSelection(value any, locale, source string, dir bidi.Direction, options map[string]any, selectable bool) *NumberValue {
 	if options == nil {
 		options = make(map[string]any)
 	}
@@ -89,7 +89,7 @@ func NewNumberValueWithSelection(value any, locale, source string, dir bidi.Dire
 		dir:       dir,
 		source:    source,
 		options:   options,
-		canSelect: canSelect,
+		selectable: selectable,
 	}
 }
 
@@ -1085,7 +1085,7 @@ func (nv *NumberValue) ValueOf() (any, error) {
 // SelectKeys performs selection for the number value
 // TypeScript reference: getMessageNumber.selectKey (number.ts:116-134)
 func (nv *NumberValue) SelectKeys(keys []string) ([]string, error) {
-	if !nv.canSelect {
+	if !nv.selectable {
 		return nil, ErrNumberNotSelectable
 	}
 

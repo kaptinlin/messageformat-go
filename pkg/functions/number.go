@@ -377,22 +377,22 @@ func IntegerFunction(
 //	ctx: MessageFunctionContext,
 //	value: number | bigint,
 //	options: MessageNumberOptions,
-//	canSelect: boolean
+//	selectable: boolean
 //
 // ): MessageNumber
 func getMessageNumber(
 	ctx MessageFunctionContext,
 	value any,
 	options map[string]any,
-	canSelect bool,
+	selectable bool,
 ) messagevalue.MessageValue {
 	// Validate select option - matches TypeScript select validation logic
-	if canSelect {
+	if selectable {
 		if selectVal, hasSelect := options["select"]; hasSelect {
 			// Check if select option is set by literal value
 			if !ctx.LiteralOptionKeys()["select"] {
 				ctx.OnError(pkgErrors.NewBadOptionError("The option select may only be set by a literal value", ctx.Source()))
-				canSelect = false
+				selectable = false
 			} else {
 				// Validate select value - matches TypeScript select value validation
 				if selectStr, ok := selectVal.(string); ok {
@@ -429,7 +429,7 @@ func getMessageNumber(
 		bidiDir = bidi.DirAuto
 	}
 
-	return messagevalue.NewNumberValueWithSelection(value, locale, ctx.Source(), bidiDir, options, canSelect)
+	return messagevalue.NewNumberValueWithSelection(value, locale, ctx.Source(), bidiDir, options, selectable)
 }
 
 // mergeNumberOptions merges options from operand and expression sources
