@@ -60,14 +60,8 @@ func IsMarkup(part any) bool {
 //	typeof msg === 'object' &&
 //	(msg.type === 'message' || msg.type === 'select');
 func IsMessage(msg any) bool {
-	if msg == nil {
-		return false
-	}
-	if m, ok := msg.(Message); ok {
-		msgType := m.Type()
-		return msgType == "message" || msgType == "select"
-	}
-	return false
+	m, ok := msg.(Message)
+	return ok && (m.Type() == "message" || m.Type() == "select")
 }
 
 // IsPatternMessage checks if a message is a pattern message
@@ -76,10 +70,7 @@ func IsMessage(msg any) bool {
 //
 //	msg.type === 'message';
 func IsPatternMessage(msg Message) bool {
-	if msg == nil {
-		return false
-	}
-	return msg.Type() == "message"
+	return msg != nil && msg.Type() == "message"
 }
 
 // IsSelectMessage checks if a message is a select message
@@ -88,10 +79,7 @@ func IsPatternMessage(msg Message) bool {
 //
 //	msg.type === 'select';
 func IsSelectMessage(msg Message) bool {
-	if msg == nil {
-		return false
-	}
-	return msg.Type() == "select"
+	return msg != nil && msg.Type() == "select"
 }
 
 // IsVariableRef checks if a part is a variable reference
@@ -109,28 +97,19 @@ func IsVariableRef(part any) bool {
 // IsInputDeclaration checks if a declaration is an input declaration
 // TypeScript original code: Declaration type checking
 func IsInputDeclaration(decl Declaration) bool {
-	if decl == nil {
-		return false
-	}
-	return decl.Type() == "input"
+	return decl != nil && decl.Type() == "input"
 }
 
 // IsLocalDeclaration checks if a declaration is a local declaration
 // TypeScript original code: Declaration type checking
 func IsLocalDeclaration(decl Declaration) bool {
-	if decl == nil {
-		return false
-	}
-	return decl.Type() == "local"
+	return decl != nil && decl.Type() == "local"
 }
 
 // IsTextElement checks if a pattern element is text
 // TypeScript original code: Pattern element type checking (string type)
 func IsTextElement(elem PatternElement) bool {
-	if elem == nil {
-		return false
-	}
-	return elem.Type() == "text"
+	return elem != nil && elem.Type() == "text"
 }
 
 // IsVariantKey checks if an object is a valid variant key
@@ -142,17 +121,12 @@ func IsVariantKey(key any) bool {
 // IsPatternElement checks if an object is a valid pattern element
 // TypeScript original code: Array<string | Expression | Markup> element checking
 func IsPatternElement(elem any) bool {
-	if elem == nil {
+	pe, ok := elem.(PatternElement)
+	if !ok {
 		return false
 	}
-
-	// Check if it's a PatternElement interface
-	if pe, ok := elem.(PatternElement); ok {
-		elemType := pe.Type()
-		return elemType == "text" || elemType == "expression" || elemType == "markup"
-	}
-
-	return false
+	elemType := pe.Type()
+	return elemType == "text" || elemType == "expression" || elemType == "markup"
 }
 
 // IsNode checks if an object is a valid data model node
@@ -168,31 +142,23 @@ func IsPatternElement(elem any) bool {
 //	| FunctionRef
 //	| Markup;
 func IsNode(obj any) bool {
-	if obj == nil {
+	node, ok := obj.(Node)
+	if !ok {
 		return false
 	}
-
-	// Check if it implements the Node interface
-	if node, ok := obj.(Node); ok {
-		nodeType := node.Type()
-		return nodeType == "input" || nodeType == "local" || // Declaration types
-			nodeType == "*" || // CatchallKey
-			nodeType == "expression" ||
-			nodeType == "literal" ||
-			nodeType == "variable" ||
-			nodeType == "function" ||
-			nodeType == "markup"
-	}
-
-	return false
+	nodeType := node.Type()
+	return nodeType == "input" || nodeType == "local" || // Declaration types
+		nodeType == "*" || // CatchallKey
+		nodeType == "expression" ||
+		nodeType == "literal" ||
+		nodeType == "variable" ||
+		nodeType == "function" ||
+		nodeType == "markup"
 }
 
 // IsBooleanAttribute checks if an attribute value is a boolean attribute
 // TypeScript original code: true type in Attributes
 func IsBooleanAttribute(attr any) bool {
-	if attr == nil {
-		return false
-	}
 	_, ok := attr.(*BooleanAttribute)
 	return ok
 }
@@ -200,9 +166,6 @@ func IsBooleanAttribute(attr any) bool {
 // IsVariableRefExpression checks if an expression is a VariableRefExpression
 // TypeScript original code: Expression<VariableRef> type checking
 func IsVariableRefExpression(expr any) bool {
-	if expr == nil {
-		return false
-	}
 	_, ok := expr.(*VariableRefExpression)
 	return ok
 }

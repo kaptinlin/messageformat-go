@@ -40,7 +40,7 @@ type BooleanAttribute struct {
 
 // NewBooleanAttribute creates a new boolean attribute
 func NewBooleanAttribute() *BooleanAttribute {
-	return &BooleanAttribute{cst: nil}
+	return &BooleanAttribute{}
 }
 
 // NewBooleanAttributeWithCST creates a new boolean attribute with CST reference
@@ -386,7 +386,6 @@ func NewLocalDeclaration(name string, value *Expression) *LocalDeclaration {
 	return &LocalDeclaration{
 		name:  name,
 		value: value,
-		cst:   nil,
 	}
 }
 
@@ -443,7 +442,6 @@ func NewVariant(keys []VariantKey, value Pattern) *Variant {
 	return &Variant{
 		keys:  keys,
 		value: value,
-		cst:   nil,
 	}
 }
 
