@@ -36,11 +36,11 @@ var (
 //	  selectKeys(keys: string[]) { /* plural selection logic */ }
 //	}
 type NumberValue struct {
-	value     any // int64, float64, or other numeric types
-	locale    string
-	dir       bidi.Direction
-	source    string
-	options   map[string]any
+	value      any // int64, float64, or other numeric types
+	locale     string
+	dir        bidi.Direction
+	source     string
+	options    map[string]any
 	selectable bool // whether this number value supports selection
 }
 
@@ -51,11 +51,11 @@ func NewNumberValue(value any, locale, source string, options map[string]any) *N
 	}
 
 	return &NumberValue{
-		value:     value,
-		locale:    locale,
-		dir:       bidi.DirAuto,
-		source:    source,
-		options:   options,
+		value:      value,
+		locale:     locale,
+		dir:        bidi.DirAuto,
+		source:     source,
+		options:    options,
 		selectable: true, // default to supporting selection
 	}
 }
@@ -67,11 +67,11 @@ func NewNumberValueWithDir(value any, locale, source string, dir bidi.Direction,
 	}
 
 	return &NumberValue{
-		value:     value,
-		locale:    locale,
-		dir:       dir,
-		source:    source,
-		options:   options,
+		value:      value,
+		locale:     locale,
+		dir:        dir,
+		source:     source,
+		options:    options,
 		selectable: true, // default to supporting selection
 	}
 }
@@ -84,11 +84,11 @@ func NewNumberValueWithSelection(value any, locale, source string, dir bidi.Dire
 	}
 
 	return &NumberValue{
-		value:     value,
-		locale:    locale,
-		dir:       dir,
-		source:    source,
-		options:   options,
+		value:      value,
+		locale:     locale,
+		dir:        dir,
+		source:     source,
+		options:    options,
 		selectable: selectable,
 	}
 }
