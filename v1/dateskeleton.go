@@ -126,12 +126,10 @@ func ParseDateTokens(src string) []DateToken {
 		var token DateToken
 		switch {
 		case isLetter(ch):
-			// Date field pattern (e.g., 'y', 'yy', 'yyyy')
 			char := string(ch)
 			width := 1
 			pos++
 
-			// Count consecutive same characters
 			for pos < len(runes) && runes[pos] == ch {
 				width++
 				pos++
@@ -142,27 +140,22 @@ func ParseDateTokens(src string) []DateToken {
 				Width: width,
 			}
 		case ch == '\'':
-			// Quoted literal handling
-			pos++ // skip opening quote
+			pos++
 
 			if pos < len(runes) && runes[pos] == '\'' {
-				// Two single quotes = escaped single quote
 				token = &DateTokenString{Value: "'"}
 				pos++
 			} else {
-				// Quoted string literal
 				var str strings.Builder
 
 				for pos < len(runes) {
 					next := runes[pos]
 					if next == '\'' {
-						pos++ // consume closing quote
+						pos++
 						if pos < len(runes) && runes[pos] == '\'' {
-							// Two quotes inside = escaped quote
 							str.WriteRune('\'')
 							pos++
 						} else {
-							// End of quoted section
 							break
 						}
 					} else {
@@ -171,7 +164,6 @@ func ParseDateTokens(src string) []DateToken {
 					}
 				}
 
-				// Check if we reached end without closing quote
 				if pos > len(runes) || (pos == len(runes) && src[len(src)-1] != '\'') {
 					token = &DateTokenError{
 						Error: fmt.Sprintf("Unterminated quoted literal in pattern: %s", src),
@@ -181,12 +173,10 @@ func ParseDateTokens(src string) []DateToken {
 				}
 			}
 		default:
-			// Non-letter, non-quote characters (literal text)
 			var str strings.Builder
 			str.WriteRune(ch)
 			pos++
 
-			// Collect consecutive non-letter, non-quote characters
 			for pos < len(runes) && !isLetter(runes[pos]) && runes[pos] != '\'' {
 				str.WriteRune(runes[pos])
 				pos++

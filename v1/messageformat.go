@@ -330,7 +330,6 @@ func getPlural(locale any) *PluralObject {
 		}
 		// If locale is unsupported, fallback to default locale
 		if !hasPlural(l) {
-			// Use default locale for unsupported locales
 			fallbackObj, fallbackErr := GetPlural(DefaultLocale)
 			if fallbackErr == nil {
 				return &fallbackObj
@@ -367,8 +366,9 @@ func getPlural(locale any) *PluralObject {
 			Ordinals:  []PluralCategory{PluralOther},
 			Func:      l,
 		}
+	default:
+		return nil
 	}
-	return nil
 }
 
 // getAllPlurals gets all available plurals (simplified implementation)
@@ -431,16 +431,12 @@ func New(locale any, options *MessageFormatOptions) (*MessageFormat, error) {
 	// Handle locale parameter
 	// Check for PluralFunction first - need to check the function signature
 	if fn, ok := locale.(func(any, ...bool) (PluralCategory, error)); ok {
-		// Convert to PluralFunction type
 		pf := PluralFunction(fn)
-		pl := getPlural(pf)
-		if pl != nil {
+		if pl := getPlural(pf); pl != nil {
 			mf.plurals = []PluralObject{*pl}
 		}
 	} else if pf, ok := locale.(PluralFunction); ok {
-		// Already a PluralFunction type
-		pl := getPlural(pf)
-		if pl != nil {
+		if pl := getPlural(pf); pl != nil {
 			mf.plurals = []PluralObject{*pl}
 		}
 	} else {
@@ -448,23 +444,18 @@ func New(locale any, options *MessageFormatOptions) (*MessageFormat, error) {
 		case string:
 			if l == "*" {
 				mf.plurals = getAllPlurals(DefaultLocale)
-			} else {
-				pl := getPlural(l)
-				if pl != nil {
-					mf.plurals = []PluralObject{*pl}
-				}
+			} else if pl := getPlural(l); pl != nil {
+				mf.plurals = []PluralObject{*pl}
 			}
 		case []any:
 			for _, item := range l {
-				pl := getPlural(item)
-				if pl != nil {
+				if pl := getPlural(item); pl != nil {
 					mf.plurals = append(mf.plurals, *pl)
 				}
 			}
 		case []string:
 			for _, item := range l {
-				pl := getPlural(item)
-				if pl != nil {
+				if pl := getPlural(item); pl != nil {
 					mf.plurals = append(mf.plurals, *pl)
 				}
 			}
@@ -473,8 +464,7 @@ func New(locale any, options *MessageFormatOptions) (*MessageFormat, error) {
 		default:
 			// Try as single locale string
 			if str, ok := l.(string); ok {
-				pl := getPlural(str)
-				if pl != nil {
+				if pl := getPlural(str); pl != nil {
 					mf.plurals = []PluralObject{*pl}
 				}
 			}
@@ -483,8 +473,7 @@ func New(locale any, options *MessageFormatOptions) (*MessageFormat, error) {
 
 	// Ensure at least one plural object
 	if len(mf.plurals) == 0 {
-		pl := getPlural(DefaultLocale)
-		if pl != nil {
+		if pl := getPlural(DefaultLocale); pl != nil {
 			mf.plurals = []PluralObject{*pl}
 		}
 	}
@@ -1441,10 +1430,7 @@ func (mf *MessageFormat) numberFormatter(locale string, value any, offset int) (
 	// Note: v1 is maintenance-only. For full locale support, use v2 (MessageFormat 2.0)
 	_ = locale // locale parameter reserved for future enhancement if needed
 	if result == float64(int64(result)) {
-		// Integer formatting
 		return fmt.Sprintf("%.0f", result), nil
-	} else {
-		// Decimal formatting
-		return fmt.Sprintf("%g", result), nil
 	}
+	return fmt.Sprintf("%g", result), nil
 }

@@ -277,11 +277,7 @@ func strictArgStyleParam(lt *LexerToken, param []Token) ([]Token, error) {
 		switch token := p.(type) {
 		case *Content:
 			value.WriteString(token.Value)
-		case *PlainArg:
-			value.WriteString(pText)
-		case *FunctionArg:
-			value.WriteString(pText)
-		case *Octothorpe:
+		case *PlainArg, *FunctionArg, *Octothorpe:
 			value.WriteString(pText)
 		default:
 			return nil, NewParseError(lt, fmt.Sprintf("Unsupported part in strict mode function arg style: %s", pText))
@@ -326,28 +322,31 @@ func (p *Parser) checkSelectKey(lt *LexerToken, selectType string, key string) e
 		if _, err := strconv.Atoi(numPart); err != nil {
 			return NewParseError(lt, fmt.Sprintf("Invalid exact match key: %s (must be a number after =)", key))
 		}
-	} else if selectType != "select" {
-		var keys []PluralCategory
-		if selectType == "plural" {
-			keys = p.cardinalKeys
-		} else {
-			keys = p.ordinalKeys
-		}
+		return nil
+	}
 
-		if p.strictPluralKeys && len(keys) > 0 {
-			found := false
-			for _, validKey := range keys {
-				if string(validKey) == key {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return NewParseError(lt, fmt.Sprintf("The %s case %s is not valid in this locale", selectType, key))
-			}
+	if selectType == "select" {
+		return nil
+	}
+
+	var keys []PluralCategory
+	if selectType == "plural" {
+		keys = p.cardinalKeys
+	} else {
+		keys = p.ordinalKeys
+	}
+
+	if !p.strictPluralKeys || len(keys) == 0 {
+		return nil
+	}
+
+	for _, validKey := range keys {
+		if string(validKey) == key {
+			return nil
 		}
 	}
-	return nil
+
+	return NewParseError(lt, fmt.Sprintf("The %s case %s is not valid in this locale", selectType, key))
 }
 
 // parseSelect parses a select/plural/selectordinal statement
@@ -507,7 +506,7 @@ func (p *Parser) parseArgToken(lt *LexerToken, inPlural bool) (Token, error) {
 // parseBody parses the body of a message or case
 func (p *Parser) parseBody(inPlural bool, atRoot bool) ([]Token, error) {
 	tokens := []Token{}
-	var content *Content = nil
+	var content *Content
 
 	for {
 		lt := p.peekToken()
@@ -523,18 +522,14 @@ func (p *Parser) parseBody(inPlural bool, atRoot bool) ([]Token, error) {
 
 		switch {
 		case lt.Type == TokenArgument:
-			if content != nil {
-				content = nil
-			}
+			content = nil
 			argToken, err := p.parseArgToken(lt, inPlural)
 			if err != nil {
 				return nil, err
 			}
 			tokens = append(tokens, argToken)
 		case lt.Type == TokenOctothorpe && inPlural:
-			if content != nil {
-				content = nil
-			}
+			content = nil
 			tokens = append(tokens, &Octothorpe{
 				Type: "octothorpe",
 				Ctx:  getContext(lt),
@@ -549,16 +544,14 @@ func (p *Parser) parseBody(inPlural bool, atRoot bool) ([]Token, error) {
 				if strings.Contains(value, "{") {
 					return nil, NewParseError(lt, fmt.Sprintf("Unsupported escape pattern: %s", value))
 				}
-				value = lt.Text // Use original text with quotes
+				value = lt.Text
 			}
 
 			if content != nil {
-				// Append to existing content token
 				content.Value += value
 				content.Ctx.Text += lt.Text
 				content.Ctx.LineBreaks += lt.LineBreaks
 			} else {
-				// Create new content token
 				content = &Content{
 					Type:  "content",
 					Value: value,

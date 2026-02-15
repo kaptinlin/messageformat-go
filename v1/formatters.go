@@ -62,7 +62,6 @@ func NumberFmt(value any, lc string, arg string, defaultCurrency string) (string
 	case "currency":
 		return NumberCurrency(numValue, lc, currency), nil
 	default:
-		// Default number formatting
 		tag, _ := language.Parse(lc)
 		printer := message.NewPrinter(tag)
 		return printer.Sprintf("%.10g", numValue), nil
