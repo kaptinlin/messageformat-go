@@ -4,3 +4,6 @@
 [submodule ".reference/messageformat"]
 	path = .reference/messageformat
 	url = https://github.com/messageformat/messageformat.git
+[submodule ".agents/skills"]
+	path = .agents/skills
+	url = https://github.com/agentable/golang-skills.git
