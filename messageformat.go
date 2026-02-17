@@ -79,8 +79,8 @@ type MessageFormatOptions struct {
 	Logger *slog.Logger `json:"-"`
 }
 
-// NewMessageFormatOptions creates a new MessageFormatOptions with defaults
-func NewMessageFormatOptions(opts *MessageFormatOptions) *MessageFormatOptions {
+// NewOptions creates a new MessageFormatOptions with defaults
+func NewOptions(opts *MessageFormatOptions) *MessageFormatOptions {
 	if opts == nil {
 		opts = &MessageFormatOptions{}
 	}
@@ -235,7 +235,7 @@ func New(
 	}
 
 	// Apply defaults to options
-	opts = NewMessageFormatOptions(opts)
+	opts = NewOptions(opts)
 
 	// Store if BidiIsolation was explicitly set to prevent auto-override
 	explicitBidiIsolation := false
@@ -348,7 +348,7 @@ func (mf *MessageFormat) Format(
 			if str, ok := p.Value().(string); ok {
 				result.WriteString(str)
 			} else {
-				result.WriteString(fmt.Sprintf("%v", p.Value()))
+				fmt.Fprintf(&result, "%v", p.Value())
 			}
 		}
 	}
@@ -521,7 +521,7 @@ func (mf *MessageFormat) formatPattern(
 			// Check if resolution failed
 			if mv == nil {
 				// Add fallback part for failed resolution
-				parts = append(parts, messagevalue.NewFallbackPart("", getFirstLocale(ctx.Locales)))
+				parts = append(parts, messagevalue.NewFallbackPart("", functions.GetFirstLocale(ctx.Locales)))
 				continue
 			}
 
@@ -538,7 +538,7 @@ func (mf *MessageFormat) formatPattern(
 				// Error during formatting - emit error and use fallback
 				ctx.OnError(err)
 				// Add fallback part
-				parts = append(parts, messagevalue.NewFallbackPart(mv.Source(), getFirstLocale(ctx.Locales)))
+				parts = append(parts, messagevalue.NewFallbackPart(mv.Source(), functions.GetFirstLocale(ctx.Locales)))
 			} else {
 				// Add the actual parts
 				parts = append(parts, valueParts...)
@@ -618,14 +618,6 @@ func addDefaultFunctions(functionMap map[string]functions.MessageFunction) {
 	maps.Copy(functionMap, functions.DraftFunctions)
 }
 
-// getFirstLocale returns the first locale from a list, or "en" as fallback
-func getFirstLocale(locales []string) string {
-	if len(locales) > 0 {
-		return locales[0]
-	}
-	return "en"
-}
-
 // ResolvedMessageFormatOptions represents the resolved options for a MessageFormat instance
 // Based on TC39 Intl.MessageFormat proposal
 // https://github.com/tc39/proposal-intl-messageformat#constructor-options-and-resolvedoptions
@@ -649,17 +641,7 @@ func (mf *MessageFormat) ResolvedOptions() ResolvedMessageFormatOptions {
 	}
 
 	// Convert internal dir string to Direction type
-	var dir Direction
-	switch mf.dir {
-	case "ltr":
-		dir = DirLTR
-	case "rtl":
-		dir = DirRTL
-	case "auto":
-		dir = DirAuto
-	default:
-		dir = DirAuto
-	}
+	dir := bidi.ParseDirection(mf.dir)
 
 	// Convert internal localeMatcher string to LocaleMatcher type
 	var localeMatcher LocaleMatcher
