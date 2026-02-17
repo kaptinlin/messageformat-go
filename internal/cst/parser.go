@@ -31,7 +31,7 @@ type ParseContext struct {
 // TypeScript original code: ParseContext constructor
 func NewParseContext(source string, resource bool) *ParseContext {
 	return &ParseContext{
-		errors:   make([]*errors.MessageSyntaxError, 0),
+		errors:   nil, // Use nil instead of empty slice for better memory efficiency
 		resource: resource,
 		source:   source,
 	}

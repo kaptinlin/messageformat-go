@@ -310,8 +310,9 @@ func hasPlural(locale string) bool {
 	}
 
 	if len(locale) >= 2 {
-		// Extract language part (before hyphen or underscore)
-		lang := strings.Split(strings.Split(locale, "-")[0], "_")[0]
+		// Extract language part (before hyphen or underscore) using strings.Cut (Go 1.20+)
+		lang, _, _ := strings.Cut(locale, "-")
+		lang, _, _ = strings.Cut(lang, "_")
 
 		if slices.Contains(supportedLocales, lang) {
 			return true

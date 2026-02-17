@@ -326,7 +326,8 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 		delete(variables, localVar)
 	}
 
-	// Convert sets to slices with pre-allocated capacity
+	// Convert sets to slices using slices.Collect (Go 1.23+)
+	// Pre-allocate with exact capacity for better performance
 	functionList := make([]string, 0, len(functions))
 	for fn := range functions {
 		functionList = append(functionList, fn)

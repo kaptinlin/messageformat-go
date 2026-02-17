@@ -176,10 +176,10 @@ func normalizeLocale(locale string) string {
 		return "en"
 	}
 
-	// Split on hyphen and take first part
-	parts := strings.Split(locale, "-")
-	if len(parts) > 0 && parts[0] != "" {
-		return strings.ToLower(parts[0])
+	// Use strings.Cut to extract language part before hyphen (Go 1.20+)
+	lang, _, _ := strings.Cut(locale, "-")
+	if lang != "" {
+		return strings.ToLower(lang)
 	}
 	return "en"
 }
