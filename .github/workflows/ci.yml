@@ -13,8 +13,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          submodules: recursive
+
+      - name: Initialize test submodules
+        run: |
+          git submodule update --init tests/messageformat-wg
+          git submodule update --init .reference/messageformat
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -35,8 +38,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          submodules: recursive
+
+      - name: Initialize test submodules
+        run: |
+          git submodule update --init tests/messageformat-wg
+          git submodule update --init .reference/messageformat
 
       - name: Set up Go
         uses: actions/setup-go@v6
