@@ -315,31 +315,31 @@ git submodule update --init --recursive
 ### Running Tests
 ```bash
 # Run all tests including official test suite
-make test
+task test
 
 # Run unit tests only (excluding official test suite)
-make test-unit
+task test-unit
 
 # Run official MessageFormat 2.0 test suite only
-make test-official
+task test-official
 
 # Run tests with coverage report
-make test-coverage
+task test-coverage
 
 # Run benchmarks
-make bench
+task bench
 ```
 
 ### Development Workflow
 ```bash
 # Show all available commands
-make help
+task help
 
 # Format code and run all checks
-make verify
+task verify
 
 # Run examples to verify functionality
-make examples
+task examples
 ```
 
 📋 **For detailed testing instructions, see [TESTING.md](TESTING.md)**

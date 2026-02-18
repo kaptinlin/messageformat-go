@@ -31,25 +31,25 @@ ls tests/messageformat-wg/test/tests/
 #### All Tests
 ```bash
 # Run all tests (V1 + V2) with race detection
-make test
+task test
 
 # Run with coverage report
-make test-coverage
+task test-coverage
 
 # Run with verbose output
-make test-verbose
+task test-verbose
 ```
 
 #### Version-Specific Testing
 ```bash
 # V1 Tests (ICU MessageFormat)
-make test-v1
+task test-v1
 
 # V2 Tests (MessageFormat 2.0, includes official test suite)
-make test-v2
+task test-v2
 
 # Official MessageFormat 2.0 test suite only
-make test-official
+task test-official
 ```
 
 #### Examples and Benchmarks
@@ -104,19 +104,19 @@ messageformat-go/
 
 ```bash
 # Format, vet, lint, and test
-make verify
+task verify
 
 # Individual checks  
 make fmt          # Format code
 make vet          # Static analysis
-make lint         # Comprehensive linting
+task lint         # Comprehensive linting
 ```
 
 ### Coverage and Benchmarks
 
 ```bash
 # Coverage report
-make test-coverage
+task test-coverage
 
 # Benchmarks
 make bench
@@ -198,9 +198,9 @@ func TestFunctionName(t *testing.T) {
 
 ```bash
 # Essential commands
-make test           # Run all tests
-make test-unit      # Unit tests only
-make test-coverage  # With coverage
+task test           # Run all tests
+task test-unit      # Unit tests only
+task test-coverage  # With coverage
 make ci             # All quality checks
 make bench          # Benchmarks
 make help           # Show all targets
@@ -213,4 +213,4 @@ go mod verify
 
 ---
 
-**Ready to start testing?** Run `make test` to execute the complete test suite and verify MessageFormat 2.0 specification compliance.
+**Ready to start testing?** Run `task test` to execute the complete test suite and verify MessageFormat 2.0 specification compliance.

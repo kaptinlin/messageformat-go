@@ -322,13 +322,13 @@ complexMf, _ := messageformat.New("en", `
 ### Run Tests
 ```bash
 # All tests including official test suite
-make test
+task test
 
 # Unit tests only (faster)
-make test-unit
+task test-unit
 
 # Official MessageFormat 2.0 test suite
-make test-official
+task test-official
 ```
 
 ### Benchmarks

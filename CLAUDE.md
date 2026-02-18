@@ -8,26 +8,26 @@ Go implementation of Unicode MessageFormat 2.0 specification with 100% spec comp
 
 ```bash
 # Primary workflow
-make test              # Run all tests (v1 + v2) with race detection
-make lint              # Run golangci-lint + go mod tidy check
-make verify            # Full verification: deps, fmt, vet, lint, test
+task test              # Run all tests (v1 + v2) with race detection
+task lint              # Run golangci-lint + go mod tidy check
+task verify            # Full verification: deps, fmt, vet, lint, test
 
 # Version-specific testing
-make test-v2           # Run v2 tests + official MessageFormat 2.0 test suite
-make test-v1           # Run v1 tests only
-make test-official     # Run official Unicode test suite only
-make test-coverage     # Generate coverage report (coverage.html)
+task test-v2           # Run v2 tests + official MessageFormat 2.0 test suite
+task test-v1           # Run v1 tests only
+task test-official     # Run official Unicode test suite only
+task test-coverage     # Generate coverage report (coverage.html)
 
 # Development
-make fmt               # Format code
-make vet               # Run go vet
-make bench             # Run benchmarks
-make examples          # Run all examples (v1 + v2)
-make deps              # Download and tidy dependencies
-make clean             # Clean build artifacts
+task fmt               # Format code
+task vet               # Run go vet
+task bench             # Run benchmarks
+task examples          # Run all examples (v1 + v2)
+task deps              # Download and tidy dependencies
+task clean             # Clean build artifacts
 
 # Prerequisites
-make submodules        # Initialize git submodules (required for official tests)
+task submodules        # Initialize git submodules (required for official tests)
 ```
 
 ## Architecture
@@ -188,7 +188,7 @@ All errors are static package-level variables to prevent information leakage and
 
 - **Pre-compile regex** — Package-level regex compilation for validation patterns
 - **Minimize allocations** — Use value types where possible, avoid unnecessary copying
-- **Benchmark critical paths** — Run `make bench` for formatting functions and resolution logic
+- **Benchmark critical paths** — Run `task bench` for formatting functions and resolution logic
 
 ### v1 Performance (Maintenance-only)
 
@@ -221,7 +221,7 @@ Triggers: Push to main, PRs, version tags (v1.*, v2.*)
 ```bash
 git checkout -b feature/new-v2-feature
 # Work in root directory
-make test && make lint
+task test && task lint
 git commit -m "feat: add new v2 feature"
 ```
 
@@ -231,7 +231,7 @@ git commit -m "feat: add new v2 feature"
 git checkout -b fix/v1-critical-bug
 cd v1
 # Make minimal changes
-make test && make lint
+task test && task lint
 git commit -m "fix(v1): resolve critical bug"
 ```
 
