@@ -161,8 +161,8 @@ func getBoolOption(options map[string]any, name string, defaultValue bool) bool 
 	return defaultValue
 }
 
-// getFirstLocale returns the first locale from a list, or "en" as fallback
-func getFirstLocale(locales []string) string {
+// GetFirstLocale returns the first locale from a list, or "en" as fallback
+func GetFirstLocale(locales []string) string {
 	if len(locales) > 0 {
 		return locales[0]
 	}

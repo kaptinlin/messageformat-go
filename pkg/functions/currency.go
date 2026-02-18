@@ -110,7 +110,7 @@ func CurrencyFunction(
 	numericOperand, err := readNumericOperand(operand, source)
 	if err != nil {
 		ctx.OnError(err)
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+		return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
 	}
 
 	// Start with operand options and set currency style
@@ -130,7 +130,7 @@ func CurrencyFunction(
 				// Only reject if it's a conflicting style like "percent"
 				if existingStyle == "percent" {
 					ctx.OnError(errors.NewBadOperandError("Cannot format a percent-formatted number as currency", source))
-					return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+					return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
 				}
 			}
 			// Otherwise it can be reformatted as currency
@@ -207,7 +207,7 @@ func CurrencyFunction(
 		err := errors.NewBadOperandError("A currency code is required for :currency", source)
 		// Unlike TypeScript which throws, we call OnError which will collect the error
 		ctx.OnError(err)
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+		return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
 	}
 
 	return getMessageNumber(ctx, numericOperand.Value, mergedOptions, false)

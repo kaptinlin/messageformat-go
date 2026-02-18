@@ -59,7 +59,7 @@ func StringFunction(
 	}
 
 	// Get locale from context or options
-	locale := getFirstLocale(ctx.Locales())
+	locale := GetFirstLocale(ctx.Locales())
 	if localeOpt, ok := options["locale"]; ok {
 		if localeStr, ok := localeOpt.(string); ok {
 			locale = localeStr

@@ -34,7 +34,7 @@ func ResolveLiteral(ctx *Context, literal *datamodel.Literal) messagevalue.Messa
 		// Fallback if string function not available
 		return messagevalue.NewStringValue(
 			literal.Value(),
-			getFirstLocale(ctx.Locales),
+			functions.GetFirstLocale(ctx.Locales),
 			source,
 		)
 	}

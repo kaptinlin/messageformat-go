@@ -74,7 +74,7 @@ func dateTimeImplementation(
 	operand any,
 ) messagevalue.MessageValue {
 	source := ctx.Source()
-	locale := getFirstLocale(ctx.Locales())
+	locale := GetFirstLocale(ctx.Locales())
 
 	// Parse datetime value (matches TypeScript lines 94-112)
 	dateTime, err := parseDateTimeValue(operand)

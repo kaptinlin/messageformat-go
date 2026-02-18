@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"maps"
 
+	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 )
 
@@ -55,16 +56,7 @@ func WithDir(direction Direction) Option {
 // WithDirString sets the message's base direction from string (for backward compatibility)
 func WithDirString(direction string) Option {
 	return func(opts *MessageFormatOptions) {
-		switch direction {
-		case "ltr":
-			opts.Dir = DirLTR
-		case "rtl":
-			opts.Dir = DirRTL
-		case "auto":
-			opts.Dir = DirAuto
-		default:
-			opts.Dir = DirAuto
-		}
+		opts.Dir = bidi.ParseDirection(direction)
 	}
 }
 

@@ -52,7 +52,7 @@ func MathFunction(
 	numericOperand, err := readNumericOperand(operand, source)
 	if err != nil {
 		ctx.OnError(err)
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+		return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
 	}
 
 	value := numericOperand.Value
@@ -67,7 +67,7 @@ func MathFunction(
 			add = addInt
 		} else {
 			ctx.OnError(errors.NewBadOptionError(fmt.Sprintf("Invalid add option: %v", err), source))
-			return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+			return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
 		}
 	}
 
@@ -77,7 +77,7 @@ func MathFunction(
 			subtract = subInt
 		} else {
 			ctx.OnError(errors.NewBadOptionError(fmt.Sprintf("Invalid subtract option: %v", err), source))
-			return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+			return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
 		}
 	}
 
@@ -85,7 +85,7 @@ func MathFunction(
 	if (add < 0) == (subtract < 0) {
 		msg := "Exactly one of \"add\" or \"subtract\" is required as a :math option"
 		ctx.OnError(errors.NewBadOptionError(msg, source))
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+		return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
 	}
 
 	// Calculate delta
@@ -113,7 +113,7 @@ func MathFunction(
 			newValue = floatVal + float64(delta)
 		} else {
 			ctx.OnError(errors.NewBadOperandError("Cannot perform math operation on non-numeric value", source))
-			return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+			return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
 		}
 	}
 

@@ -217,7 +217,7 @@ func NumberFunction(
 	numInput, err := readNumericOperand(operand, ctx.Source())
 	if err != nil {
 		ctx.OnError(err)
-		return messagevalue.NewFallbackValue(ctx.Source(), getFirstLocale(ctx.Locales()))
+		return messagevalue.NewFallbackValue(ctx.Source(), GetFirstLocale(ctx.Locales()))
 	}
 
 	// Start with operand options and set defaults - matches TypeScript Object.assign
@@ -307,7 +307,7 @@ func IntegerFunction(
 	numInput, err := readNumericOperand(operand, ctx.Source())
 	if err != nil {
 		ctx.OnError(err)
-		return messagevalue.NewFallbackValue(ctx.Source(), getFirstLocale(ctx.Locales()))
+		return messagevalue.NewFallbackValue(ctx.Source(), GetFirstLocale(ctx.Locales()))
 	}
 
 	// Round to integer - matches TypeScript: Number.isFinite(input.value) ? Math.round(input.value as number) : input.value;
@@ -408,7 +408,7 @@ func getMessageNumber(
 	}
 
 	// Get first locale - matches TypeScript locale handling
-	locale := getFirstLocale(ctx.Locales())
+	locale := GetFirstLocale(ctx.Locales())
 
 	// Determine direction - matches TypeScript: let { dir, locales } = ctx;
 	dir := ctx.Dir()
@@ -419,15 +419,7 @@ func getMessageNumber(
 	}
 
 	// Convert string direction to bidi.Direction
-	var bidiDir bidi.Direction
-	switch dir {
-	case "ltr":
-		bidiDir = bidi.DirLTR
-	case "rtl":
-		bidiDir = bidi.DirRTL
-	default:
-		bidiDir = bidi.DirAuto
-	}
+	bidiDir := bidi.ParseDirection(dir)
 
 	return messagevalue.NewNumberValueWithSelection(value, locale, ctx.Source(), bidiDir, options, selectable)
 }

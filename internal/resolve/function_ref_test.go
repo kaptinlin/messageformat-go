@@ -116,14 +116,7 @@ type customMessageValue struct {
 func (cv *customMessageValue) Type() string   { return cv.typ }
 func (cv *customMessageValue) Source() string { return cv.source }
 func (cv *customMessageValue) Dir() bidi.Direction {
-	switch cv.dir {
-	case "ltr":
-		return bidi.DirLTR
-	case "rtl":
-		return bidi.DirRTL
-	default:
-		return bidi.DirAuto
-	}
+	return bidi.ParseDirection(cv.dir)
 }
 func (cv *customMessageValue) Locale() string                             { return cv.locale }
 func (cv *customMessageValue) Options() map[string]any                    { return nil }

@@ -32,6 +32,21 @@ const (
 	PDI = '\u2069' // Pop Directional Isolate
 )
 
+// ParseDirection converts a string direction to a Direction type.
+// Returns DirAuto for unrecognized values.
+func ParseDirection(s string) Direction {
+	switch s {
+	case "ltr":
+		return DirLTR
+	case "rtl":
+		return DirRTL
+	case "auto":
+		return DirAuto
+	default:
+		return DirAuto
+	}
+}
+
 // GetDirection determines text direction from text content
 // TypeScript original code:
 //

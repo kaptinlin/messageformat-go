@@ -121,12 +121,12 @@ func TestIsScope(t *testing.T) {
 
 func TestGetFirstLocale(t *testing.T) {
 	// With locales
-	assert.Equal(t, "en", getFirstLocale([]string{"en", "fr"}))
-	assert.Equal(t, "fr", getFirstLocale([]string{"fr"}))
+	assert.Equal(t, "en", functions.GetFirstLocale([]string{"en", "fr"}))
+	assert.Equal(t, "fr", functions.GetFirstLocale([]string{"fr"}))
 
 	// Without locales
-	assert.Equal(t, "en", getFirstLocale([]string{}))
-	assert.Equal(t, "en", getFirstLocale(nil))
+	assert.Equal(t, "en", functions.GetFirstLocale([]string{}))
+	assert.Equal(t, "en", functions.GetFirstLocale(nil))
 }
 
 // TestVariables tests variable resolution with different value types

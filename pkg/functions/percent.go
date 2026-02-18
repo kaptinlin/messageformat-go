@@ -75,7 +75,7 @@ func PercentFunction(
 	numInput, err := readNumericOperand(operand, ctx.Source())
 	if err != nil {
 		ctx.OnError(err)
-		return messagevalue.NewFallbackValue(ctx.Source(), getFirstLocale(ctx.Locales()))
+		return messagevalue.NewFallbackValue(ctx.Source(), GetFirstLocale(ctx.Locales()))
 	}
 
 	// Check if the number has been formatted before
@@ -89,7 +89,7 @@ func PercentFunction(
 				// Only reject if it's a conflicting style like "currency"
 				if existingStyle == "currency" {
 					ctx.OnError(pkgErrors.NewBadOperandError("Cannot format a currency-formatted number as percent", ctx.Source()))
-					return messagevalue.NewFallbackValue(ctx.Source(), getFirstLocale(ctx.Locales()))
+					return messagevalue.NewFallbackValue(ctx.Source(), GetFirstLocale(ctx.Locales()))
 				}
 			}
 			// Otherwise it can be reformatted as percent

@@ -78,7 +78,7 @@ func ResolveFunctionRef(
 			ctx.OnError(err)
 		}
 		// Return fallback value
-		return functions.FallbackFunction(source, getFirstLocale(ctx.Locales))
+		return functions.FallbackFunction(source, functions.GetFirstLocale(ctx.Locales))
 	}
 	return result
 }
@@ -345,16 +345,7 @@ func (mv *messageValueWithOptions) Source() string {
 
 func (mv *messageValueWithOptions) Dir() bidi.Direction {
 	if mv.dir != "" {
-		switch mv.dir {
-		case "ltr":
-			return bidi.DirLTR
-		case "rtl":
-			return bidi.DirRTL
-		case "auto":
-			return bidi.DirAuto
-		default:
-			return bidi.DirAuto
-		}
+		return bidi.ParseDirection(mv.dir)
 	}
 	return mv.wrapped.Dir()
 }
@@ -442,16 +433,7 @@ func (p *partWithOptions) Locale() string { return p.wrapped.Locale() }
 
 func (p *partWithOptions) Dir() bidi.Direction {
 	if p.dir != "" {
-		switch p.dir {
-		case "ltr":
-			return bidi.DirLTR
-		case "rtl":
-			return bidi.DirRTL
-		case "auto":
-			return bidi.DirAuto
-		default:
-			return bidi.DirAuto
-		}
+		return bidi.ParseDirection(p.dir)
 	}
 	return p.wrapped.Dir()
 }

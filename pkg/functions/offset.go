@@ -55,7 +55,7 @@ func OffsetFunction(
 	numInput, err := readNumericOperand(operand, ctx.Source())
 	if err != nil {
 		ctx.OnError(err)
-		return messagevalue.NewFallbackValue(ctx.Source(), getFirstLocale(ctx.Locales()))
+		return messagevalue.NewFallbackValue(ctx.Source(), GetFirstLocale(ctx.Locales()))
 	}
 
 	value := numInput.Value
@@ -68,7 +68,7 @@ func OffsetFunction(
 		} else {
 			msg := fmt.Sprintf("Value %v is not valid for :offset option add", addVal)
 			ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
-			return messagevalue.NewFallbackValue(ctx.Source(), getFirstLocale(ctx.Locales()))
+			return messagevalue.NewFallbackValue(ctx.Source(), GetFirstLocale(ctx.Locales()))
 		}
 	}
 
@@ -80,7 +80,7 @@ func OffsetFunction(
 		} else {
 			msg := fmt.Sprintf("Value %v is not valid for :offset option subtract", subVal)
 			ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
-			return messagevalue.NewFallbackValue(ctx.Source(), getFirstLocale(ctx.Locales()))
+			return messagevalue.NewFallbackValue(ctx.Source(), GetFirstLocale(ctx.Locales()))
 		}
 	}
 
@@ -88,7 +88,7 @@ func OffsetFunction(
 	if (add < 0) == (sub < 0) {
 		msg := "Exactly one of \"add\" or \"subtract\" is required as an :offset option"
 		ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
-		return messagevalue.NewFallbackValue(ctx.Source(), getFirstLocale(ctx.Locales()))
+		return messagevalue.NewFallbackValue(ctx.Source(), GetFirstLocale(ctx.Locales()))
 	}
 
 	// Calculate delta - matches TypeScript: const delta = add < 0 ? -sub : add;
@@ -119,7 +119,7 @@ func OffsetFunction(
 		} else {
 			msg := fmt.Sprintf("Cannot apply offset to value of type %T", value)
 			ctx.OnError(pkgErrors.NewBadOperandError(msg, ctx.Source()))
-			return messagevalue.NewFallbackValue(ctx.Source(), getFirstLocale(ctx.Locales()))
+			return messagevalue.NewFallbackValue(ctx.Source(), GetFirstLocale(ctx.Locales()))
 		}
 	}
 

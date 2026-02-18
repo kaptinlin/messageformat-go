@@ -127,9 +127,9 @@ func TestGetBoolOption(t *testing.T) {
 }
 
 func TestGetFirstLocale(t *testing.T) {
-	assert.Equal(t, "en-US", getFirstLocale([]string{"en-US", "fr"}))
-	assert.Equal(t, "en", getFirstLocale([]string{}))
-	assert.Equal(t, "en", getFirstLocale(nil))
+	assert.Equal(t, "en-US", GetFirstLocale([]string{"en-US", "fr"}))
+	assert.Equal(t, "en", GetFirstLocale([]string{}))
+	assert.Equal(t, "en", GetFirstLocale(nil))
 }
 
 func TestNormalizeLocale(t *testing.T) {

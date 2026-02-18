@@ -7,6 +7,7 @@ import (
 
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
+	"github.com/kaptinlin/messageformat-go/pkg/functions"
 	"github.com/kaptinlin/messageformat-go/pkg/logger"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
@@ -35,7 +36,7 @@ import (
 func ResolveExpression(ctx *Context, expr *datamodel.Expression) messagevalue.MessageValue {
 	if expr == nil {
 		// Should not happen in well-formed messages
-		return messagevalue.NewFallbackValue("unknown", getFirstLocale(ctx.Locales))
+		return messagevalue.NewFallbackValue("unknown", functions.GetFirstLocale(ctx.Locales))
 	}
 
 	// Check if expression has a function reference - matches TypeScript: if (functionRef)
@@ -55,7 +56,7 @@ func ResolveExpression(ctx *Context, expr *datamodel.Expression) messagevalue.Me
 	arg := expr.Arg()
 	if arg == nil {
 		// Should not happen in well-formed expressions
-		return messagevalue.NewFallbackValue("unknown", getFirstLocale(ctx.Locales))
+		return messagevalue.NewFallbackValue("unknown", functions.GetFirstLocale(ctx.Locales))
 	}
 
 	switch v := arg.(type) {
@@ -80,6 +81,6 @@ func ResolveExpression(ctx *Context, expr *datamodel.Expression) messagevalue.Me
 				"",
 			))
 		}
-		return messagevalue.NewFallbackValue("unknown", getFirstLocale(ctx.Locales))
+		return messagevalue.NewFallbackValue("unknown", functions.GetFirstLocale(ctx.Locales))
 	}
 }

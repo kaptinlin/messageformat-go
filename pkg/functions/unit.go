@@ -75,7 +75,7 @@ func UnitFunction(
 	numericOperand, err := readNumericOperand(operand, source)
 	if err != nil {
 		ctx.OnError(err)
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+		return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
 	}
 
 	// Start with operand options and set unit style
@@ -114,7 +114,7 @@ func UnitFunction(
 	if _, hasUnit := mergedOptions["unit"]; !hasUnit {
 		msg := "A unit identifier is required for :unit"
 		ctx.OnError(pkgErrors.NewBadOperandError(msg, source))
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales()))
+		return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
 	}
 
 	return getMessageNumber(ctx, numericOperand.Value, mergedOptions, false)

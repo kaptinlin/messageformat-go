@@ -204,7 +204,7 @@ func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) any {
 					source,
 				))
 			}
-			return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales))
+			return messagevalue.NewFallbackValue(source, functions.GetFirstLocale(ctx.Locales))
 		}
 
 		// Mark this variable as being resolved
@@ -281,7 +281,7 @@ func ResolveVariableRef(ctx *Context, ref *datamodel.VariableRef) messagevalue.M
 		if mv, ok := value.(messagevalue.MessageValue); ok {
 			// Check for fallback type - matches TypeScript: if (mv.type === 'fallback') return fallback(source);
 			if mv.Type() == "fallback" {
-				return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales))
+				return messagevalue.NewFallbackValue(source, functions.GetFirstLocale(ctx.Locales))
 			}
 			// Check if it's a local variable - matches TypeScript: if (ctx.localVars.has(mv)) return mv;
 			if ctx.LocalVars[mv] {
@@ -334,12 +334,12 @@ func ResolveVariableRef(ctx *Context, ref *datamodel.VariableRef) messagevalue.M
 
 	// matches TypeScript: return value === undefined ? fallback(source) : unknown(source, value);
 	if value == nil {
-		return messagevalue.NewFallbackValue(source, getFirstLocale(ctx.Locales))
+		return messagevalue.NewFallbackValue(source, functions.GetFirstLocale(ctx.Locales))
 	}
 
 	// For unknown types, create a string representation (equivalent to TypeScript unknown function)
 	// TypeScript unknown function typically converts to string representation
-	return messagevalue.NewStringValue(fmt.Sprintf("%v", value), getFirstLocale(ctx.Locales), source)
+	return messagevalue.NewStringValue(fmt.Sprintf("%v", value), functions.GetFirstLocale(ctx.Locales), source)
 }
 
 // getValueType determines the type of a value similar to TypeScript typeof
@@ -361,13 +361,4 @@ func getValueType(value any) string {
 	default:
 		return "object"
 	}
-}
-
-// getFirstLocale returns the first locale from a list, or "en" as fallback
-// TypeScript original code: locale fallback logic
-func getFirstLocale(locales []string) string {
-	if len(locales) > 0 {
-		return locales[0]
-	}
-	return "en"
 }
