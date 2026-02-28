@@ -2,8 +2,7 @@ package datamodel
 
 import (
 	"errors"
-
-	"github.com/go-json-experiment/json"
+	"hash/maphash"
 
 	"github.com/kaptinlin/messageformat-go/internal/cst"
 	pkgerrors "github.com/kaptinlin/messageformat-go/pkg/errors"
@@ -115,7 +114,8 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 	functions := make(map[string]bool)
 	localVars := make(map[string]bool)
 	variables := make(map[string]bool)
-	variants := make(map[string]bool)
+	variantHashSeed := maphash.MakeSeed()
+	variants := make(map[uint64][][]any)
 
 	// Visit all declarations first and check for cyclic/forward references
 	// TypeScript: visit(msg, { declaration(decl) { ... } })
@@ -287,12 +287,16 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 				}
 			}
 
-			keyJSON, _ := json.Marshal(keyStrs)
-			keyStr := string(keyJSON)
-			if variants[keyStr] {
-				onError("duplicate-variant", variant)
+			keyHash := hashVariantKeys(variantHashSeed, keyStrs)
+			if existing, ok := variants[keyHash]; ok {
+				if variantKeysContain(existing, keyStrs) {
+					onError("duplicate-variant", variant)
+				} else {
+					// Hash collision with a different key tuple; append to bucket.
+					variants[keyHash] = append(existing, keyStrs)
+				}
 			} else {
-				variants[keyStr] = true
+				variants[keyHash] = [][]any{keyStrs}
 			}
 
 			// TypeScript: missingFallback &&= keys.every(key => key.type === '*') ? null : variant;
@@ -491,4 +495,54 @@ func checkDuplicateOptions(funcRef *FunctionRef, onError func(string, any)) {
 		}
 		seen[optName] = true
 	}
+}
+
+// hashVariantKeys computes a deterministic hash for a variant key tuple.
+// Each element is either an int (0, for catchall) or a string (normalized literal).
+func hashVariantKeys(seed maphash.Seed, keys []any) uint64 {
+	var h maphash.Hash
+	h.SetSeed(seed)
+	for _, k := range keys {
+		switch v := k.(type) {
+		case string:
+			// Write a type tag to distinguish string "0" from int 0.
+			h.WriteByte(1)
+			h.WriteString(v)
+		default:
+			// Catchall key represented as int 0.
+			h.WriteByte(0)
+		}
+	}
+	// Mix in the length to avoid prefix collisions.
+	var buf [8]byte
+	n := uint64(len(keys))
+	for i := range buf {
+		buf[i] = byte(n >> (i * 8))
+	}
+	h.Write(buf[:])
+	return h.Sum64()
+}
+
+// variantKeysContain reports whether any entry in bucket is equal to target.
+func variantKeysContain(bucket [][]any, target []any) bool {
+	for _, entry := range bucket {
+		if variantKeysEqual(entry, target) {
+			return true
+		}
+	}
+	return false
+}
+
+// variantKeysEqual reports whether two variant key slices are equal.
+// Elements are either int (catchall) or string (normalized literal).
+func variantKeysEqual(a, b []any) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
