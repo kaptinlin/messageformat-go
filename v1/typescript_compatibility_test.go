@@ -222,7 +222,7 @@ func TestTypeScriptCompatibilityOfficial(t *testing.T) {
 							} else {
 								var expectedStr strings.Builder
 								for _, part := range expectedSlice {
-									expectedStr.WriteString(fmt.Sprintf("%v", part))
+									fmt.Fprintf(&expectedStr, "%v", part)
 								}
 								assert.Equal(t, expectedStr.String(), result, "Concatenated values mismatch for exp[%d], params %v, message: %s", expIndex, params, testCase.Src)
 							}

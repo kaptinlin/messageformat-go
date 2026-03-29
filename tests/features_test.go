@@ -1025,7 +1025,7 @@ func TestFormatToParts(t *testing.T) {
 				if str, ok := part.Value().(string); ok {
 					partsResult.WriteString(str)
 				} else {
-					partsResult.WriteString(fmt.Sprintf("%v", part.Value()))
+					fmt.Fprintf(&partsResult, "%v", part.Value())
 				}
 			}
 
