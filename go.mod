@@ -1,6 +1,6 @@
 module github.com/kaptinlin/messageformat-go
 
-go 1.26
+go 1.26.1
 
 require (
 	github.com/Rhymond/go-money v1.0.15
