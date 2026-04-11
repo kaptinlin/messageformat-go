@@ -199,6 +199,11 @@ func TestNumberSkeletonTypeSafety(t *testing.T) {
 		assert.Equal(t, ReturnTypeValues, *new(ReturnTypeValues))
 		assert.Equal(t, SignAlways, *new(SignAlways))
 	})
+
+	t.Run("ParseNumberSkeleton returns error instead of panic", func(t *testing.T) {
+		_, err := ParseNumberSkeleton("currency/USD/extra")
+		require.Error(t, err)
+	})
 }
 
 func TestMessageExecution(t *testing.T) {
