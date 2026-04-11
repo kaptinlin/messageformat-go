@@ -158,6 +158,13 @@ func TestMessageResolutionError(t *testing.T) {
 		require.NotNil(t, err.MessageError)
 		assert.Equal(t, ErrorTypeUnresolvedVariable, err.Type)
 	})
+
+	t.Run("supports cause unwrapping", func(t *testing.T) {
+		cause := errors.New("operand conversion failed")
+		err := NewMessageResolutionError(ErrorTypeBadOperand, "invalid operand", "source", cause)
+		assert.Equal(t, cause, err.Unwrap())
+		assert.True(t, errors.Is(err, cause))
+	})
 }
 
 func TestMessageSelectionError(t *testing.T) {

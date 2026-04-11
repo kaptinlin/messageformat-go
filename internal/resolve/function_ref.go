@@ -100,6 +100,7 @@ func resolveFunctionRefInternal(
 				errors.ErrorTypeBadOperand,
 				err.Error(),
 				source,
+				err,
 			)
 		}
 		fnInput = []any{resolved}
@@ -181,6 +182,7 @@ func createMessageFunctionContext(
 							errors.ErrorTypeBadOption,
 							err.Error(),
 							getValueSource(dirNode),
+							err,
 						))
 					}
 				} else if dirStr, ok := dirValue.(string); ok {
@@ -224,6 +226,7 @@ func createMessageFunctionContext(
 							errors.ErrorTypeBadOption,
 							err.Error(),
 							getValueSource(idNode),
+							err,
 						))
 					}
 				} else {
@@ -284,6 +287,7 @@ func resolveOptions(ctx *Context, options map[string]any) map[string]any {
 							errors.ErrorTypeBadOption,
 							err.Error(),
 							getValueSource(node),
+							err,
 						))
 					}
 					// Use nil as fallback

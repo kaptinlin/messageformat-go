@@ -4,6 +4,7 @@ package resolve
 
 import (
 	"maps"
+	"slices"
 
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
@@ -62,7 +63,7 @@ func NewContext(
 		Functions:     funcs,
 		OnError:       onError,
 		LocaleMatcher: "best fit",
-		Locales:       locales,
+		Locales:       slices.Clone(locales),
 		LocalVars:     make(map[messagevalue.MessageValue]bool),
 		Scope:         scope,
 		ResolvingVars: make(map[string]bool),
@@ -76,7 +77,7 @@ func (ctx *Context) Clone() *Context {
 		Functions:     ctx.Functions, // Immutable, safe to share
 		OnError:       ctx.OnError,
 		LocaleMatcher: ctx.LocaleMatcher,
-		Locales:       ctx.Locales, // Immutable, safe to share
+		Locales:       slices.Clone(ctx.Locales),
 		LocalVars:     maps.Clone(ctx.LocalVars),
 		Scope:         maps.Clone(ctx.Scope),
 		ResolvingVars: ctx.ResolvingVars, // Share the resolving vars tracking

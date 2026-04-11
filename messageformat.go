@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"slices"
 	"strings"
 
 	"github.com/kaptinlin/messageformat-go/internal/cst"
@@ -158,7 +159,7 @@ func New(
 		if l == nil {
 			localeList = []string{}
 		} else {
-			localeList = l
+			localeList = slices.Clone(l)
 		}
 	case nil:
 		localeList = []string{}
@@ -177,10 +178,8 @@ func New(
 
 		// Check for CST parsing errors
 		if len(cstMessage.Errors()) > 0 {
-			// Return the first error
-			firstError := cstMessage.Errors()[0]
-			end := firstError.End
-			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, firstError.Start, &end, nil)
+			// Return the first CST error without rewriting its semantic type.
+			return nil, cstMessage.Errors()[0]
 		}
 
 		// Convert CST to datamodel

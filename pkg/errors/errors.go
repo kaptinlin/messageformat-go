@@ -182,20 +182,32 @@ func NewMessageDataModelError(errorType string, node Node) *MessageDataModelErro
 type MessageResolutionError struct {
 	*MessageError
 	Source string // Source text where error occurred
+	Cause  error  // Underlying cause error (optional)
 }
 
 // NewMessageResolutionError creates a new resolution error
 // TypeScript original code: MessageResolutionError constructor
-func NewMessageResolutionError(errorType, message, source string) *MessageResolutionError {
+func NewMessageResolutionError(errorType, message, source string, cause ...error) *MessageResolutionError {
 	// Include error type in message for compatibility with tests
 	if !strings.Contains(message, errorType) {
 		message = fmt.Sprintf("%s: %s", errorType, message)
 	}
 
+	var rootCause error
+	if len(cause) > 0 {
+		rootCause = cause[0]
+	}
+
 	return &MessageResolutionError{
 		MessageError: NewMessageError(errorType, message),
 		Source:       source,
+		Cause:        rootCause,
 	}
+}
+
+// Unwrap returns the underlying cause error for error wrapping.
+func (e *MessageResolutionError) Unwrap() error {
+	return e.Cause
 }
 
 // MessageSelectionError represents errors in message selection

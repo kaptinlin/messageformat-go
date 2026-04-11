@@ -3,6 +3,7 @@
 package cst
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
@@ -40,7 +41,7 @@ func NewParseContext(source string, resource bool) *ParseContext {
 // Errors returns the collected errors
 // TypeScript original code: readonly errors: MessageSyntaxError[]
 func (ctx *ParseContext) Errors() []*errors.MessageSyntaxError {
-	return ctx.errors
+	return slices.Clone(ctx.errors)
 }
 
 // Resource returns whether this is a resource context
@@ -82,8 +83,22 @@ func (ctx *ParseContext) OnError(errorType string, start int, endOrChar any) {
 		errorTypeConstant = errors.ErrorTypeBadEscape
 	case "bad-input-expression":
 		errorTypeConstant = errors.ErrorTypeBadInputExpression
+	case "bad-selector":
+		errorTypeConstant = errors.ErrorTypeBadSelector
+	case "duplicate-attribute":
+		errorTypeConstant = errors.ErrorTypeDuplicateAttribute
+	case "duplicate-declaration":
+		errorTypeConstant = errors.ErrorTypeDuplicateDeclaration
 	case "duplicate-option-name":
 		errorTypeConstant = errors.ErrorTypeDuplicateOptionName
+	case "duplicate-variant":
+		errorTypeConstant = errors.ErrorTypeDuplicateVariant
+	case "key-mismatch":
+		errorTypeConstant = errors.ErrorTypeKeyMismatch
+	case "missing-fallback":
+		errorTypeConstant = errors.ErrorTypeMissingFallback
+	case "missing-selector-annotation":
+		errorTypeConstant = errors.ErrorTypeMissingSelectorAnnotation
 	case "parse-error":
 		errorTypeConstant = errors.ErrorTypeParseError
 	default:

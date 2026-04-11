@@ -29,6 +29,7 @@ ls tests/messageformat-wg/test/tests/
 ### Running Tests
 
 #### All Tests
+
 ```bash
 # Run all tests (V1 + V2) with race detection
 task test
@@ -41,6 +42,7 @@ task test-verbose
 ```
 
 #### Version-Specific Testing
+
 ```bash
 # V1 Tests (ICU MessageFormat)
 task test-v1
@@ -53,12 +55,13 @@ task test-official
 ```
 
 #### Examples and Benchmarks
+
 ```bash
 # Run all examples (V1 + V2)
-make examples
+task examples
 
 # Run benchmarks
-make bench
+task bench
 ```
 
 ## 📁 Test Structure
@@ -66,12 +69,14 @@ make bench
 ### Test Categories
 
 #### MessageFormat 2.0 Tests
+
 1. **Official Test Suite** (`./tests/`): Unicode MessageFormat Working Group tests
-2. **API Tests** (`messageformat_test.go`): Constructor and formatting methods  
+2. **API Tests** (`messageformat_test.go`): Constructor and formatting methods
 3. **Feature Tests** (`features_test.go`): MessageFormat 2.0 feature compliance
 4. **Package Tests** (`./pkg/`, `./internal/`): Component-specific functionality
 
 #### ICU MessageFormat V1 Tests
+
 1. **Core API Tests** (`v1/messageformat_test.go`): Constructor and compilation
 2. **Parser Tests** (`v1/parse_test.go`): Message parsing and validation
 3. **Compatibility Tests** (`v1/typescript_compatibility_test.go`): TypeScript API compatibility
@@ -79,10 +84,10 @@ make bench
 
 ### File Organization
 
-```
+```text
 messageformat-go/
 ├── messageformat_test.go              # V2 API tests
-├── features_test.go                   # V2 feature compliance  
+├── features_test.go                   # V2 feature compliance
 ├── messageformat_bench_test.go        # V2 benchmarks
 ├── tests/                             # V2 official test suite
 │   ├── messageformat-wg/             # Git submodule
@@ -106,9 +111,9 @@ messageformat-go/
 # Format, vet, lint, and test
 task verify
 
-# Individual checks  
-make fmt          # Format code
-make vet          # Static analysis
+# Individual checks
+task fmt          # Format code
+task vet          # Static analysis
 task lint         # Comprehensive linting
 ```
 
@@ -119,7 +124,7 @@ task lint         # Comprehensive linting
 task test-coverage
 
 # Benchmarks
-make bench
+task bench
 ```
 
 ## 🛠️ Troubleshooting
@@ -127,17 +132,20 @@ make bench
 ### Common Issues
 
 **Submodule not initialized:**
+
 ```bash
 git submodule update --init --recursive
 ```
 
 **Test files missing:**
+
 ```bash
 git submodule status
 ls tests/messageformat-wg/test/tests/
 ```
 
 **Go module issues:**
+
 ```bash
 go mod download
 go mod verify
@@ -145,6 +153,7 @@ go mod tidy
 ```
 
 **Linting tool missing:**
+
 ```bash
 # Install golangci-lint
 curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
@@ -185,7 +194,7 @@ func TestFunctionName(t *testing.T) {
     }{
         // Test cases
     }
-    
+
     for _, tc := range tests {
         t.Run(tc.name, func(t *testing.T) {
             // Test implementation
@@ -199,11 +208,11 @@ func TestFunctionName(t *testing.T) {
 ```bash
 # Essential commands
 task test           # Run all tests
-task test-unit      # Unit tests only
+task test-v2        # V2 tests
 task test-coverage  # With coverage
-make ci             # All quality checks
-make bench          # Benchmarks
-make help           # Show all targets
+task verify         # All quality checks
+task bench          # Benchmarks
+task help           # Show all targets
 
 # Debug & troubleshoot
 git submodule update --init --recursive

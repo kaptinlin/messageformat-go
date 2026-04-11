@@ -1,385 +1,225 @@
 # MessageFormat Go
 
+[![Go Version](https://img.shields.io/badge/go-%3E%3D1.26.1-blue)](https://golang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/github.com/kaptinlin/messageformat-go.svg)](https://pkg.go.dev/github.com/kaptinlin/messageformat-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kaptinlin/messageformat-go)](https://goreportcard.com/report/github.com/kaptinlin/messageformat-go)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A comprehensive Go library providing **two implementations** of MessageFormat for internationalization:
+A Go implementation of Unicode MessageFormat 2.0 with a maintained ICU MessageFormat v1 compatibility package
 
-- 🆕 **MessageFormat 2.0** (this package): Latest Unicode specification with advanced features
-- 🔒 **ICU MessageFormat v1** ([v1 package](v1/README.md)): Legacy ICU-compatible implementation
+## Features
 
-## 📋 Version Guide
+- **Unicode MessageFormat 2.0**: Parse, validate, and format messages using the current Unicode model.
+- **TypeScript-compatible API**: The public API is aligned with the reference TypeScript implementation where it matters.
+- **Dual track support**: Use v2 from the root package for new work, or keep legacy integrations on [`v1`](v1/README.md).
+- **Rich formatting**: Built-in support for numbers, integers, strings, dates, currencies, percentages, offsets, and units.
+- **Custom functions**: Register locale-aware formatters with `WithFunction` or `WithFunctions`.
+- **Structured output**: Render to strings with `Format` or rich parts with `FormatToParts`.
+- **Predictable defaults**: Instances are safe for concurrent use after construction and default to clean output without bidi isolation markers.
+- **Spec verification**: The repository includes the official MessageFormat Working Group test suite as a git submodule.
 
-| Version | Package Path | Specification | Status |
-|---------|-------------|---------------|---------|
-| **V2 (Recommended)** | `github.com/kaptinlin/messageformat-go` | Unicode MessageFormat 2.0 | ✅ Production Ready |
-| **V1 (Legacy)** | `github.com/kaptinlin/messageformat-go/v1` | ICU MessageFormat | ✅ Maintained |
+## Version Guide
 
-> 💡 **New projects** should use V2. **Existing projects** can continue using V1 or migrate to V2.
-> 
-> 📖 **V1 Documentation**: See [v1/README.md](v1/README.md) for ICU MessageFormat documentation.
+| Package | Spec | Status | Recommended for |
+|--------|------|--------|-----------------|
+| `github.com/kaptinlin/messageformat-go` | Unicode MessageFormat 2.0 | Active | New projects |
+| `github.com/kaptinlin/messageformat-go/v1` | ICU MessageFormat | Maintenance-only | Existing legacy integrations |
 
----
-
-## MessageFormat 2.0 Implementation
-
-A **production-ready** Go implementation of the [Unicode MessageFormat 2.0 specification](https://unicode.org/reports/tr35/tr35-messageFormat.html), providing comprehensive internationalization (i18n) capabilities with advanced features like pluralization, gender selection, bidirectional text support, and custom formatting functions.
-
-## 🏆 Specification Compliance
-
-This implementation passes the official MessageFormat 2.0 test suite from the Unicode Consortium.
-
-## 🚀 Quick Start
-
-### Installation
+## Installation
 
 ```bash
 go get github.com/kaptinlin/messageformat-go
 ```
 
-**Requirements**: Go 1.26 or later
+Requires **Go 1.26.1+**.
 
-### Basic Example
+## Quick Start
 
 ```go
 package main
 
 import (
-    "fmt"
-    "github.com/kaptinlin/messageformat-go"
+	"fmt"
+	"log"
+
+	"github.com/kaptinlin/messageformat-go"
 )
 
 func main() {
-    // Create a MessageFormat instance
-    mf, err := messageformat.New("en", "Hello, {$name}!")
-    if err != nil {
-        panic(err)
-    }
+	mf, err := messageformat.New("en", "Hello, {$name}!")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Format the message
-    result, err := mf.Format(map[string]interface{}{
-        "name": "World",
-    })
-    if err != nil {
-        panic(err)
-    }
+	out, err := mf.Format(map[string]any{"name": "World"})
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(result) // Output: Hello, World!
-    // Note: Clean output by default (BidiIsolation: BidiNone)
-    // For RTL support: messageformat.WithBidiIsolation(messageformat.BidiDefault)
+	fmt.Println(out)
 }
 ```
 
-### With Bidirectional Text Isolation (for RTL languages)
+## Core API
+
+| API | Purpose |
+|-----|---------|
+| `New(locales, source, options...)` | Parse and validate a message or reuse a prebuilt data model |
+| `(*MessageFormat).Format(values, options...)` | Format to a string |
+| `(*MessageFormat).FormatToParts(values, options...)` | Format to structured parts |
+| `ParseMessage(source)` | Parse source into the public data model |
+| `StringifyMessage(message)` | Convert the data model back to source |
+| `Validate(message, scope)` | Validate a parsed message |
+
+Full API details live on [pkg.go.dev](https://pkg.go.dev/github.com/kaptinlin/messageformat-go) and in [`docs/api-reference.md`](docs/api-reference.md).
+
+## MessageFormat 2.0 Basics
+
+Variables use the MessageFormat 2.0 form with a `$` prefix:
+
 ```go
-// For proper RTL support with bidi isolation characters
-mf, err := messageformat.New("ar", "مرحبا {$name}!", 
-    messageformat.WithBidiIsolation(messageformat.BidiDefault))
-    
-result, err := mf.Format(map[string]interface{}{
-    "name": "عالم",
-})
-// Output: مرحبا ⁨عالم⁩!
-// Note: ⁨⁩ are Unicode bidi isolation characters for proper RTL display
+mf, err := messageformat.New("en", "Hello, {$name}!")
 ```
 
-## ✨ Key Features
-
-### 🌍 MessageFormat 2.0 Support
-- **Pattern Matching**: Advanced `.match` statements with exact number and plural category matching
-- **Variable Declarations**: `.input` and `.local` declarations with function annotations
-- **Standard Functions**: 
-  - **Stable** (LDML 48): `:number`, `:integer`, `:string`, `:datetime`, `:date`, `:time`, `:currency`, `:percent`, `:offset`
-  - **Draft**: `:unit`
-- **Custom Functions**: Extensible function system with locale awareness
-- **Markup Support**: `{#tag}`, `{/tag}`, `{#tag /}` syntax support
-- **Unicode Compliance**: Unicode normalization and bidirectional text handling
-
-### 📝 Syntax Guidelines
-
-**Important**: Variables must use `$` prefix and selectors must be properly declared:
+Select messages require declared selectors:
 
 ```go
-// ❌ Incorrect - missing $ prefix and selector declaration
-mf, err := messageformat.New("en", `.match {count}
-one {{One item}}
-*   {{Many items}}`)
-
-// ✅ Correct - proper variable syntax and selector declaration
 mf, err := messageformat.New("en", `
 .input {$count :number}
 .match $count
+0   {{No items}}
 one {{One item}}
-*   {{Many items}}`)
+*   {{{$count} items}}
+`)
 ```
 
-**Key Rules:**
-- Variables: Always use `{$variableName}` syntax
-- Selectors: Declare with `.input {$var :function}` before `.match`
-- Match statements: Use `.match $var` (without braces)
+The parser preserves syntax error types, so malformed selectors and missing syntax are reported with specific error categories instead of a generic parse error.
 
-### 🌐 International Features
-- **Multi-Locale Support**: Intelligent locale fallback and negotiation
-- **Automatic Direction Detection**: RTL/LTR detection for 25+ languages
-- **Bidirectional Text Isolation**: Configurable Unicode bidi isolation
-- **Locale-Aware Formatting**: Currency, numbers, dates, and percentages adapt to locale conventions
-- **Mixed Content Handling**: Proper LTR/RTL text mixing in complex layouts
+## Formatting Examples
 
-### 🛡️ Production Ready
-- **Thread-Safe**: Safe for concurrent use after construction
-- **Graceful Error Handling**: Fallback representations for missing variables
-- **Performance Optimized**: Efficient parsing and formatting algorithms
-- **TypeScript Compatible**: API designed to match the TypeScript implementation
-- **Testing**: 100+ test cases covering specification compliance
+### Numbers and currencies
 
-## 📖 Documentation
+```go
+mf, err := messageformat.New(
+	"en",
+	"Total: {$amount :number style=currency currency=USD}",
+)
+if err != nil {
+	log.Fatal(err)
+}
+
+out, err := mf.Format(map[string]any{"amount": 29.99})
+if err != nil {
+	log.Fatal(err)
+}
+
+fmt.Println(out)
+```
+
+### Structured parts
+
+```go
+mf, err := messageformat.New("en", "Hello, {$name}!")
+if err != nil {
+	log.Fatal(err)
+}
+
+parts, err := mf.FormatToParts(map[string]any{"name": "World"})
+if err != nil {
+	log.Fatal(err)
+}
+
+for _, part := range parts {
+	fmt.Printf("%s: %v\n", part.Type(), part.Value())
+}
+```
+
+### Custom functions
+
+```go
+func uppercase(
+	ctx messageformat.MessageFunctionContext,
+	options map[string]any,
+	operand any,
+) messagevalue.MessageValue {
+	return messagevalue.NewStringValue(
+		strings.ToUpper(fmt.Sprint(operand)),
+		ctx.Locales()[0],
+		ctx.Source(),
+	)
+}
+
+mf, err := messageformat.New(
+	"en",
+	"Hello, {$name :uppercase}!",
+	messageformat.WithFunction("uppercase", uppercase),
+)
+```
+
+See [`examples/custom-functions/main.go`](examples/custom-functions/main.go) for a fuller example.
+
+## Defaults and Configuration
+
+This package deliberately chooses simple defaults:
+
+- `BidiIsolation` defaults to `BidiNone`, so formatted output does not include Unicode isolation markers unless you opt in.
+- `LocaleMatcher` defaults to `LocaleBestFit`.
+- `MessageFormat` instances defensively copy locale input and are safe for concurrent use after construction.
+
+Use functional options when you want focused overrides:
+
+```go
+mf, err := messageformat.New(
+	"ar",
+	"مرحبا {$name}!",
+	messageformat.WithBidiIsolation(messageformat.BidiDefault),
+	messageformat.WithDir(messageformat.DirRTL),
+)
+```
+
+Or use the options struct when that reads better for your call site:
+
+```go
+mf, err := messageformat.New("en", "Hello, {$name}!", &messageformat.MessageFormatOptions{
+	BidiIsolation: messageformat.BidiNone,
+	LocaleMatcher: messageformat.LocaleBestFit,
+})
+```
+
+## Documentation
 
 | Guide | Description |
 |-------|-------------|
-| **[Getting Started](docs/getting-started.md)** | Installation, basic concepts, and first steps |
-| **[Message Syntax](docs/message-syntax.md)** | MessageFormat 2.0 syntax reference |
-| **[API Reference](docs/api-reference.md)** | API documentation with examples |
-| **[Formatting Functions](docs/formatting-functions.md)** | Built-in and custom function development |
-| **[Custom Functions](docs/custom-functions.md)** | Advanced function development guide |
-| **[Error Handling](docs/error-handling.md)** | Error handling strategies |
+| [`docs/getting-started.md`](docs/getting-started.md) | Installation, first steps, and basic concepts |
+| [`docs/message-syntax.md`](docs/message-syntax.md) | MessageFormat 2.0 syntax reference |
+| [`docs/api-reference.md`](docs/api-reference.md) | Public API overview |
+| [`docs/formatting-functions.md`](docs/formatting-functions.md) | Built-in formatter behavior |
+| [`docs/custom-functions.md`](docs/custom-functions.md) | Writing and registering custom functions |
+| [`docs/error-handling.md`](docs/error-handling.md) | Error categories and handling patterns |
+| [`TESTING.md`](TESTING.md) | Test layout and verification commands |
 
-## 🎯 Usage Examples
-
-### Number Formatting with Localization
-```go
-mf, err := messageformat.New("de-DE", 
-    "Preis: {$amount :number style=currency currency=EUR}")
-
-result, err := mf.Format(map[string]interface{}{
-    "amount": 1234.56,
-})
-// Output: "Preis: €1,234.56" (actual format may vary by locale implementation)
-```
-
-### Advanced Pluralization
-```go
-mf, err := messageformat.New("en", `
-.input {$count :number}
-.match $count
-0   {{No items in your cart}}
-1   {{One item in your cart}}
-*   {{{$count} items in your cart}}
-`)
-
-result, err := mf.Format(map[string]interface{}{
-    "count": 5,
-})
-// Output: "5 items in your cart"
-```
-### Multi-Selector Pattern Matching
-```go
-mf, err := messageformat.New("en", `
-.input {$photoCount :number}
-.input {$userGender :string}
-.match $photoCount $userGender
-0   *     {{{$userName} has no photos}}
-1   male  {{{$userName} has one photo in his album}}
-1   *     {{{$userName} has one photo in her album}}
-*   male  {{{$userName} has {$photoCount} photos in his album}}
-*   *     {{{$userName} has {$photoCount} photos in her album}}
-`)
-```
-
-### Custom Functions with Locale Support
-```go
-import (
-    "strings"
-    "github.com/kaptinlin/messageformat-go/pkg/functions"
-    "github.com/kaptinlin/messageformat-go/pkg/messagevalue"
-)
-
-func customUppercase(ctx functions.MessageFunctionContext, options map[string]interface{}, input interface{}) messagevalue.MessageValue {
-    locales := ctx.Locales()
-    locale := "en"
-    if len(locales) > 0 {
-        locale = locales[0]
-    }
-    
-    str := fmt.Sprintf("%v", input)
-    return messagevalue.NewStringValue(strings.ToUpper(str), locale, ctx.Source())
-}
-
-mf, err := messageformat.New("en", "Hello, {$name :uppercase}!",
-    messageformat.WithFunction("uppercase", customUppercase),
-)
-```
-
-### Structured Output for Rich Text
-```go
-parts, err := mf.FormatToParts(map[string]interface{}{
-    "name": "World",
-    "count": 42,
-})
-
-for _, part := range parts {
-    switch p := part.(type) {
-    case *messageformat.MessageTextPart:
-        fmt.Printf("Text: %s\n", p.Value())
-    case *messageformat.MessageNumberPart:
-        fmt.Printf("Number: %s (locale: %s)\n", p.Value(), p.Locale())
-    case *messageformat.MessageStringPart:
-        fmt.Printf("Variable: %s\n", p.Value())
-    }
-}
-```
-
-## 🎛️ Configuration Options
-
-### 🚀 Production Configuration (Recommended)
-
-For most production applications, use this simplified configuration:
-
-```go
-import (
-    "github.com/kaptinlin/messageformat-go"
-    "github.com/kaptinlin/messageformat-go/pkg/functions"
-)
-
-// Recommended production setup - simple and clean output
-mf, err := messageformat.New("en", "Welcome, {$name}!", &messageformat.MessageFormatOptions{
-    BidiIsolation: messageformat.BidiNone,        // Clean output without Unicode control chars
-    LocaleMatcher: messageformat.LocaleBestFit,   // Best locale matching
-    Functions:     functions.DraftFunctions,      // Include all formatting functions
-})
-```
-
-### Functional Options (Alternative)
-```go
-mf, err := messageformat.New("ar", "مرحبا {$name}!",
-    messageformat.WithBidiIsolation("none"),      // Simplified for most use cases
-    messageformat.WithDir("rtl"),
-    messageformat.WithFunction("custom", myCustomFunction),
-)
-```
-
-### Traditional Options Structure
-```go
-mf, err := messageformat.New("en", "Hello, {$name}!", &messageformat.MessageFormatOptions{
-    BidiIsolation: messageformat.BidiNone,
-    Dir:          messageformat.DirLTR,
-    Functions:    map[string]messageformat.MessageFunction{
-        "custom": myCustomFunction,
-    },
-})
-```
-
-### TypeScript Mapping Guide
-
-**Key Differences from TypeScript Implementation:**
-
-| Feature | TypeScript Default | Go Default | Rationale |
-|---------|-------------------|------------|-----------|
-| `bidiIsolation` | `'default'` (enabled) | `BidiNone` (disabled) | KISS principle - simpler output |
-| Variable syntax | `{name}` | `{$name}` | MessageFormat 2.0 spec requirement |
-| API style | Object properties | Methods + options struct | Go idioms |
-
-```typescript
-// TypeScript (default behavior)
-const mf = new MessageFormat('en', 'Hello, {name}!');
-const result = mf.format({ name: 'World' });
-// Output: "Hello, ⁨World⁩!" (with bidi isolation)
-```
-
-```go
-// Go equivalent (clean output by default)
-mf, err := messageformat.New("en", "Hello, {$name}!")
-result, err := mf.Format(map[string]interface{}{
-    "name": "World",
-})
-// Output: "Hello, World!" (clean, no bidi isolation)
-
-// To match TypeScript default behavior:
-mf, err := messageformat.New("en", "Hello, {$name}!", 
-    messageformat.WithBidiIsolation(messageformat.BidiDefault))
-```
-
-## 🧪 Testing & Verification
-
-### Prerequisites
-Initialize git submodules to fetch the official test suite:
+## Development
 
 ```bash
-# Clone with submodules
-git clone --recurse-submodules https://github.com/kaptinlin/messageformat-go.git
-
-# Or initialize submodules after cloning
-git submodule update --init --recursive
+task test           # Run all tests with race detection
+task test-v2        # Run v2 tests and the official MessageFormat 2.0 suite
+task test-v1        # Run legacy v1 tests
+task test-official  # Run the official MessageFormat 2.0 suite only
+task lint           # Run golangci-lint and tidy checks
+task verify         # Run deps, fmt, vet, lint, test, and vuln
+task examples       # Run all example programs
 ```
 
-### Running Tests
+If this is a fresh clone, initialize the test suite submodule first:
+
 ```bash
-# Run all tests including official test suite
-task test
-
-# Run unit tests only (excluding official test suite)
-task test-unit
-
-# Run official MessageFormat 2.0 test suite only
-task test-official
-
-# Run tests with coverage report
-task test-coverage
-
-# Run benchmarks
-task bench
+task submodules
 ```
 
-### Development Workflow
-```bash
-# Show all available commands
-task help
+## Contributing
 
-# Format code and run all checks
-task verify
+Contributions are welcome. Start with [`CONTRIBUTING.md`](CONTRIBUTING.md), then run `task verify` before opening a pull request.
 
-# Run examples to verify functionality
-task examples
-```
-
-📋 **For detailed testing instructions, see [TESTING.md](TESTING.md)**
-
-## 🌐 Features
-
-### Unicode Features
-- **Bidirectional Text**: Unicode Bidirectional Algorithm support
-- **Text Isolation**: Configurable bidi isolation (`auto`, `none`, `always`)
-- **Normalization**: Unicode normalization for consistent text handling
-- **Mixed Scripts**: Proper handling of mixed LTR/RTL content
-
-## 🤝 Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
-- Development setup and workflow
-- Code standards and testing requirements
-- Commit message conventions (Conventional Commits)
-- Pull request process
-
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🔗 Related Projects
-
-- **[MessageFormat 2.0 Specification](https://github.com/unicode-org/message-format-wg)** - Official Unicode specification
-- **[JavaScript/TypeScript Implementation](https://github.com/messageformat/messageformat)** - Reference implementation
-- **[MessageFormat Working Group](https://github.com/unicode-org/message-format-wg)** - Unicode working group
-- **[ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/)** - ICU implementation
-
-## 🙏 Acknowledgments
-
-This Go implementation is inspired by the [MessageFormat JavaScript/TypeScript library](https://github.com/messageformat/messageformat) and follows the official [Unicode MessageFormat 2.0 specification](https://unicode.org/reports/tr35/tr35-messageFormat.html). 
-
-Special thanks to:
-- The [Unicode MessageFormat Working Group](https://github.com/unicode-org/message-format-wg) for their work on internationalization standards
-- The Unicode Consortium for maintaining the specification
-- The open-source community for their contributions and feedback
-
----
-
-**Ready to internationalize your Go applications?** Start with our [Getting Started Guide](docs/getting-started.md) or explore the [API Reference](docs/api-reference.md) for advanced usage patterns.

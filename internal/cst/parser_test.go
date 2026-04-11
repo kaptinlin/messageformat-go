@@ -17,6 +17,18 @@ func TestParseContext_Errors(t *testing.T) {
 	assert.Equal(t, "parse-error", errors[0].Type)
 }
 
+func TestParseContext_ErrorsReturnsCopy(t *testing.T) {
+	ctx := NewParseContext("test", false)
+	ctx.OnError("parse-error", 0, 4)
+
+	errs := ctx.Errors()
+	require.Len(t, errs, 1)
+
+	errs = append(errs, errs[0])
+	assert.Len(t, errs, 2)
+	assert.Len(t, ctx.Errors(), 1)
+}
+
 func TestOnError_AllErrorTypes(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -102,6 +114,15 @@ func TestOnError_AllErrorTypes(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOnError_BadSelectorTypePreserved(t *testing.T) {
+	ctx := NewParseContext(".match{$var} * {{default}}", false)
+	ctx.OnError("bad-selector", 6, 12)
+
+	errs := ctx.Errors()
+	require.Len(t, errs, 1)
+	assert.Equal(t, "bad-selector", errs[0].Type)
 }
 
 func TestParsePatternMessage_ExtraContent(t *testing.T) {

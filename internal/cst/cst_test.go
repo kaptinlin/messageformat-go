@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseCST_SimpleMessage(t *testing.T) {
@@ -30,6 +31,16 @@ func TestParseCST_ComplexMessage(t *testing.T) {
 	assert.True(t, ok)
 	assert.NotNil(t, complex.Pattern())
 	assert.Empty(t, complex.Declarations())
+}
+
+func TestParseCST_ErrorsReturnsCopy(t *testing.T) {
+	msg := ParseCST(".match{$count} * {{one}}", false)
+
+	errs := msg.Errors()
+	require.NotEmpty(t, errs)
+
+	errs = append(errs, errs[0])
+	assert.Greater(t, len(errs), len(msg.Errors()))
 }
 
 func TestParseCST_SelectMessage(t *testing.T) {

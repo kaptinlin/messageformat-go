@@ -30,6 +30,14 @@ func TestNewContext(t *testing.T) {
 	assert.NotNil(t, ctx.LocalVars)
 }
 
+func TestNewContext_LocalesDefensiveCopy(t *testing.T) {
+	locales := []string{"en", "fr"}
+	ctx := NewContext(locales, nil, nil, nil)
+
+	locales[0] = "zh"
+	assert.Equal(t, []string{"en", "fr"}, ctx.Locales)
+}
+
 func TestNewContextWithNils(t *testing.T) {
 	ctx := NewContext(nil, nil, nil, nil)
 
@@ -66,6 +74,9 @@ func TestContextClone(t *testing.T) {
 	// Should share immutable references
 	assert.Equal(t, original.Functions, cloned.Functions)
 	assert.Equal(t, original.Locales, cloned.Locales)
+
+	original.Locales[0] = "fr"
+	assert.Equal(t, "en", cloned.Locales[0])
 }
 
 func TestContextCloneWithScope(t *testing.T) {

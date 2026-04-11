@@ -1,571 +1,328 @@
 # Message Syntax
 
-MessageFormat 2.0 syntax reference as defined in the [Unicode MessageFormat 2.0 specification](https://unicode.org/reports/tr35/tr35-messageFormat.html). Covers basic variable substitution to complex selection logic.
+Syntax reference for the MessageFormat Go v2 package, based on Unicode MessageFormat 2.0.
 
-## 📖 Table of Contents
+This page focuses on the syntax the package accepts and the defaults that affect what formatted output looks like.
 
-1. [Message Structure](#message-structure)
-2. [Simple Messages](#simple-messages)
-3. [Complex Messages](#complex-messages)
-4. [Declarations](#declarations)
-5. [Expressions](#expressions)
-6. [Functions and Options](#functions-and-options)
-7. [Pattern Matching](#pattern-matching)
-8. [Escape Sequences](#escape-sequences)
-9. [Bidirectional Text](#bidirectional-text)
-10. [Advanced Examples](#advanced-examples)
+## Message Shapes
 
-## 🔧 Message Structure
+The package supports two broad message shapes:
 
-MessageFormat 2.0 supports two fundamental message types:
+- simple messages: plain text with inline expressions
+- complex messages: declarations followed by `.match` selection
 
-### Simple Messages
-Direct text with optional variable substitution and formatting:
-```
+Simple message:
+
+```text
 Hello, {$name}!
 ```
 
-### Complex Messages  
-Messages with declarations and selection logic:
-```
+Complex message:
+
+```text
 .input {$count :number}
 .match $count
 one {{You have one item}}
 *   {{You have {$count} items}}
 ```
 
-## 🔤 Simple Messages
+## Expressions
 
-Simple messages are the most straightforward form of MessageFormat. They consist of literal text with optional placeholders.
+Expressions are enclosed in `{...}`.
 
-### Literal Text
+Common forms:
 
-Plain text is rendered as-is:
-
-```go
-mf, _ := messageformat.New("en", "Welcome to our application!")
-result, _ := mf.Format(nil)
-// Output: Welcome to our application!
+```text
+{$name}
+{$count :number}
+{$price :number style=currency currency=USD}
+{|hello| :string}
 ```
 
-### Variable Substitution
+Expression parts:
 
-Variables are enclosed in curly braces and prefixed with `$`:
+- operand: `$name`, `$count`, or a literal such as `|hello|`
+- annotation: `:number`, `:string`, `:datetime`
+- options: `style=currency`, `currency=USD`
 
-```go
-mf, _ := messageformat.New("en", "Hello, {$name}!")
-result, _ := mf.Format(map[string]interface{}{
-    "name": "Alice",
-})
-// Output: Hello, ⁨Alice⁩!
-```
+## Variables
 
-### Multiple Variables
+Variables always use the `$` prefix:
 
-You can use multiple variables in a single message:
-
-```go
-mf, _ := messageformat.New("en", "Welcome {$firstName} {$lastName} to {$siteName}!")
-result, _ := mf.Format(map[string]interface{}{
-    "firstName": "John",
-    "lastName":  "Doe", 
-    "siteName":  "MessageFormat Go",
-})
-// Output: Welcome ⁨John⁩ ⁨Doe⁩ to ⁨MessageFormat Go⁩!
-```
-
-### Function Calls
-
-Variables can be processed by functions:
-
-```go
-mf, _ := messageformat.New("en", "Today is {$date :datetime dateStyle=full}")
-result, _ := mf.Format(map[string]interface{}{
-    "date": time.Now(),
-})
-// Output: Today is ⁨Monday, January 15, 2024⁩
-```
-
-## 🔀 Complex Messages
-
-Complex messages use declarations and selection logic to handle conditional formatting and pluralization.
-
-### Basic Structure
-
-Complex messages follow this pattern:
-```
-.declaration1
-.declaration2
-.match $selector1 $selector2
-key1 key2 {{pattern1}}
-key3 key4 {{pattern2}}
-*    *    {{default pattern}}
-```
-
-### Simple Pluralization
-
-```go
-mf, _ := messageformat.New("en", `
-.input {$count :number select=cardinal}
-.match $count
-0   {{No messages}}
-one {{One message}}
-*   {{{$count} messages}}
-`)
-
-// Test different counts
-for _, count := range []int{0, 1, 5} {
-    result, _ := mf.Format(map[string]interface{}{"count": count})
-    fmt.Printf("Count %d: %s\n", count, result)
-}
-// Output:
-// Count 0: No messages
-// Count 1: One message
-// Count 5: 5 messages
-```
-
-### Multi-dimensional Selection
-
-```go
-mf, _ := messageformat.New("en", `
-.input {$gender :string}
-.input {$count :number select=cardinal}
-.match $gender $count
-male 0     {{{$name} has no items in his cart}}
-male one   {{{$name} has one item in his cart}}
-male *     {{{$name} has {$count} items in his cart}}
-female 0   {{{$name} has no items in her cart}}
-female one {{{$name} has one item in her cart}}
-female *   {{{$name} has {$count} items in her cart}}
-* 0        {{{$name} has no items in their cart}}
-* one      {{{$name} has one item in their cart}}
-* *        {{{$name} has {$count} items in their cart}}
-`)
-
-result, _ := mf.Format(map[string]interface{}{
-    "name":   "Sarah",
-    "gender": "female",
-    "count":  3,
-})
-// Output: Sarah has 3 items in her cart
-```
-
-## 📋 Declarations
-
-Declarations preprocess variables before they're used in patterns or selectors.
-
-### Input Declarations
-
-Input declarations process external variables:
-
-```go
-// Basic input declaration
-.input {$count :number}
-
-// Input declaration with options
-.input {$price :number style=currency currency=USD}
-
-// Input declaration with multiple options
-.input {$date :datetime dateStyle=full timeStyle=short}
-```
-
-Example usage:
-```go
-mf, _ := messageformat.New("en", `
-.input {$amount :number style=currency currency=EUR}
-Your balance is {$amount}
-`)
-
-result, _ := mf.Format(map[string]interface{}{
-    "amount": 1234.56,
-})
-// Output: Your balance is €1,234.56
-```
-
-### Local Declarations
-
-Local declarations create computed variables:
-
-```go
-mf, _ := messageformat.New("en", `
-.input {$price :number}
-.local $tax = {$price :number style=percent}
-.local $total = {$price :number style=currency currency=USD}
-Item: {$total} (includes {$tax} tax)
-`)
-
-result, _ := mf.Format(map[string]interface{}{
-    "price": 100.00,
-})
-// Output: Item: $100.00 (includes 100% tax)
-```
-
-### Declaration Order
-
-Declarations are processed in order, and later declarations can reference earlier ones:
-
-```go
-mf, _ := messageformat.New("en", `
-.input {$basePrice :number}
-.local $tax = {$basePrice :number}
-.local $total = {$basePrice :number}
-Base: {$basePrice}, Tax: {$tax}, Total: {$total}
-`)
-```
-
-## 🔧 Expressions
-
-Expressions are the building blocks of MessageFormat messages. They can appear in patterns, declarations, and as selectors.
-
-### Variable References
-
-Reference external or local variables:
-```
-{$variableName}
+```text
+{$name}
 {$user}
 {$count}
 ```
 
-### Literal Values
+Example:
 
-Embed literal values directly:
+```go
+mf, err := messageformat.New("en", "Hello, {$name}!")
+if err != nil {
+	log.Fatal(err)
+}
+
+out, err := mf.Format(map[string]any{"name": "Alice"})
+if err != nil {
+	log.Fatal(err)
+}
+
+fmt.Println(out)
 ```
+
+By default, the package returns clean output without bidi isolation markers. If you need isolation markers, opt in with `WithBidiIsolation(messageformat.BidiDefault)`.
+
+## Literals
+
+Use pipe-delimited literals inside expressions:
+
+```text
 {|literal text|}
 {|42|}
 {|true|}
 ```
 
-### Function Calls
+Literals are useful when you want a function call without referencing an external variable:
 
-Apply functions to operands:
-```
-{$count :number}
-{$date :datetime dateStyle=short}
-{|Hello| :string}
+```text
+{|hello| :string}
 ```
 
-### Function Calls with Options
+## Declarations
 
-Functions can accept multiple options:
-```
-{$price :number style=currency currency=USD minimumFractionDigits=2}
-{$date :datetime dateStyle=full timeStyle=medium}
-```
+### `.input`
 
-### Annotation-only Expressions
+Use `.input` to declare and annotate external values before selection:
 
-Functions without operands:
-```
-{:number}  // Uses default value
-{:datetime}  // Uses current time
+```text
+.input {$count :number}
+.input {$status :string}
 ```
 
-## ⚙️ Functions and Options
+### `.local`
 
-Functions transform and format values. MessageFormat 2.0 includes several built-in functions.
+Use `.local` to derive local values:
 
-#### `:number` Function
-
-The `:number` function formats numeric values and supports pluralization:
-
-```go
-mf, _ := messageformat.New("en", "Price: {$price :number style=currency currency=USD}")
-mf, _ := messageformat.New("en", "Progress: {$rate :number style=percent}")
+```text
+.input {$price :number}
+.local $formatted = {$price :number style=currency currency=USD}
 ```
 
-**Pattern Matching with Numbers:**
-```go
-source := `.match {$count :number}
+Declarations are processed in order, so later declarations can depend on earlier ones.
+
+## Selection With `.match`
+
+Use `.match` with declared selectors:
+
+```text
+.input {$count :number}
+.match $count
 0   {{No items}}
 one {{One item}}
-*   {{{$count} items}}`
+*   {{{$count} items}}
 ```
 
-#### `:string` Function
+Important rule:
 
-The `:string` function handles string values and selection:
+- selectors in `.match` are written as `$count`, not `{$count}`
 
-```go
-source := `.match {$status :string}
-online  {{User is online}}
-offline {{User is offline}}
-*       {{Status unknown}}`
+Incorrect:
+
+```text
+.match {$count}
 ```
 
-**Note**: According to the TC39 Intl.MessageFormat proposal, only `:number` and `:string` are standard functions. Other functions like `:datetime`, `:date`, `:time`, `:integer` are not part of the official specification.
+Correct:
 
-## 🎯 Pattern Matching
+```text
+.match $count
+```
 
-Pattern matching allows messages to vary based on input values:
+Example:
 
 ```go
 source := `
 .input {$count :number}
 .match $count
-0   {{You have no new notifications}}
-one {{You have {$count} new notification}}
-*   {{You have {$count} new notifications}}
+0   {{No messages}}
+one {{One message}}
+*   {{{$count} messages}}
 `
 
-mf, _ := messageformat.New("en", source)
-result, _ := mf.Format(map[string]interface{}{
-    "count": 1,
-})
-// Output: You have ⁨1⁩ new notification
+mf, err := messageformat.New("en", source)
+if err != nil {
+	log.Fatal(err)
+}
+
+for _, count := range []int{0, 1, 5} {
+	out, err := mf.Format(map[string]any{"count": count})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(out)
+}
 ```
 
-### Complex Pattern Matching
+## Multiple Selectors
 
-```go
-source := `
+You can match on more than one selector:
+
+```text
+.input {$gender :string}
 .input {$count :number}
-.match $count
-0   {{Your inbox is empty}}
-one {{You have one unread message}}
-*   {{You have {$count} unread messages}}
-`
-
-mf, _ := messageformat.New("en", source)
+.match $gender $count
+male one   {{He has one item}}
+male *     {{He has {$count} items}}
+*    one   {{They have one item}}
+*    *     {{They have {$count} items}}
 ```
 
-## 🔤 Escape Sequences
+Each variant key position corresponds to one selector position.
 
-Special characters can be escaped when needed as literal text.
+## Built-in Functions
 
-### Escaping Braces
+Common built-in annotations:
 
-Use `{{` and `}}` to include literal braces:
-```go
-mf, _ := messageformat.New("en", "Code: {{function() { return {$value}; }}")
-// Output: Code: {function() { return ⁨42⁩; }
+- `:number`
+- `:integer`
+- `:string`
+- `:datetime`
+- `:date`
+- `:time`
+- `:currency`
+- `:percent`
+- `:offset`
+- `:unit`
+
+Examples:
+
+```text
+{$amount :number style=currency currency=USD}
+{$count :integer}
+{$createdAt :datetime dateStyle=full timeStyle=short}
 ```
 
-### Escaping in Patterns
+See [Formatting Functions](formatting-functions.md) for details and option behavior.
 
-Within pattern text, use backslash escaping:
-```go
-mf, _ := messageformat.New("en", `
-.input {$count :number}
-.match $count
-one {{You have \{one\} item}}
-*   {{You have \{{$count}\} items}}
-`)
+## Markup
+
+The parser also supports markup expressions:
+
+```text
+{#link}
+{/link}
+{#link /}
 ```
 
-### Reserved Characters
+These are useful when you want structured output through `FormatToParts`.
 
-These characters have special meaning and may need escaping:
-- `{` and `}` - Expression delimiters
-- `$` - Variable prefix
-- `:` - Function prefix
-- `|` - Literal delimiter
-- `*` - Wildcard selector
-- `.` - Declaration prefix
+## Whitespace
 
-### Whitespace Handling
+Whitespace inside patterns is preserved:
 
-Leading and trailing whitespace in patterns is preserved:
-```go
-mf, _ := messageformat.New("en", `
-.input {$count :number}
-.match $count
+```text
 one {{ You have one item }}
 *   {{ You have {$count} items }}
-`)
-// Note the spaces around the text
 ```
 
-## 🔄 Bidirectional Text
+Whitespace between selectors and variant keys is significant in `.match` blocks and must be present.
 
-MessageFormat 2.0 provides support for bidirectional text.
+## Escaping and Reserved Characters
 
-### Automatic Isolation
+Characters with syntax meaning include:
 
-By default, MessageFormat isolates variables to prevent text direction spillover:
+- `{` and `}`
+- `$`
+- `:`
+- `|`
+- `*`
+- `.`
+
+When you need literal values inside expressions, prefer pipe literals:
+
+```text
+{|{not syntax}|}
+```
+
+## Bidirectional Text
+
+The package supports bidirectional text, but the default is intentionally simple:
+
+- default: `messageformat.BidiNone`
+- opt-in isolation: `messageformat.BidiDefault`
+
+Default behavior:
 
 ```go
-// Arabic text with English variables
-mf, _ := messageformat.New("ar", "مرحبا {$name}!")
-result, _ := mf.Format(map[string]interface{}{
-    "name": "John",
-})
-// Output includes proper bidi isolation characters
+mf, err := messageformat.New("ar", "مرحبا {$name}!")
 ```
 
-### Bidi Isolation Options
-
-Control bidirectional text handling:
+Opt-in isolation:
 
 ```go
-// Disable bidi isolation
-mf, _ := messageformat.New("en", "Hello {$name}!", 
-    messageformat.WithBidiIsolation("none"))
-
-// Use compatibility mode (default)
-mf, _ := messageformat.New("en", "Hello {$name}!", 
-    messageformat.WithBidiIsolation("compatibility"))
+mf, err := messageformat.New(
+	"ar",
+	"مرحبا {$name}!",
+	messageformat.WithBidiIsolation(messageformat.BidiDefault),
+)
 ```
 
-### Text Direction
-
-Specify text direction explicitly:
+Explicit direction:
 
 ```go
-// Left-to-right
-mf, _ := messageformat.New("en", "Hello {$name}!", 
-    messageformat.WithDir("ltr"))
-
-// Right-to-left
-mf, _ := messageformat.New("ar", "مرحبا {$name}!", 
-    messageformat.WithDir("rtl"))
-
-// Auto-detect
-mf, _ := messageformat.New("en", "Hello {$name}!", 
-    messageformat.WithDir("auto"))
+mf, err := messageformat.New(
+	"ar",
+	"مرحبا {$name}!",
+	messageformat.WithDir(messageformat.DirRTL),
+)
 ```
 
-## 🎨 Advanced Examples
+Use typed options instead of old string literals. Prefer:
 
-### E-commerce Product Catalog
+- `messageformat.BidiNone`
+- `messageformat.BidiDefault`
+- `messageformat.DirLTR`
+- `messageformat.DirRTL`
+- `messageformat.DirAuto`
 
-```go
-mf, _ := messageformat.New("en", `
-.input {$itemCount :number}
-.input {$totalPrice :number style=currency currency=USD}
-.input {$shippingCost :number style=currency currency=USD}
-.match $itemCount
-0 {{
-    Your cart is empty. Start shopping to see items here!
-}}
-one {{
-    You have {$itemCount} item in your cart.
-    Subtotal: {$totalPrice}
-    Shipping: {$shippingCost}
-    Total: {$totalPrice :number style=currency currency=USD}
-}}
-* {{
-    You have {$itemCount} items in your cart.
-    Subtotal: {$totalPrice}
-    Shipping: {$shippingCost}
-    Total: {$totalPrice :number style=currency currency=USD}
-}}
-`)
+## Error Behavior
+
+Syntax errors preserve specific categories such as:
+
+- `missing-syntax`
+- `bad-selector`
+- `extra-content`
+- `bad-input-expression`
+
+That means malformed `.match` selectors and missing syntax are reported with more precise error types instead of being flattened into a generic parse error.
+
+## Examples
+
+### Currency in a message
+
+```text
+Your balance is {$amount :number style=currency currency=EUR}
 ```
 
-### Social Media Notifications
+### Status selection
 
-```go
-mf, _ := messageformat.New("en", `
-.input {$actorGender :string}
-.input {$actionType :string}
-.input {$objectCount :number}
-.match $actionType $actorGender $objectCount
-like male 1 {{{$actor} liked your post}}
-like female 1 {{{$actor} liked your post}}
-like * 1 {{{$actor} liked your post}}
-like male * {{{$actor} liked {$objectCount} of your posts}}
-like female * {{{$actor} liked {$objectCount} of your posts}}
-like * * {{{$actor} liked {$objectCount} of your posts}}
-comment male 1 {{{$actor} commented on your post}}
-comment female 1 {{{$actor} commented on your post}}
-comment * 1 {{{$actor} commented on your post}}
-comment male * {{{$actor} commented on {$objectCount} of your posts}}
-comment female * {{{$actor} commented on {$objectCount} of your posts}}
-comment * * {{{$actor} commented on {$objectCount} of your posts}}
-* * * {{{$actor} performed an action}}
-`)
+```text
+.input {$status :string}
+.match $status
+online  {{User is online}}
+offline {{User is offline}}
+*       {{Status unknown}}
 ```
 
-### Financial Dashboard
+### Count and gender selection
 
-```go
-mf, _ := messageformat.New("en", `
-.input {$accountType :string}
-.input {$balance :number style=currency currency=USD}
-.input {$changePercent :number style=percent}
-.input {$trend :string}
-.match $accountType $trend
-checking positive {{
-    Checking Account: {$balance}
-    ↗ Up {$changePercent} this month
-}}
-checking negative {{
-    Checking Account: {$balance}
-    ↘ Down {$changePercent} this month
-}}
-savings positive {{
-    Savings Account: {$balance}
-    ↗ Gained {$changePercent} this month
-}}
-savings negative {{
-    Savings Account: {$balance}
-    ↘ Lost {$changePercent} this month
-}}
-investment positive {{
-    Investment Portfolio: {$balance}
-    ↗ Gained {$changePercent} this month
-}}
-investment negative {{
-    Investment Portfolio: {$balance}
-    ↘ Lost {$changePercent} this month
-}}
-* * {{
-    Account Balance: {$balance}
-    Change: {$changePercent}
-}}
-`)
+```text
+.input {$gender :string}
+.input {$count :number}
+.match $gender $count
+male one {{He sent one message}}
+male *   {{He sent {$count} messages}}
+*    one {{They sent one message}}
+*    *   {{They sent {$count} messages}}
 ```
-
-### Multilingual Support
-
-```go
-// English
-enMessage := `
-.input {$fileCount :number}
-.input {$totalSize :number}
-.match $fileCount
-0 {{No files selected}}
-one {{Selected {$fileCount} file ({$totalSize} bytes)}}
-* {{Selected {$fileCount} files ({$totalSize} bytes total)}}
-`
-
-// Spanish
-esMessage := `
-.input {$fileCount :number}
-.input {$totalSize :number}
-.match $fileCount
-0 {{Ningún archivo seleccionado}}
-one {{Seleccionado {$fileCount} archivo ({$totalSize} bytes)}}
-* {{Seleccionados {$fileCount} archivos ({$totalSize} bytes en total)}}
-`
-
-// French
-frMessage := `
-.input {$fileCount :number}
-.input {$totalSize :number}
-.match $fileCount
-0 {{Aucun fichier sélectionné}}
-one {{Fichier sélectionné: {$fileCount} ({$totalSize} octets)}}
-* {{Fichiers sélectionnés: {$fileCount} ({$totalSize} octets au total)}}
-`
-
-// Usage
-messages := map[string]string{
-    "en": enMessage,
-    "es": esMessage,
-    "fr": frMessage,
-}
-
-for locale, message := range messages {
-    mf, _ := messageformat.New(locale, message)
-    result, _ := mf.Format(map[string]interface{}{
-        "fileCount": 3,
-        "totalSize": 1024000,
-    })
-    fmt.Printf("%s: %s\n", locale, result)
-}
-```
-
-## Summary
-
-This syntax guide should help you master MessageFormat 2.0. For more specific information about functions and error handling, see the other documentation sections. 

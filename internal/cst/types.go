@@ -3,6 +3,7 @@
 package cst
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
@@ -36,7 +37,7 @@ func (m *SimpleMessage) Type() string { return "simple" }
 
 // Errors returns syntax errors
 // TypeScript original code: errors: MessageSyntaxError[]
-func (m *SimpleMessage) Errors() []*errors.MessageSyntaxError { return m.errors }
+func (m *SimpleMessage) Errors() []*errors.MessageSyntaxError { return slices.Clone(m.errors) }
 
 // Pattern returns the message pattern
 // TypeScript original code: pattern: Pattern
@@ -67,7 +68,7 @@ func (m *ComplexMessage) Type() string { return "complex" }
 
 // Errors returns syntax errors
 // TypeScript original code: errors: MessageSyntaxError[]
-func (m *ComplexMessage) Errors() []*errors.MessageSyntaxError { return m.errors }
+func (m *ComplexMessage) Errors() []*errors.MessageSyntaxError { return slices.Clone(m.errors) }
 
 // Pattern returns the message pattern
 // TypeScript original code: pattern: Pattern
@@ -102,7 +103,7 @@ func (m *SelectMessage) Type() string { return "select" }
 
 // Errors returns syntax errors
 // TypeScript original code: errors: MessageSyntaxError[]
-func (m *SelectMessage) Errors() []*errors.MessageSyntaxError { return m.errors }
+func (m *SelectMessage) Errors() []*errors.MessageSyntaxError { return slices.Clone(m.errors) }
 
 // Declarations returns the message declarations
 // TypeScript original code: declarations: Declaration[]

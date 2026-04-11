@@ -93,7 +93,15 @@ func TestNew(t *testing.T) {
 			source:      "Hello {$name", // Missing closing brace
 			options:     nil,
 			expectError: true,
-			errorMsg:    "parse-error",
+			errorMsg:    "missing }",
+		},
+		{
+			name:        "selector syntax keeps bad-selector type",
+			locales:     "en",
+			source:      ".match {$count} * {{one}}",
+			options:     nil,
+			expectError: true,
+			errorMsg:    "bad-selector",
 		},
 		{
 			name:        "complex pattern with functions",
@@ -133,6 +141,16 @@ func TestNewWithDataModelMessage(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, mf)
 	assert.Equal(t, []string{"en"}, mf.locales)
+}
+
+func TestNewLocalesDefensiveCopy(t *testing.T) {
+	locales := []string{"en", "fr"}
+	mf, err := New(locales, "Hello", nil)
+	require.NoError(t, err)
+	require.NotNil(t, mf)
+
+	locales[0] = "zh"
+	assert.Equal(t, []string{"en", "fr"}, mf.locales)
 }
 
 // Format API Tests

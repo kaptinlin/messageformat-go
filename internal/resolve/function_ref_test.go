@@ -8,12 +8,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/kaptinlin/messageformat-go/internal/cst"
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	pkgErrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
+
+type mockInvalidOperandNode struct{}
+
+func (m *mockInvalidOperandNode) Type() string  { return "invalid-operand" }
+func (m *mockInvalidOperandNode) CST() cst.Node { return nil }
 
 // TestCustomFunction tests custom function implementation
 // TypeScript original code:
@@ -597,4 +603,28 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 		assert.True(t, errorCalled)
 		assert.Equal(t, "unknown-function", errorType)
 	})
+}
+
+func TestResolveFunctionRefInternal_PreservesCauseForBadOperand(t *testing.T) {
+	ctx := NewContext(
+		[]string{"en"},
+		map[string]functions.MessageFunction{
+			"number": functions.NumberFunction,
+		},
+		map[string]any{},
+		nil,
+	)
+
+	operand := &mockInvalidOperandNode{}
+	funcRef := datamodel.NewFunctionRef("number", nil)
+
+	_, err := resolveFunctionRefInternal(ctx, operand, funcRef, "$missing")
+	require.Error(t, err)
+
+	resErr, ok := errors.AsType[*pkgErrors.MessageResolutionError](err)
+	require.True(t, ok)
+	assert.Equal(t, pkgErrors.ErrorTypeBadOperand, resErr.ErrorType())
+	require.Error(t, resErr.Unwrap())
+
+	assert.Contains(t, resErr.Unwrap().Error(), "unsupported value")
 }
