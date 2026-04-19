@@ -32,8 +32,8 @@ jobs:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download dependencies
-        run: go mod download
+      - name: Install dependencies
+        run: task deps
 
       - name: Run unit tests
         run: task test
@@ -63,20 +63,10 @@ jobs:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download dependencies
-        run: go mod download
+      - name: Install dependencies
+        run: task deps
 
-      - name: Read golangci-lint version from .golangci.version
-        id: golangci-version
-        run: echo "GOLANGCI_VERSION=$(cat .golangci.version 2>/dev/null || echo '2.9.0')" >> "$GITHUB_OUTPUT"
-
-      - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v${{ steps.golangci-version.outputs.GOLANGCI_VERSION }}
-          args: -h
-
-      - name: Run lint task
+      - name: Run linters
         run: task lint
 
 
