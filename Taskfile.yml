@@ -63,18 +63,12 @@ tasks:
       - echo "Running all tests..."
       - go test -race ./...
 
-  test-v1:
-    desc: Run V1 tests only
-    cmds:
-      - echo "Running V1 tests..."
-      - go test -race ./v1/...
-
   test-v2:
-    desc: Run V2 tests only (includes official test suite)
+    desc: Run package tests and the official test suite
     deps:
       - submodules
     cmds:
-      - echo "Running V2 tests..."
+      - echo "Running package and official tests..."
       - go test -race ./pkg/... ./internal/... ./tests/... .
 
   test-official:
@@ -185,16 +179,10 @@ tasks:
   examples:
     desc: Run all examples
     cmds:
-      - echo "Running V2 examples..."
+      - echo "Running examples..."
       - cd examples/basic && go run main.go
       - cd examples/advanced && go run main.go
       - cd examples/custom-functions && go run main.go
       - cd examples/pluralization && go run main.go
-      - echo ""
-      - echo "Running V1 examples..."
-      - cd v1/examples/basic && go run main.go
-      - cd v1/examples/ecommerce && go run main.go
-      - cd v1/examples/multilingual && go run main.go
-      - cd v1/examples/performance && go run main.go
       - echo ""
       - echo "All examples completed successfully"

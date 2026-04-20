@@ -30,12 +30,6 @@ issues:
         - gosec
         - staticcheck
         - gci
-    - path: v1/
-      linters:
-        - revive
-        - gosec
-        - staticcheck
-        - gci
     - path: _test\.go
       linters:
         - all

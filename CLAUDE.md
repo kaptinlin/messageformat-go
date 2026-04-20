@@ -1,6 +1,6 @@
 # MessageFormat Go
 
-Go implementation of Unicode MessageFormat 2.0 specification with 100% spec compliance. Dual implementation: v2 (MessageFormat 2.0, root directory) is production-ready and recommended; v1 (ICU MessageFormat, v1/ subdirectory) is maintenance-only for legacy compatibility.
+Go implementation of Unicode MessageFormat 2.0 specification with 100% spec compliance.
 
 **Reference implementation:** TypeScript messageformat library — API compatibility target with identical method signatures and behavior.
 
@@ -8,13 +8,12 @@ Go implementation of Unicode MessageFormat 2.0 specification with 100% spec comp
 
 ```bash
 # Primary workflow
-task test              # Run all tests (v1 + v2) with race detection
+task test              # Run all tests with race detection
 task lint              # Run golangci-lint + go mod tidy check
 task verify            # Full verification: deps, fmt, vet, lint, test
 
 # Version-specific testing
-task test-v2           # Run v2 tests + official MessageFormat 2.0 test suite
-task test-v1           # Run v1 tests only
+task test-v2           # Run package tests + official MessageFormat 2.0 test suite
 task test-official     # Run official Unicode test suite only
 task test-coverage     # Generate coverage report (coverage.html)
 
@@ -22,7 +21,7 @@ task test-coverage     # Generate coverage report (coverage.html)
 task fmt               # Format code
 task vet               # Run go vet
 task bench             # Run benchmarks
-task examples          # Run all examples (v1 + v2)
+task examples          # Run all examples
 task deps              # Download and tidy dependencies
 task clean             # Clean build artifacts
 
@@ -50,7 +49,7 @@ messageformat-go/
 │   ├── resolve/          # Expression resolution and context handling
 │   └── selector/         # Pattern selection for .match statements
 ├── tests/                # Official MessageFormat 2.0 test suite
-└── v1/                   # Legacy ICU MessageFormat (maintenance-only)
+└── examples/             # Example programs
 ```
 
 ### Key Types and Interfaces
@@ -92,7 +91,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - **Two-Phase Processing** — Clean separation: CST parsing → DataModel conversion → Resolution/Formatting. Each phase has clear boundaries and responsibilities.
 - **KISS** — Simple, focused implementations. No premature abstractions. Three similar lines are better than a helper used once.
 - **DRY** — Shared function registry, unified error types, reusable resolution context across all message types.
-- **YAGNI** — Only implement what's currently needed. v1 is maintenance-only; v2 focuses on spec compliance, not feature creep.
+- **YAGNI** — Only implement what's currently needed. Focus on spec compliance, not feature creep.
 
 ## Coding Rules
 
@@ -132,7 +131,6 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - No `panic` in production code — all errors returned via `error`
 - No dynamic error creation — use static error variables for lint compliance
 - No premature abstraction — implement only what's currently needed
-- No v1 feature additions — v1 is maintenance-only (bug fixes and security updates)
 - No breaking changes to TypeScript-compatible API — maintain method signature compatibility
 
 ## Testing
@@ -184,17 +182,9 @@ All errors are static package-level variables to prevent information leakage and
 
 ## Performance
 
-### v2 Optimization Guidelines
-
 - **Pre-compile regex** — Package-level regex compilation for validation patterns
 - **Minimize allocations** — Use value types where possible, avoid unnecessary copying
 - **Benchmark critical paths** — Run `task bench` for formatting functions and resolution logic
-
-### v1 Performance (Maintenance-only)
-
-- Uses `sync.Pool` for frequently allocated objects in hot paths
-- 80%+ performance improvements over original implementation
-- Performance optimizations acceptable; no new features
 
 ## Linting
 
@@ -208,43 +198,24 @@ golangci-lint v2.9.0. Config in `.golangci.yml`.
 
 GitHub Actions workflows:
 
-- **main.yml** — Primary CI/CD (test-v2, lint-v2, test-v1, lint-v1, security)
-- **v1-maintenance.yml** — v1 legacy support (cross-platform, performance regression)
-- **release.yml** — Automated releases for v1.* and v2.* tags
+- **ci.yml** — Primary CI/CD (tests, lint, security)
 
-Triggers: Push to main, PRs, version tags (v1.*, v2.*)
+Triggers: Push to main and PRs
 
 ## Development Workflow
 
-### For v2 Development (Recommended)
+### Development
 
 ```bash
-git checkout -b feature/new-v2-feature
-# Work in root directory
 task test && task lint
-git commit -m "feat: add new v2 feature"
-```
-
-### For v1 Maintenance (Bug Fixes Only)
-
-```bash
-git checkout -b fix/v1-critical-bug
-cd v1
-# Make minimal changes
-task test && task lint
-git commit -m "fix(v1): resolve critical bug"
+git commit -m "feat: add new feature"
 ```
 
 ### Release Process
 
 ```bash
-# For v2 releases
 git tag v2.1.0
 git push origin v2.1.0
-
-# For v1 maintenance releases
-git tag v1.3.1
-git push origin v1.3.1
 ```
 
 ## Agent Skills

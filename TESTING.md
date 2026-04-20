@@ -1,16 +1,15 @@
 # Testing Guide - MessageFormat Go
 
-This guide covers testing the MessageFormat Go library with its unified architecture.
+This guide covers testing the MessageFormat Go library.
 
 ## 📋 Testing Structure Overview
 
-This repository contains a unified MessageFormat implementation with both V1 and V2 functionality under single version management. Tests are organized to validate both implementations while maintaining unified versioning.
+This repository validates the current Unicode MessageFormat 2.0 implementation through API, package, and specification tests.
 
 ## 🏆 Specification Compliance
 
 - **MessageFormat 2.0**: Passes the official MessageFormat 2.0 test suite
-- **ICU MessageFormat (V1)**: Maintains compatibility with ICU specification and TypeScript messageformat.js library
-- **Unified Management**: Single go.mod and versioning for both implementations
+- **Unified Management**: Single go.mod and versioning for the current implementation
 
 ## 🚀 Quick Start
 
@@ -24,14 +23,14 @@ git submodule update --init --recursive
 ls tests/messageformat-wg/test/tests/
 ```
 
-**Requirements**: Go 1.25+, Git
+**Requirements**: Go 1.26.1+, Git
 
 ### Running Tests
 
 #### All Tests
 
 ```bash
-# Run all tests (V1 + V2) with race detection
+# Run all tests with race detection
 task test
 
 # Run with coverage report
@@ -41,13 +40,10 @@ task test-coverage
 task test-verbose
 ```
 
-#### Version-Specific Testing
+#### Focused Testing
 
 ```bash
-# V1 Tests (ICU MessageFormat)
-task test-v1
-
-# V2 Tests (MessageFormat 2.0, includes official test suite)
+# Run package and official MessageFormat 2.0 tests
 task test-v2
 
 # Official MessageFormat 2.0 test suite only
@@ -57,7 +53,7 @@ task test-official
 #### Examples and Benchmarks
 
 ```bash
-# Run all examples (V1 + V2)
+# Run all examples
 task examples
 
 # Run benchmarks
@@ -68,39 +64,29 @@ task bench
 
 ### Test Categories
 
-#### MessageFormat 2.0 Tests
-
 1. **Official Test Suite** (`./tests/`): Unicode MessageFormat Working Group tests
 2. **API Tests** (`messageformat_test.go`): Constructor and formatting methods
-3. **Feature Tests** (`features_test.go`): MessageFormat 2.0 feature compliance
-4. **Package Tests** (`./pkg/`, `./internal/`): Component-specific functionality
-
-#### ICU MessageFormat V1 Tests
-
-1. **Core API Tests** (`v1/messageformat_test.go`): Constructor and compilation
-2. **Parser Tests** (`v1/parse_test.go`): Message parsing and validation
-3. **Compatibility Tests** (`v1/typescript_compatibility_test.go`): TypeScript API compatibility
-4. **Performance Tests** (`v1/benchmarks_test.go`): Performance and memory optimization
+3. **Package Tests** (`./pkg/`, `./internal/`): Component-specific functionality
+4. **Repository Regression Tests** (`legacy_pruning_test.go`): Ensure legacy surfaces stay removed
 
 ### File Organization
 
 ```text
 messageformat-go/
-├── messageformat_test.go              # V2 API tests
-├── features_test.go                   # V2 feature compliance
-├── messageformat_bench_test.go        # V2 benchmarks
-├── tests/                             # V2 official test suite
+├── legacy_pruning_test.go            # Legacy-surface regression coverage
+├── messageformat_test.go             # API tests
+├── tests/                            # Official test suite
+│   ├── basic_test.go                 # Core behavior coverage
+│   ├── bench_test.go                 # Benchmark helpers
+│   ├── features_test.go              # Feature compliance coverage
 │   ├── messageformat-wg/             # Git submodule
-│   └── spec_test.go                  # V2 test runner
-├── pkg/                              # V2 package tests
+│   ├── spec_test.go                  # Official suite runner
+│   └── utils/                        # Test helpers
+├── pkg/                              # Package tests
 │   └── */*_test.go                   # Component tests
-├── internal/                         # V2 internal tests
+├── internal/                         # Internal tests
 │   └── */*_test.go                   # Internal tests
-└── v1/                               # V1 tests
-    ├── messageformat_test.go         # V1 API tests
-    ├── parse_test.go                 # V1 parser tests
-    ├── typescript_compatibility_test.go # V1 compatibility
-    └── benchmarks_test.go            # V1 benchmark tests
+└── examples/                         # Example programs
 ```
 
 ## 🔧 Development Commands
@@ -208,7 +194,7 @@ func TestFunctionName(t *testing.T) {
 ```bash
 # Essential commands
 task test           # Run all tests
-task test-v2        # V2 tests
+task test-v2        # Package and official tests
 task test-coverage  # With coverage
 task verify         # All quality checks
 task bench          # Benchmarks

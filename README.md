@@ -5,25 +5,17 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/kaptinlin/messageformat-go.svg)](https://pkg.go.dev/github.com/kaptinlin/messageformat-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kaptinlin/messageformat-go)](https://goreportcard.com/report/github.com/kaptinlin/messageformat-go)
 
-A Go implementation of Unicode MessageFormat 2.0 with a maintained ICU MessageFormat v1 compatibility package
+A Go implementation of Unicode MessageFormat 2.0.
 
 ## Features
 
 - **Unicode MessageFormat 2.0**: Parse, validate, and format messages using the current Unicode model.
 - **TypeScript-compatible API**: The public API is aligned with the reference TypeScript implementation where it matters.
-- **Dual track support**: Use v2 from the root package for new work, or keep legacy integrations on [`v1`](v1/README.md).
 - **Rich formatting**: Built-in support for numbers, integers, strings, dates, currencies, percentages, offsets, and units.
 - **Custom functions**: Register locale-aware formatters with `WithFunction` or `WithFunctions`.
 - **Structured output**: Render to strings with `Format` or rich parts with `FormatToParts`.
 - **Predictable defaults**: Instances are safe for concurrent use after construction and default to clean output without bidi isolation markers.
 - **Spec verification**: The repository includes the official MessageFormat Working Group test suite as a git submodule.
-
-## Version Guide
-
-| Package | Spec | Status | Recommended for |
-|--------|------|--------|-----------------|
-| `github.com/kaptinlin/messageformat-go` | Unicode MessageFormat 2.0 | Active | New projects |
-| `github.com/kaptinlin/messageformat-go/v1` | ICU MessageFormat | Maintenance-only | Existing legacy integrations |
 
 ## Installation
 
@@ -202,8 +194,7 @@ mf, err := messageformat.New("en", "Hello, {$name}!", &messageformat.MessageForm
 
 ```bash
 task test           # Run all tests with race detection
-task test-v2        # Run v2 tests and the official MessageFormat 2.0 suite
-task test-v1        # Run legacy v1 tests
+task test-v2        # Run the official MessageFormat 2.0 suite and package tests
 task test-official  # Run the official MessageFormat 2.0 suite only
 task lint           # Run golangci-lint and tidy checks
 task verify         # Run deps, fmt, vet, lint, test, and vuln
