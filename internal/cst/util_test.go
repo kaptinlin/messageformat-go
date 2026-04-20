@@ -296,7 +296,7 @@ func TestWhitespaces_ComplexMixtures(t *testing.T) {
 			source:      "\u2066 \u2067\t\u2068\nhello",
 			start:       0,
 			expectedWS:  true,
-			expectedEnd: 12, // 3 + 1 + 3 + 1 + 3 + 1 = 12
+			expectedEnd: 12, // total byte length of the bidi and whitespace prefix
 		},
 	}
 

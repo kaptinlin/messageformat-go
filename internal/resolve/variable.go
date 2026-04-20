@@ -104,9 +104,7 @@ func getValue(scope any, name string) any {
 				}
 			}
 		}
-
 	}
-
 	// Handle map[interface{}]interface{} types
 	if m, ok := scope.(map[any]any); ok {
 		if value, exists := m[name]; exists {

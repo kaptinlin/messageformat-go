@@ -1,4 +1,5 @@
-// Package messageformat provides the main MessageFormat 2.0 API
+// Package messageformat provides the main MessageFormat 2.0 API.
+// Construction failures are returned as error values.
 package messageformat
 
 import (
@@ -299,20 +300,6 @@ func New(
 	}
 
 	return mf, nil
-}
-
-// MustNew creates a new MessageFormat and panics if there's an error
-// This is a convenience function for cases where you're certain the input is valid
-func MustNew(
-	locales any, // string | []string | nil
-	source any, // string | datamodel.Message
-	options ...any, // *MessageFormatOptions or ...Option
-) *MessageFormat {
-	mf, err := New(locales, source, options...)
-	if err != nil {
-		panic(err)
-	}
-	return mf
 }
 
 // Format formats the message with the given values and optional error handler

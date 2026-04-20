@@ -1,6 +1,7 @@
 package selector
 
 import (
+	stdErrors "errors"
 	"fmt"
 	"testing"
 
@@ -42,8 +43,7 @@ func TestSelectPattern_NoMatchingVariant(t *testing.T) {
 	onError := func(err error) {
 		errorCalled = true
 		var selErr *errors.MessageSelectionError
-		if e, ok := err.(*errors.MessageSelectionError); ok {
-			selErr = e
+		if stdErrors.As(err, &selErr) {
 			errorType = selErr.ErrorType()
 		}
 	}

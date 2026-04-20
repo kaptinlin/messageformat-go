@@ -176,7 +176,7 @@ if err != nil {
 fmt.Println(out)
 ```
 
-Use `MustNew(...)` only when panicking on invalid templates is acceptable, such as package-level static initialization.
+Use `New(...)` for all construction paths and handle invalid templates through the returned error.
 
 ## Next Steps
 

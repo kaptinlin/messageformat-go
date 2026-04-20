@@ -3,27 +3,20 @@
 package cst
 
 import (
-	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/text/unicode/norm"
 )
 
-// bidiCharsRegex matches bidirectional control characters
-// TypeScript original code:
-// const bidiChars = /^[\u061c\u200e\u200f\u2066-\u2069]+/;
-var bidiCharsRegex = regexp.MustCompile("^[\u061C\u200E\u200F\u2066-\u2069]+")
-
-// nameCharsRegex matches valid name characters
-// TypeScript original code:
-// const nameChars = /^[-.+0-9A-Z_a-z\u{a1}-\u{61b}\u{61d}-\u{167f}\u{1681}-\u{1fff}\u{200b}-\u{200d}\u{2010}-\u{2027}\u{2030}-\u{205e}\u{2060}-\u{2065}\u{206a}-\u{2fff}\u{3001}-\u{d7ff}\u{e000}-\u{fdcf}\u{fdf0}-\u{fffd}\u{10000}-\u{1fffd}\u{20000}-\u{2fffd}\u{30000}-\u{3fffd}\u{40000}-\u{4fffd}\u{50000}-\u{5fffd}\u{60000}-\u{6fffd}\u{70000}-\u{7fffd}\u{80000}-\u{8fffd}\u{90000}-\u{9fffd}\u{a0000}-\u{afffd}\u{b0000}-\u{bfffd}\u{c0000}-\u{cfffd}\u{d0000}-\u{dfffd}\u{e0000}-\u{efffd}\u{f0000}-\u{ffffd}\u{100000}-\u{10fffd}]+/u;
-// Note: Go regex doesn't support Unicode code points > \uFFFF in character classes, so we use the BMP range
-var nameCharsRegex = regexp.MustCompile("^[-.+0-9A-Z_a-z\u00A1-\u061B\u061D-\u167F\u1681-\u1FFF\u200B-\u200D\u2010-\u2027\u2030-\u205E\u2060-\u2065\u206A-\u2FFF\u3001-\uD7FF\uE000-\uFDCF\uFDF0-\uFFFD]+")
-
-// notNameStartRegex matches characters that cannot start a name
-// TypeScript original code:
-// const notNameStart = /^[-.0-9]/;
-var notNameStartRegex = regexp.MustCompile(`^[-.0-9]`)
+// isBidiControl reports whether r is a bidirectional control character.
+func isBidiControl(r rune) bool {
+	switch r {
+	case 0x061C, 0x200E, 0x200F:
+		return true
+	}
+	return r >= 0x2066 && r <= 0x2069
+}
 
 // NameValue represents a parsed name value with its end position
 type NameValue struct {
@@ -61,44 +54,52 @@ func ParseNameValue(source string, start int) *NameValue {
 		return nil
 	}
 
-	// Skip initial bidi characters
-	if match := bidiCharsRegex.FindString(source[pos:]); match != "" {
-		pos += len(match)
-	}
-
+	pos = skipBidiControls(source, pos)
 	if pos >= len(source) {
 		return nil
 	}
 
-	// Match name characters
-	match := nameCharsRegex.FindString(source[pos:])
-	if match == "" {
+	name, end := parseName(source, pos)
+	if name == "" {
+		return nil
+	}
+	first, _ := utf8.DecodeRuneInString(name)
+	if !IsNameStartChar(first) {
 		return nil
 	}
 
-	// Check if name starts with invalid characters
-	if notNameStartRegex.MatchString(match) {
-		return nil
-	}
-
-	name := match
-	pos += len(match)
-
-	// Skip ending bidi characters
-	if pos < len(source) {
-		if endMatch := bidiCharsRegex.FindString(source[pos:]); endMatch != "" {
-			pos += len(endMatch)
-		}
-	}
-
-	// Normalize the name (Unicode NFC normalization)
-	// TypeScript: name.normalize() - applies NFC normalization
-	normalizedName := norm.NFC.String(name)
+	end = skipBidiControls(source, end)
 
 	return &NameValue{
-		Value: normalizedName,
-		End:   pos,
+		Value: norm.NFC.String(name),
+		End:   end,
 	}
+}
+
+func skipBidiControls(source string, start int) int {
+	pos := start
+	for pos < len(source) {
+		r, size := utf8.DecodeRuneInString(source[pos:])
+		if !isBidiControl(r) {
+			break
+		}
+		pos += size
+	}
+	return pos
+}
+
+func parseName(source string, start int) (string, int) {
+	pos := start
+	var result strings.Builder
+	for pos < len(source) {
+		r, size := utf8.DecodeRuneInString(source[pos:])
+		if !isNameChar(r) {
+			break
+		}
+		result.WriteRune(r)
+		pos += size
+	}
+	return result.String(), pos
 }
 
 // IsValidUnquotedLiteral checks if a string is a valid unquoted literal
@@ -136,17 +137,8 @@ func ParseUnquotedLiteralValue(source string, start int) string {
 		return ""
 	}
 
-	// Check character by character to handle both BMP and non-BMP characters
-	var result strings.Builder
-	for _, r := range source[start:] {
-		if isValidNameChar(r) {
-			result.WriteRune(r)
-		} else {
-			break
-		}
-	}
-
-	return result.String()
+	value, _ := parseName(source, start)
+	return value
 }
 
 // isNameChar checks if a rune is a valid name character
@@ -260,13 +252,6 @@ func IsNameStartChar(r rune) bool {
 	return isNameChar(r)
 }
 
-// For characters outside BMP, we'll use a fallback function
 func isValidNameChar(r rune) bool {
-	// First check if it matches the basic regex pattern
-	if r <= 0xFFFF {
-		return nameCharsRegex.MatchString(string(r))
-	}
-
-	// For characters outside BMP, use the isNameChar function
 	return isNameChar(r)
 }

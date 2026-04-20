@@ -48,17 +48,7 @@ mf, err := messageformat.New(
 )
 ```
 
-### `messageformat.MustNew`
-
-```go
-func MustNew(
-	locales any,
-	source any,
-	options ...any,
-) *MessageFormat
-```
-
-`MustNew` panics if construction fails. Use it only for static templates where panic is acceptable.
+`New(...)` is the only constructor API. Construction failures are always returned as `error` values.
 
 ## Formatting Methods
 

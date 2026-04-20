@@ -2,12 +2,13 @@ package utils
 
 import (
 	"fmt"
-	"github.com/go-json-experiment/json"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/go-json-experiment/json"
 )
 
 // TestParam represents a parameter in the test

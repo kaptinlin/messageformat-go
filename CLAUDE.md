@@ -10,7 +10,7 @@ Go implementation of Unicode MessageFormat 2.0 specification with 100% spec comp
 # Primary workflow
 task test              # Run all tests with race detection
 task lint              # Run golangci-lint + go mod tidy check
-task verify            # Full verification: deps, fmt, vet, lint, test
+task verify            # Full verification: deps, fmt, vet, lint, test, vuln
 
 # Version-specific testing
 task test-v2           # Run package tests + official MessageFormat 2.0 test suite
@@ -57,9 +57,9 @@ messageformat-go/
 ```go
 // Main API (root package)
 type MessageFormat struct { ... }
-func New(locales string, source string, opts ...Option) (*MessageFormat, error)
-func (mf *MessageFormat) Format(values map[string]interface{}) (string, error)
-func (mf *MessageFormat) FormatToParts(values map[string]interface{}) ([]messagevalue.MessagePart, error)
+func New(locales any, source any, options ...any) (*MessageFormat, error)
+func (mf *MessageFormat) Format(values map[string]any, options ...any) (string, error)
+func (mf *MessageFormat) FormatToParts(values map[string]any, options ...any) ([]messagevalue.MessagePart, error)
 
 // Core data model (pkg/datamodel)
 type Message struct { ... }        // Root message node
@@ -75,7 +75,7 @@ type MessageFunction func(
 
 // Built-in function registries
 var DefaultFunctions map[string]MessageFunction  // :integer, :number, :string, :offset
-var DraftFunctions map[string]MessageFunction    // :currency, :date, :datetime, :percent, :unit
+var DraftFunctions map[string]MessageFunction    // :currency, :date, :datetime, :math, :percent, :time, :unit
 ```
 
 ### Processing Flow

@@ -1184,7 +1184,7 @@ func TestConcurrentAccess(t *testing.T) {
 	}
 
 	// Collect results
-	var collectedResults []string
+	collectedResults := make([]string, 0, numGoroutines*numIterations)
 	for range numGoroutines * numIterations {
 		result := <-results
 		collectedResults = append(collectedResults, result)

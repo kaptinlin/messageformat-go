@@ -21,13 +21,7 @@ _ = mf
 
 Use `New(...)` when you want explicit error handling.
 
-`messageformat.MustNew(...)` wraps `New(...)` and panics on failure:
-
-```go
-var welcome = messageformat.MustNew("en", "Welcome, {$name}!")
-```
-
-Use `MustNew(...)` only for static templates where panic is acceptable, such as package initialization or test setup.
+Construction failures are always returned as `error` values, including package initialization and test setup.
 
 ## Main Error Categories
 
@@ -86,7 +80,10 @@ These do not usually cause `Format(...)` itself to fail. Instead, the formatter 
 Example:
 
 ```go
-mf := messageformat.MustNew("en", "Hello {$name} and {$missing}!")
+mf, err := messageformat.New("en", "Hello {$name} and {$missing}!")
+if err != nil {
+	log.Fatal(err)
+}
 
 out, err := mf.Format(map[string]any{"name": "Alice"})
 if err != nil {
@@ -114,7 +111,10 @@ If a selector fails during evaluation, the error can be reported and the formatt
 Use `messageformat.WithErrorHandler(...)` to observe recoverable runtime problems:
 
 ```go
-mf := messageformat.MustNew("en", "Hello {$name} and {$missing}!")
+mf, err := messageformat.New("en", "Hello {$name} and {$missing}!")
+if err != nil {
+	log.Fatal(err)
+}
 
 var warnings []error
 
@@ -178,13 +178,9 @@ This is especially useful when a higher-level formatting error wraps an underlyi
 
 Use `New(...)` when:
 
+- templates are static and checked during development
 - templates come from configuration, user input, or external files
 - you need explicit error propagation
-
-Use `MustNew(...)` when:
-
-- templates are static and checked during development
-- panic is acceptable during initialization
 
 Use `WithErrorHandler(...)` when:
 

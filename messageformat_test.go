@@ -1,6 +1,7 @@
 package messageformat
 
 import (
+	stdErrors "errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
+	pkgerrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
@@ -151,6 +153,69 @@ func TestNewLocalesDefensiveCopy(t *testing.T) {
 
 	locales[0] = "zh"
 	assert.Equal(t, []string{"en", "fr"}, mf.locales)
+}
+
+func TestNewErrorHandling(t *testing.T) {
+	tests := []struct {
+		name        string
+		locales     any
+		source      any
+		errorType   string
+		errorText   string
+		assertError func(t *testing.T, err error)
+	}{
+		{
+			name:      "returns syntax error for invalid locales type",
+			locales:   123,
+			source:    "Hello",
+			errorText: "locales must be string, []string, or nil",
+			assertError: func(t *testing.T, err error) {
+				t.Helper()
+				var syntaxErr *pkgerrors.MessageSyntaxError
+				require.ErrorAs(t, err, &syntaxErr)
+			},
+		},
+		{
+			name:      "returns syntax error for nil source",
+			locales:   "en",
+			source:    nil,
+			errorText: "source cannot be nil",
+			assertError: func(t *testing.T, err error) {
+				t.Helper()
+				var syntaxErr *pkgerrors.MessageSyntaxError
+				require.ErrorAs(t, err, &syntaxErr)
+			},
+		},
+		{
+			name:      "preserves selector syntax error type",
+			locales:   "en",
+			source:    ".match {$count} * {{one}}",
+			errorType: pkgerrors.ErrorTypeBadSelector,
+			assertError: func(t *testing.T, err error) {
+				t.Helper()
+				var syntaxErr *pkgerrors.MessageSyntaxError
+				require.ErrorAs(t, err, &syntaxErr)
+				assert.Equal(t, pkgerrors.ErrorTypeBadSelector, syntaxErr.ErrorType())
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mf, err := New(tc.locales, tc.source)
+			require.Error(t, err)
+			assert.Nil(t, mf)
+			if tc.errorType != "" {
+				var syntaxErr *pkgerrors.MessageSyntaxError
+				require.True(t, stdErrors.As(err, &syntaxErr))
+				assert.Equal(t, tc.errorType, syntaxErr.ErrorType())
+			}
+			if tc.errorText != "" {
+				assert.Contains(t, err.Error(), tc.errorText)
+			}
+			tc.assertError(t, err)
+		})
+	}
 }
 
 // Format API Tests

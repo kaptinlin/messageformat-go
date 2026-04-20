@@ -135,8 +135,23 @@ tasks:
     desc: Check if go.mod and go.sum are tidy
     cmds:
       - echo "Checking go.mod and go.sum are tidy..."
-      - go mod tidy
-      - git diff --exit-code -- go.mod go.sum
+      - |
+        tmp_mod=$(mktemp)
+        tmp_sum=$(mktemp)
+        trap 'rm -f "$tmp_mod" "$tmp_sum"' EXIT
+        cp go.mod "$tmp_mod"
+        if [ -f go.sum ]; then
+          cp go.sum "$tmp_sum"
+        else
+          : > "$tmp_sum"
+        fi
+        go mod tidy
+        if ! cmp -s go.mod "$tmp_mod" || ! cmp -s go.sum "$tmp_sum"; then
+          echo "go.mod or go.sum is not tidy"
+          git diff --no-index -- "$tmp_mod" go.mod || true
+          git diff --no-index -- "$tmp_sum" go.sum || true
+          exit 1
+        fi
 
   markdownlint:
     desc: Run markdownlint

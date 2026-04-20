@@ -72,13 +72,18 @@ ts/docs/
 
 # Scratch/planning docs
 .plans/
+.plan/*.md
 reports/
 PLAN*.md
+plan*.md
 IMPROVE.md
 IMPROVE*.md
+improve*.md
 REFACTOR.md
 REFACTOR*.md
+refactor*.md
 ANALYSIS.md
+TODO*.md
 
 # Meeting records
 .meetings/

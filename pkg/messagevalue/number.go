@@ -916,23 +916,23 @@ func (nv *NumberValue) parseUnitParts(formatted string) ([]MessagePart, error) {
 		numericParts := nv.parseNumericParts(numericPart)
 		parts = append(parts, numericParts...)
 
-		// Add literal space
-		parts = append(parts, &NumberSubPart{
-			partType: "literal",
-			value:    " ",
-			source:   nv.source,
-			locale:   nv.locale,
-			dir:      nv.dir,
-		})
-
-		// Add unit
-		parts = append(parts, &NumberSubPart{
-			partType: "unit",
-			value:    unitPart,
-			source:   nv.source,
-			locale:   nv.locale,
-			dir:      nv.dir,
-		})
+		// Add literal space and unit
+		parts = append(parts,
+			&NumberSubPart{
+				partType: "literal",
+				value:    " ",
+				source:   nv.source,
+				locale:   nv.locale,
+				dir:      nv.dir,
+			},
+			&NumberSubPart{
+				partType: "unit",
+				value:    unitPart,
+				source:   nv.source,
+				locale:   nv.locale,
+				dir:      nv.dir,
+			},
+		)
 	} else {
 		// No space found, parse as numeric
 		numericParts := nv.parseNumericParts(formatted)
@@ -952,9 +952,8 @@ func (nv *NumberValue) parseUnitParts(formatted string) ([]MessagePart, error) {
 
 // parseDecimalParts parses decimal formatted string into detailed parts
 func (nv *NumberValue) parseDecimalParts(formatted string) ([]MessagePart, error) {
-	var parts []MessagePart
-
 	numericParts := nv.parseNumericParts(formatted)
+	parts := make([]MessagePart, 0, len(numericParts))
 	parts = append(parts, numericParts...)
 
 	return []MessagePart{
@@ -1063,7 +1062,7 @@ func (nv *NumberValue) parseNumericParts(numeric string) []MessagePart {
 
 // parseIntegerWithGroups parses integer part with potential group separators
 func (nv *NumberValue) parseIntegerWithGroups(integer string) []MessagePart {
-	var parts []MessagePart
+	parts := make([]MessagePart, 0, 1)
 
 	// The integer string already contains formatted group separators from formatNumber()
 	// We return it as a single integer part for ToParts() output

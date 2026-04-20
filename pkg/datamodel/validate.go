@@ -1,6 +1,7 @@
 package datamodel
 
 import (
+	"encoding/binary"
 	"errors"
 	"hash/maphash"
 
@@ -506,20 +507,17 @@ func hashVariantKeys(seed maphash.Seed, keys []any) uint64 {
 		switch v := k.(type) {
 		case string:
 			// Write a type tag to distinguish string "0" from int 0.
-			h.WriteByte(1)
-			h.WriteString(v)
+			_ = h.WriteByte(1)
+			_, _ = h.WriteString(v)
 		default:
 			// Catchall key represented as int 0.
-			h.WriteByte(0)
+			_ = h.WriteByte(0)
 		}
 	}
 	// Mix in the length to avoid prefix collisions.
 	var buf [8]byte
-	n := uint64(len(keys))
-	for i := range buf {
-		buf[i] = byte(n >> (i * 8))
-	}
-	h.Write(buf[:])
+	binary.LittleEndian.PutUint64(buf[:], uint64(len(keys)))
+	_, _ = h.Write(buf[:])
 	return h.Sum64()
 }
 

@@ -1,6 +1,7 @@
 package resolve
 
 import (
+	stdErrors "errors"
 	"fmt"
 	"testing"
 
@@ -234,8 +235,7 @@ func TestResolveVariableRef_MissingVariables(t *testing.T) {
 	onError := func(err error) {
 		errorCalled = true
 		var resErr *errors.MessageResolutionError
-		if e, ok := err.(*errors.MessageResolutionError); ok {
-			resErr = e
+		if stdErrors.As(err, &resErr) {
 			errorType = resErr.ErrorType()
 		}
 	}
