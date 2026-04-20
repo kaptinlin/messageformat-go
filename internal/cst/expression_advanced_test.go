@@ -95,7 +95,6 @@ func TestParseAttribute(t *testing.T) {
 
 			assert.NotNil(t, attr)
 
-			// Build name from identifier parts
 			var name strings.Builder
 			for _, part := range attr.Name() {
 				name.WriteString(part.Value())
@@ -106,11 +105,8 @@ func TestParseAttribute(t *testing.T) {
 				assert.NotNil(t, attr.Value())
 				assert.Equal(t, tt.expectedValue, attr.Value().Value())
 				assert.NotNil(t, attr.Equals())
-			} else {
-				// When no value, both should be nil
-				if attr.Value() != nil {
-					assert.Nil(t, attr.Equals())
-				}
+			} else if attr.Value() != nil {
+				assert.Nil(t, attr.Equals())
 			}
 		})
 	}
@@ -474,36 +470,13 @@ func TestParseExpression_MissingClosingBrace(t *testing.T) {
 	assert.Equal(t, "missing-syntax", ctx.Errors()[0].Type)
 }
 
-func TestGetOptionName(t *testing.T) {
-	tests := []struct {
-		name     string
-		parts    Identifier
-		expected string
-	}{
-		{
-			name: "simple name",
-			parts: Identifier{
-				NewSyntax(0, 3, "key"),
-			},
-			expected: "key",
-		},
-		{
-			name: "namespaced name",
-			parts: Identifier{
-				NewSyntax(0, 2, "ns"),
-				NewSyntax(2, 3, ":"),
-				NewSyntax(3, 6, "key"),
-			},
-			expected: "ns:key",
-		},
-	}
+func TestParseFunctionRefOrMarkup_DuplicateNamespacedOptions(t *testing.T) {
+	ctx := NewParseContext(":func ns:key=1 ns:key=2", false)
+	result := parseFunctionRefOrMarkup(ctx, 0, "function")
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := getOptionName(tt.parts)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
+	assert.NotNil(t, result)
+	assert.NotEmpty(t, ctx.Errors())
+	assert.Equal(t, "duplicate-option-name", ctx.Errors()[0].Type)
 }
 
 func TestFunctionRef_Accessors(t *testing.T) {

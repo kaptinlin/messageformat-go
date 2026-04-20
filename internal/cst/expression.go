@@ -2,11 +2,7 @@
 // TypeScript original code: cst/expression.ts module
 package cst
 
-import (
-	"strings"
-
-	"github.com/kaptinlin/messageformat-go/pkg/errors"
-)
+import "github.com/kaptinlin/messageformat-go/pkg/errors"
 
 // parseExpression parses a placeholder expression
 // TypeScript original code:
@@ -61,35 +57,6 @@ import (
 //	  }
 //	  // ... rest of function
 //	}
-//
-// isDigit checks if a character is a digit
-func isDigit(ch byte) bool {
-	return ch >= '0' && ch <= '9'
-}
-
-// isIdentifierStart checks if a character can start an identifier
-func isIdentifierStart(ch byte) bool {
-	// Use the existing notNameStartRegex to check if character can start a name
-	// If it matches notNameStart (-.0-9), then it cannot start an identifier
-	return !notNameStartRegex.MatchString(string(ch)) &&
-		nameCharsRegex.MatchString(string(ch))
-}
-
-// parseVariableRef parses a variable reference without $ prefix
-func parseVariableRef(ctx *ParseContext, start int) *VariableRef {
-	source := ctx.Source()
-	name := ParseNameValue(source, start)
-	if name == nil {
-		ctx.OnError("empty-token", start, start+1)
-		return NewVariableRef(start, start, NewSyntax(start, start, ""), "")
-	}
-
-	// For unquoted identifiers, we don't have an explicit $ prefix
-	// So we create a VariableRef with an empty open syntax
-	open := NewSyntax(start, start, "")
-	return NewVariableRef(start, name.End, open, name.Value)
-}
-
 func parseExpression(ctx *ParseContext, start int) *Expression {
 	source := ctx.Source()
 	pos := start + 1 // '{'
@@ -97,34 +64,12 @@ func parseExpression(ctx *ParseContext, start int) *Expression {
 
 	var arg Node
 	if pos < len(source) {
-		ch := source[pos]
-		if ch == '$' {
-			// Explicit variable reference: {$name}
+		if source[pos] == '$' {
 			variable := ParseVariable(ctx, pos)
 			if variable != nil {
 				arg = variable
 			}
-		} else if ch == '|' {
-			// Quoted literal: {|text|} (MessageFormat 2.0 spec)
-			literal := ParseLiteral(ctx, pos, false)
-			if literal != nil {
-				arg = literal
-			}
-		} else if isDigit(ch) || ch == '-' || ch == '+' {
-			// Numeric literal: {123} {-456} {+789}
-			literal := ParseLiteral(ctx, pos, false)
-			if literal != nil {
-				arg = literal
-			}
-		} else if isIdentifierStart(ch) {
-			// Unquoted identifier = unquoted literal: {name} {count}
-			// According to MessageFormat 2.0 spec, these should be literals, not variable references
-			literal := ParseLiteral(ctx, pos, false)
-			if literal != nil {
-				arg = literal
-			}
 		} else {
-			// Fall back to literal parsing for other cases
 			literal := ParseLiteral(ctx, pos, false)
 			if literal != nil {
 				arg = literal
@@ -276,7 +221,7 @@ func parseFunctionRefOrMarkup(ctx *ParseContext, start int, nodeType string) Nod
 		}
 
 		// Check for duplicate option names
-		optionName := getOptionName(opt.Name())
+		optionName := opt.Name().String()
 		if optionNames[optionName] {
 			ctx.OnError("duplicate-option-name", opt.Start(), opt.End())
 		} else {
@@ -293,15 +238,6 @@ func parseFunctionRefOrMarkup(ctx *ParseContext, start int, nodeType string) Nod
 	}
 	open := NewSyntax(start, start+1, string(source[start]))
 	return NewMarkup(start, pos, open, id.Parts, options, close)
-}
-
-// getOptionName extracts the full option name from identifier parts
-func getOptionName(identifier Identifier) string {
-	var sb strings.Builder
-	for _, part := range identifier {
-		sb.WriteString(part.Value())
-	}
-	return sb.String()
 }
 
 // IdentifierResult represents the result of parsing an identifier
