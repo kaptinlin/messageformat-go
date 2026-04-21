@@ -48,9 +48,18 @@ messageformat-go/
 │   ├── cst/              # Concrete Syntax Tree parser
 │   ├── resolve/          # Expression resolution and context handling
 │   └── selector/         # Pattern selection for .match statements
+├── go.work               # Multi-module workspace wiring root and v1 together
+├── v1/                   # Supported MessageFormat v1 compatibility layer, kept as product code
 ├── tests/                # Official MessageFormat 2.0 test suite
 └── examples/             # Example programs
 ```
+
+### Module Layout
+
+- `github.com/kaptinlin/messageformat-go` — root module for MessageFormat 2.0
+- `github.com/kaptinlin/messageformat-go/v1` — separate sub-module for the supported MessageFormat v1 API
+- Use `go.work` for local development across both modules
+- Keep `v1` independently testable with `GOWORK=off`
 
 ### Key Types and Interfaces
 
@@ -90,6 +99,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - **TypeScript API Compatibility** — Maintains identical method signatures and behavior with TypeScript reference implementation. Every function includes original TypeScript code in comments for traceability.
 - **Specification Compliance** — Strict adherence to Unicode MessageFormat 2.0 specification. Official test suite (git submodule) validates 100% compliance.
 - **Two-Phase Processing** — Clean separation: CST parsing → DataModel conversion → Resolution/Formatting. Each phase has clear boundaries and responsibilities.
+- **Keep `v1` Intact** — The `v1/` package is a supported compatibility surface, not legacy code. Do not prune, delete, sideline, or treat it as dead code during cleanup, modernization, or refactoring.
 - **KISS** — Simple, focused implementations. No premature abstractions. Three similar lines are better than a helper used once.
 - **DRY** — Shared function registry, unified error types, reusable resolution context across all message types.
 - **YAGNI** — Only implement what's currently needed. Focus on spec compliance, not feature creep.
@@ -116,6 +126,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - **Static error definitions** — Define errors as package-level variables, never create dynamically
 - **Thread safety** — MessageFormat instances are immutable after construction, safe for concurrent use
 - **Error returns** — All errors returned via `error`, never panic in production code
+- **Preserve `v1` support** — Changes must keep `v1/` building and tested; do not remove or downgrade `v1` because it looks older than the root API
 - Follow Google Go Best Practices: <https://google.github.io/go-style/best-practices>
 - Follow Google Go Style Decisions: <https://google.github.io/go-style/decisions>
 
@@ -135,6 +146,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - No dynamic error creation — use static error variables for lint compliance
 - No premature abstraction — implement only what's currently needed
 - No breaking changes to TypeScript-compatible API — maintain method signature compatibility
+- Do not classify `v1/` as legacy, deprecated, or prune-only code unless the user explicitly requests a product-level deprecation plan
 
 ## Testing
 
