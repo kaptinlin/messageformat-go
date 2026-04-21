@@ -48,18 +48,10 @@ messageformat-go/
 │   ├── cst/              # Concrete Syntax Tree parser
 │   ├── resolve/          # Expression resolution and context handling
 │   └── selector/         # Pattern selection for .match statements
-├── go.work               # Multi-module workspace wiring root and v1 together
 ├── v1/                   # Supported MessageFormat v1 compatibility layer, kept as product code
 ├── tests/                # Official MessageFormat 2.0 test suite
 └── examples/             # Example programs
 ```
-
-### Module Layout
-
-- `github.com/kaptinlin/messageformat-go` — root module for MessageFormat 2.0
-- `github.com/kaptinlin/messageformat-go/v1` — separate sub-module for the supported MessageFormat v1 API
-- Use `go.work` for local development across both modules
-- Keep `v1` independently testable with `GOWORK=off`
 
 ### Key Types and Interfaces
 

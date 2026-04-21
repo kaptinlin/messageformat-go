@@ -27,10 +27,9 @@ go get github.com/kaptinlin/messageformat-go
 
 Requires **Go 1.26.2+**.
 
-This repository is a multi-module workspace:
+This repository keeps the MessageFormat 2.0 implementation and the supported `v1/` compatibility package in the same root Go module.
 
-- `github.com/kaptinlin/messageformat-go` for the MessageFormat 2.0 implementation
-- `github.com/kaptinlin/messageformat-go/v1` for the supported ICU MessageFormat v1 compatibility module
+For ICU MessageFormat v1 compatibility, import `github.com/kaptinlin/messageformat-go/v1` while versioning the root module.
 
 ## Quick Start
 
@@ -218,8 +217,6 @@ task lint           # Run golangci-lint and tidy checks
 task verify         # Run deps, fmt, vet, lint, test, and vuln
 task examples       # Run all example programs
 ```
-
-The repository uses `go.work` to develop the root module and `v1/` together. Validation for `v1` is still executed with `GOWORK=off` so the sub-module stays independently consumable.
 
 If this is a fresh clone, initialize the test suite submodule first:
 
