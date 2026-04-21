@@ -6,32 +6,26 @@ For runnable examples, see the root [README](../README.md) and the [`examples`](
 
 ## Constructors
 
-### `messageformat.New`
+### `messageformat.Parse`
 
 ```go
-func New(
-	locales any,
-	source any,
-	options ...any,
+func Parse(
+	locales []string,
+	source string,
+	options ...Option,
 ) (*MessageFormat, error)
 ```
-
-Accepted inputs:
-
-- `locales`: `string`, `[]string`, or `nil`
-- `source`: `string`, `datamodel.Message`, or `nil`
-- `options`: either `*MessageFormatOptions`, functional options, or none
 
 Typical usage:
 
 ```go
-mf, err := messageformat.New("en", "Hello, {$name}!")
+mf, err := messageformat.Parse([]string{"en"}, "Hello, {$name}!")
 ```
 
 With multiple locales:
 
 ```go
-mf, err := messageformat.New(
+mf, err := messageformat.Parse(
 	[]string{"zh-CN", "en"},
 	"Price: {$amount :number style=currency currency=USD}",
 )
@@ -40,15 +34,25 @@ mf, err := messageformat.New(
 With functional options:
 
 ```go
-mf, err := messageformat.New(
-	"ar",
+mf, err := messageformat.Parse(
+	[]string{"ar"},
 	"مرحبا {$name}!",
 	messageformat.WithBidiIsolation(messageformat.BidiDefault),
 	messageformat.WithDir(messageformat.DirRTL),
 )
 ```
 
-`New(...)` is the only constructor API. Construction failures are always returned as `error` values.
+### `messageformat.Compile`
+
+```go
+func Compile(
+	locales []string,
+	message datamodel.Message,
+	options ...Option,
+) (*MessageFormat, error)
+```
+
+Use `Compile(...)` when you already have a parsed public data model and want to skip reparsing source text.
 
 ## Formatting Methods
 
@@ -57,14 +61,13 @@ mf, err := messageformat.New(
 ```go
 func (mf *MessageFormat) Format(
 	values map[string]any,
-	options ...any,
+	options ...FormatOption,
 ) (string, error)
 ```
 
 Accepted format options:
 
 - `messageformat.WithErrorHandler(...)`
-- a raw `func(error)` callback for compatibility
 
 Example:
 
@@ -91,7 +94,7 @@ out, err := mf.Format(
 ```go
 func (mf *MessageFormat) FormatToParts(
 	values map[string]any,
-	options ...any,
+	options ...FormatOption,
 ) ([]messagevalue.MessagePart, error)
 ```
 
@@ -113,6 +116,9 @@ for _, part := range parts {
 ## Configuration
 
 ### `MessageFormatOptions`
+
+Use `messageformat.Options(messageformat.MessageFormatOptions{...})` to convert a config struct into an `Option`.
+
 
 ```go
 type MessageFormatOptions struct {

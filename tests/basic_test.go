@@ -10,7 +10,7 @@ import (
 
 func TestBasicFunctionality(t *testing.T) {
 	t.Run("simple text", func(t *testing.T) {
-		mf, err := messageformat.New("en", "Hello world!", nil)
+		mf, err := messageformat.Parse([]string{"en"}, "Hello world!")
 		require.NoError(t, err)
 
 		result, err := mf.Format(nil, nil)
@@ -22,7 +22,7 @@ func TestBasicFunctionality(t *testing.T) {
 		options := &messageformat.MessageFormatOptions{
 			BidiIsolation: messageformat.BidiNone,
 		}
-		mf, err := messageformat.New("en", "Hello {$name}!", options)
+		mf, err := messageformat.Parse([]string{"en"}, "Hello {$name}!", messageformat.Options(*options))
 		require.NoError(t, err)
 
 		params := map[string]any{
@@ -38,7 +38,7 @@ func TestBasicFunctionality(t *testing.T) {
 			Functions:     TestFunctions(),
 			BidiIsolation: messageformat.BidiNone,
 		}
-		mf, err := messageformat.New("en", "{42 :test}", options)
+		mf, err := messageformat.Parse([]string{"en"}, "{42 :test}", messageformat.Options(*options))
 		require.NoError(t, err)
 
 		result, err := mf.Format(nil, nil)

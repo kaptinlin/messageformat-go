@@ -31,7 +31,7 @@ task submodules        # Initialize git submodules (required for official tests)
 
 ## Architecture
 
-```
+```text
 messageformat-go/
 ├── messageformat.go       # Main MessageFormat 2.0 API
 ├── options.go            # Functional options pattern
@@ -57,9 +57,10 @@ messageformat-go/
 ```go
 // Main API (root package)
 type MessageFormat struct { ... }
-func New(locales any, source any, options ...any) (*MessageFormat, error)
-func (mf *MessageFormat) Format(values map[string]any, options ...any) (string, error)
-func (mf *MessageFormat) FormatToParts(values map[string]any, options ...any) ([]messagevalue.MessagePart, error)
+func Parse(locales []string, source string, options ...Option) (*MessageFormat, error)
+func Compile(locales []string, message datamodel.Message, options ...Option) (*MessageFormat, error)
+func (mf *MessageFormat) Format(values map[string]any, options ...FormatOption) (string, error)
+func (mf *MessageFormat) FormatToParts(values map[string]any, options ...FormatOption) ([]messagevalue.MessagePart, error)
 
 // Core data model (pkg/datamodel)
 type Message struct { ... }        // Root message node
@@ -80,7 +81,7 @@ var DraftFunctions map[string]MessageFunction    // :currency, :date, :datetime,
 
 ### Processing Flow
 
-```
+```text
 Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolution (internal/resolve) → MessageParts (pkg/messagevalue)
 ```
 
@@ -99,6 +100,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 
 - Go 1.26 — use modern language features (generics, slices/maps packages, clear(), for range N)
 - **TypeScript comment format** — Every function must include original TypeScript code:
+
   ```go
   // FunctionName describes what this function does
   // TypeScript original code:
@@ -107,14 +109,15 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
   // }
   func FunctionName(param Type) ReturnType { ... }
   ```
+
 - **All comments in English only** — No other languages in code comments
 - **testify for all tests** — Use `github.com/stretchr/testify/assert` and `testify/require`
 - **Table-driven tests** — Use subtests with `t.Run()` for multiple test cases
 - **Static error definitions** — Define errors as package-level variables, never create dynamically
 - **Thread safety** — MessageFormat instances are immutable after construction, safe for concurrent use
 - **Error returns** — All errors returned via `error`, never panic in production code
-- Follow Google Go Best Practices: https://google.github.io/go-style/best-practices
-- Follow Google Go Style Decisions: https://google.github.io/go-style/decisions
+- Follow Google Go Best Practices: <https://google.github.io/go-style/best-practices>
+- Follow Google Go Style Decisions: <https://google.github.io/go-style/decisions>
 
 ### Go 1.26 Features Used
 

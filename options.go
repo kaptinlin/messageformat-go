@@ -21,18 +21,38 @@ type FormatOptions struct {
 	OnError func(error)
 }
 
+// NewMessageFormatOptions applies functional options to a fresh MessageFormatOptions value.
+func NewMessageFormatOptions(options ...Option) *MessageFormatOptions {
+	return applyOptions(options...)
+}
+
+// NewFormatOptions applies functional options to a fresh FormatOptions value.
+func NewFormatOptions(options ...FormatOption) *FormatOptions {
+	return applyFormatOptions(options...)
+}
+
+// Options converts a configuration struct into a constructor option.
+func Options(options MessageFormatOptions) Option {
+	return func(opts *MessageFormatOptions) {
+		*opts = options
+		opts.bidiIsolationSet = options.BidiIsolation != ""
+	}
+}
+
 // WithBidiIsolation sets the bidi isolation strategy
 // TypeScript original code:
 // bidiIsolation?: 'default' | 'none';
 func WithBidiIsolation(strategy BidiIsolation) Option {
 	return func(opts *MessageFormatOptions) {
 		opts.BidiIsolation = strategy
+		opts.bidiIsolationSet = true
 	}
 }
 
 // WithBidiIsolationString sets the bidi isolation strategy from string (for backward compatibility)
 func WithBidiIsolationString(strategy string) Option {
 	return func(opts *MessageFormatOptions) {
+		opts.bidiIsolationSet = true
 		switch strategy {
 		case "default":
 			opts.BidiIsolation = BidiDefault
@@ -127,6 +147,9 @@ func WithLogger(logger *slog.Logger) Option {
 func applyOptions(options ...Option) *MessageFormatOptions {
 	opts := &MessageFormatOptions{}
 	for _, option := range options {
+		if option == nil {
+			continue
+		}
 		option(opts)
 	}
 	return opts
@@ -136,6 +159,9 @@ func applyOptions(options ...Option) *MessageFormatOptions {
 func applyFormatOptions(options ...FormatOption) *FormatOptions {
 	opts := &FormatOptions{}
 	for _, option := range options {
+		if option == nil {
+			continue
+		}
 		option(opts)
 	}
 	return opts

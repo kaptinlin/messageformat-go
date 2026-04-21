@@ -177,7 +177,7 @@ func main() {
 
 	// Example 1: Uppercase function
 	fmt.Println("1. Uppercase Function:")
-	mf1, err := messageformat.New("en", "Hello, {$name :uppercase}!",
+	mf1, err := messageformat.Parse([]string{"en"}, "Hello, {$name :uppercase}!",
 		messageformat.WithFunction("uppercase", uppercaseFunction),
 		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
@@ -197,7 +197,7 @@ func main() {
 
 	// Example 2: Reverse function
 	fmt.Println("2. Reverse Function:")
-	mf2, err := messageformat.New("en", "Original: {$text}, Reversed: {$text :reverse}",
+	mf2, err := messageformat.Parse([]string{"en"}, "Original: {$text}, Reversed: {$text :reverse}",
 		messageformat.WithFunction("reverse", reverseFunction),
 		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
@@ -217,7 +217,7 @@ func main() {
 
 	// Example 3: Emoji function with options
 	fmt.Println("3. Emoji Function with Options:")
-	mf3, err := messageformat.New("en", "Message: {$msg :emoji type=happy}",
+	mf3, err := messageformat.Parse([]string{"en"}, "Message: {$msg :emoji type=happy}",
 		messageformat.WithFunction("emoji", emojiFunction),
 		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
@@ -239,7 +239,7 @@ func main() {
 	fmt.Println("4. Multiple Emoji Types:")
 	emojiTypes := []string{"happy", "sad", "love", "fire", "star", "default"}
 	for _, emojiType := range emojiTypes {
-		mf, err := messageformat.New("en", fmt.Sprintf("Status: {$status :emoji type=%s}", emojiType),
+		mf, err := messageformat.Parse([]string{"en"}, fmt.Sprintf("Status: {$status :emoji type=%s}", emojiType),
 			messageformat.WithFunction("emoji", emojiFunction),
 			messageformat.WithBidiIsolation(messageformat.BidiNone),
 		)
@@ -259,7 +259,7 @@ func main() {
 
 	// Example 5: Time ago function
 	fmt.Println("5. Time Ago Function:")
-	mf5, err := messageformat.New("en", "Last seen: {$hours :timeago}",
+	mf5, err := messageformat.Parse([]string{"en"}, "Last seen: {$hours :timeago}",
 		messageformat.WithFunction("timeago", timeAgoFunction),
 		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
@@ -281,7 +281,7 @@ func main() {
 
 	// Example 6: Format function with alignment
 	fmt.Println("6. Format Function with Alignment:")
-	mf6, err := messageformat.New("en", "Name: [{$name :format width=15 align=right}]",
+	mf6, err := messageformat.Parse([]string{"en"}, "Name: [{$name :format width=15 align=right}]",
 		messageformat.WithFunction("format", formatFunction),
 		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
@@ -303,7 +303,7 @@ func main() {
 
 	// Example 7: Multiple custom functions in one message
 	fmt.Println("7. Multiple Custom Functions:")
-	mf7, err := messageformat.New("en", "User: {$user :uppercase}, Status: {$status :emoji type=star}, Last seen: {$hours :timeago}",
+	mf7, err := messageformat.Parse([]string{"en"}, "User: {$user :uppercase}, Status: {$status :emoji type=star}, Last seen: {$hours :timeago}",
 		messageformat.WithFunction("uppercase", uppercaseFunction),
 		messageformat.WithFunction("emoji", emojiFunction),
 		messageformat.WithFunction("timeago", timeAgoFunction),
@@ -326,7 +326,7 @@ func main() {
 
 	// Example 8: Error handling in custom functions
 	fmt.Println("8. Error Handling:")
-	mf8, err := messageformat.New("en", "Value: {$value :uppercase}",
+	mf8, err := messageformat.Parse([]string{"en"}, "Value: {$value :uppercase}",
 		messageformat.WithFunction("uppercase", uppercaseFunction),
 		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)

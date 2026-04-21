@@ -58,7 +58,7 @@ Variables always use the `$` prefix:
 Example:
 
 ```go
-mf, err := messageformat.New("en", "Hello, {$name}!")
+mf, err := messageformat.Parse([]string{"en"}, "Hello, {$name}!")
 if err != nil {
 	log.Fatal(err)
 }
@@ -150,7 +150,7 @@ one {{One message}}
 *   {{{$count} messages}}
 `
 
-mf, err := messageformat.New("en", source)
+mf, err := messageformat.Parse([]string{"en"}, source)
 if err != nil {
 	log.Fatal(err)
 }
@@ -255,14 +255,14 @@ The package supports bidirectional text, but the default is intentionally simple
 Default behavior:
 
 ```go
-mf, err := messageformat.New("ar", "مرحبا {$name}!")
+mf, err := messageformat.Parse([]string{"ar"}, "مرحبا {$name}!")
 ```
 
 Opt-in isolation:
 
 ```go
-mf, err := messageformat.New(
-	"ar",
+mf, err := messageformat.Parse(
+	[]string{"ar"},
 	"مرحبا {$name}!",
 	messageformat.WithBidiIsolation(messageformat.BidiDefault),
 )
@@ -271,8 +271,8 @@ mf, err := messageformat.New(
 Explicit direction:
 
 ```go
-mf, err := messageformat.New(
-	"ar",
+mf, err := messageformat.Parse(
+	[]string{"ar"},
 	"مرحبا {$name}!",
 	messageformat.WithDir(messageformat.DirRTL),
 )

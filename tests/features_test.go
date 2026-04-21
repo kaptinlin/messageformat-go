@@ -57,7 +57,7 @@ one {{You have {$count} new notification}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New("en", tc.message, nil)
+			mf, err := messageformat.Parse([]string{"en"}, tc.message)
 			require.NoError(t, err, "should parse message successfully")
 
 			result, err := mf.Format(tc.values)
@@ -93,7 +93,7 @@ func TestInputDeclarations(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New("en", tc.message, nil)
+			mf, err := messageformat.Parse([]string{"en"}, tc.message)
 			require.NoError(t, err, "should parse message successfully")
 
 			result, err := mf.Format(tc.values)
@@ -137,7 +137,7 @@ func TestLocalVariables(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New("en", tc.message, nil)
+			mf, err := messageformat.Parse([]string{"en"}, tc.message)
 			require.NoError(t, err, "should parse message successfully")
 
 			result, err := mf.Format(tc.values)
@@ -167,7 +167,7 @@ func TestCurrencyFormatting(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			message := fmt.Sprintf("Price: {$amount :number style=currency currency=%s}", tc.currency)
-			mf, err := messageformat.New(tc.locale, message, nil)
+			mf, err := messageformat.Parse([]string{tc.locale}, message)
 			require.NoError(t, err)
 
 			result, err := mf.Format(map[string]any{"amount": tc.amount})
@@ -197,7 +197,7 @@ func TestPercentageFormatting(t *testing.T) {
 				message = "Completion: {$rate :number style=percent}"
 			}
 
-			mf, err := messageformat.New("en", message, nil)
+			mf, err := messageformat.Parse([]string{"en"}, message)
 			require.NoError(t, err)
 
 			result, err := mf.Format(map[string]any{"rate": tc.value})
@@ -226,7 +226,7 @@ one {{You have {$count} item.}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New("en", message, nil)
+			mf, err := messageformat.Parse([]string{"en"}, message)
 			require.NoError(t, err)
 
 			result, err := mf.Format(map[string]any{"count": tc.count})
@@ -262,7 +262,7 @@ one {{plural one}}
 *   {{other}}`
 
 	t.Run("exact_priority", func(t *testing.T) {
-		mf, err := messageformat.New("en", priorityMessage, nil)
+		mf, err := messageformat.Parse([]string{"en"}, priorityMessage)
 		require.NoError(t, err)
 
 		result, err := mf.Format(map[string]any{"count": 1})
@@ -272,7 +272,7 @@ one {{plural one}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New("en", message, nil)
+			mf, err := messageformat.Parse([]string{"en"}, message)
 			require.NoError(t, err)
 
 			result, err := mf.Format(map[string]any{"count": tc.count})
@@ -315,7 +315,7 @@ user      {{👤 User}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New("en", tc.message, nil)
+			mf, err := messageformat.Parse([]string{"en"}, tc.message)
 			require.NoError(t, err)
 
 			result, err := mf.Format(map[string]any{tc.key: tc.value})
@@ -407,7 +407,7 @@ func TestCustomFunctions(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			opts := &messageformat.MessageFormatOptions{Functions: tc.functions}
-			mf, err := messageformat.New("en", tc.message, opts)
+			mf, err := messageformat.Parse([]string{"en"}, tc.message, messageformat.Options(*opts))
 			require.NoError(t, err)
 
 			result, err := mf.Format(tc.values)
@@ -455,7 +455,7 @@ func TestEscapeSequences(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New("en", tc.message, nil)
+			mf, err := messageformat.Parse([]string{"en"}, tc.message)
 			require.NoError(t, err, "should parse message with escape sequences")
 
 			result, err := mf.Format(tc.values)
@@ -491,7 +491,7 @@ func TestMarkupPlaceholders(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New("en", tc.message, nil)
+			mf, err := messageformat.Parse([]string{"en"}, tc.message)
 			require.NoError(t, err, "should parse markup syntax")
 
 			result, err := mf.Format(nil)
@@ -544,7 +544,7 @@ func TestMarkupFormatToParts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New("en", tc.message, nil)
+			mf, err := messageformat.Parse([]string{"en"}, tc.message)
 			require.NoError(t, err)
 
 			parts, err := mf.FormatToParts(nil)
@@ -615,7 +615,7 @@ func TestResolvedOptions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New(tc.locales, tc.message, tc.options)
+			mf, err := buildExternalTestMessageFormat(tc.locales, tc.message, tc.options)
 			require.NoError(t, err)
 
 			resolved := mf.ResolvedOptions()
@@ -677,10 +677,10 @@ func TestErrorHandling(t *testing.T) {
 				capturedError = err
 			}
 
-			mf, err := messageformat.New("en", tc.message, nil)
+			mf, err := messageformat.Parse([]string{"en"}, tc.message)
 			require.NoError(t, err, "should parse message")
 
-			result, err := mf.Format(tc.values, onError)
+			result, err := mf.Format(tc.values, messageformat.WithErrorHandler(onError))
 
 			if tc.expectError {
 				assert.Error(t, err, "should return error for invalid cases")
@@ -704,10 +704,10 @@ func TestErrorHandling(t *testing.T) {
 			errors = append(errors, err)
 		}
 
-		mf, err := messageformat.New("en", "Hello {$name}!", nil)
+		mf, err := messageformat.Parse([]string{"en"}, "Hello {$name}!")
 		require.NoError(t, err)
 
-		result, err := mf.Format(map[string]any{"name": "World"}, onError)
+		result, err := mf.Format(map[string]any{"name": "World"}, messageformat.WithErrorHandler(onError))
 		require.NoError(t, err)
 		assert.Equal(t, "Hello World!", result)
 		assert.Empty(t, errors, "no errors should be captured for valid formatting")
@@ -738,7 +738,7 @@ func TestMessageDataInterface(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New("en", tc.message, nil)
+			mf, err := messageformat.Compile([]string{"en"}, tc.message)
 			require.NoError(t, err, "should create MessageFormat with datamodel.Message")
 
 			assert.Equal(t, tc.message.Type(), "message")
@@ -776,7 +776,7 @@ func TestMessageDataInterface(t *testing.T) {
 
 		assert.Equal(t, selectMessage.Type(), "select")
 
-		_, err := messageformat.New("en", selectMessage, nil)
+		_, err := messageformat.Compile([]string{"en"}, selectMessage)
 		if err != nil {
 			// If validation fails, that's expected for this minimal example
 			assert.Contains(t, err.Error(), "missing-selector-annotation",
@@ -865,7 +865,7 @@ func TestBidirectionalTextSupport(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New(tc.locale, tc.message, tc.options)
+			mf, err := buildExternalTestMessageFormat(tc.locale, tc.message, tc.options)
 			require.NoError(t, err, "should create MessageFormat with RTL support")
 
 			result, err := mf.Format(tc.values)
@@ -951,7 +951,7 @@ func TestLocaleNegotiation(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New(tc.locales, tc.message, tc.options)
+			mf, err := buildExternalTestMessageFormat(tc.locales, tc.message, tc.options)
 			require.NoError(t, err, "should create MessageFormat with locale negotiation")
 
 			result, err := mf.Format(tc.values)
@@ -1000,7 +1000,7 @@ func TestFormatToParts(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New("en", tc.message, nil)
+			mf, err := messageformat.Parse([]string{"en"}, tc.message)
 			require.NoError(t, err)
 
 			parts, err := mf.FormatToParts(tc.values)
@@ -1140,7 +1140,7 @@ func TestEdgeCases(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := messageformat.New("en", tc.message, nil)
+			mf, err := messageformat.Parse([]string{"en"}, tc.message)
 			if tc.shouldError {
 				if err != nil {
 					return // Expected error during parsing
@@ -1162,7 +1162,7 @@ func TestEdgeCases(t *testing.T) {
 
 // TestConcurrentAccess tests concurrent access safety
 func TestConcurrentAccess(t *testing.T) {
-	mf, err := messageformat.New("en", "Hello {$name}!", nil)
+	mf, err := messageformat.Parse([]string{"en"}, "Hello {$name}!")
 	require.NoError(t, err)
 
 	const numGoroutines = 10
@@ -1325,7 +1325,7 @@ func TestComplexScenarios(t *testing.T) {
 				locale = "ar"
 			}
 
-			mf, err := messageformat.New(locale, tc.message, opts)
+			mf, err := buildExternalTestMessageFormat(locale, tc.message, opts)
 			require.NoError(t, err, "should parse complex message")
 
 			result, err := mf.Format(tc.values)

@@ -10,7 +10,7 @@ A Go implementation of Unicode MessageFormat 2.0.
 ## Features
 
 - **Unicode MessageFormat 2.0**: Parse, validate, and format messages using the current Unicode model.
-- **TypeScript-compatible API**: The public API is aligned with the reference TypeScript implementation where it matters.
+- **Go-first public API**: Strongly typed constructors and format options.
 - **Rich formatting**: Built-in support for numbers, integers, strings, dates, currencies, percentages, offsets, and units.
 - **Custom functions**: Register locale-aware formatters with `WithFunction` or `WithFunctions`.
 - **Structured output**: Render to strings with `Format` or rich parts with `FormatToParts`.
@@ -38,7 +38,7 @@ import (
 )
 
 func main() {
-	mf, err := messageformat.New("en", "Hello, {$name}!")
+	mf, err := messageformat.Parse([]string{"en"}, "Hello, {$name}!")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -56,7 +56,8 @@ func main() {
 
 | API | Purpose |
 |-----|---------|
-| `New(locales, source, options...)` | Parse and validate a message or reuse a prebuilt data model |
+| `Parse(locales, source, options...)` | Parse and validate a message from source text |
+| `Compile(locales, message, options...)` | Reuse a prebuilt data model |
 | `(*MessageFormat).Format(values, options...)` | Format to a string |
 | `(*MessageFormat).FormatToParts(values, options...)` | Format to structured parts |
 | `ParseMessage(source)` | Parse source into the public data model |
@@ -70,13 +71,13 @@ Full API details live on [pkg.go.dev](https://pkg.go.dev/github.com/kaptinlin/me
 Variables use the MessageFormat 2.0 form with a `$` prefix:
 
 ```go
-mf, err := messageformat.New("en", "Hello, {$name}!")
+mf, err := messageformat.Parse([]string{"en"}, "Hello, {$name}!")
 ```
 
 Select messages require declared selectors:
 
 ```go
-mf, err := messageformat.New("en", `
+mf, err := messageformat.Parse([]string{"en"}, `
 .input {$count :number}
 .match $count
 0   {{No items}}
@@ -92,8 +93,8 @@ The parser preserves syntax error types, so malformed selectors and missing synt
 ### Numbers and currencies
 
 ```go
-mf, err := messageformat.New(
-	"en",
+mf, err := messageformat.Parse(
+	[]string{"en"},
 	"Total: {$amount :number style=currency currency=USD}",
 )
 if err != nil {
@@ -111,7 +112,7 @@ fmt.Println(out)
 ### Structured parts
 
 ```go
-mf, err := messageformat.New("en", "Hello, {$name}!")
+mf, err := messageformat.Parse([]string{"en"}, "Hello, {$name}!")
 if err != nil {
 	log.Fatal(err)
 }
@@ -141,8 +142,8 @@ func uppercase(
 	)
 }
 
-mf, err := messageformat.New(
-	"en",
+mf, err := messageformat.Parse(
+	[]string{"en"},
 	"Hello, {$name :uppercase}!",
 	messageformat.WithFunction("uppercase", uppercase),
 )
@@ -161,21 +162,21 @@ This package deliberately chooses simple defaults:
 Use functional options when you want focused overrides:
 
 ```go
-mf, err := messageformat.New(
-	"ar",
+mf, err := messageformat.Parse(
+	[]string{"ar"},
 	"مرحبا {$name}!",
 	messageformat.WithBidiIsolation(messageformat.BidiDefault),
 	messageformat.WithDir(messageformat.DirRTL),
 )
 ```
 
-Or use the options struct when that reads better for your call site:
+Use `messageformat.Options(...)` when a struct is more convenient:
 
 ```go
-mf, err := messageformat.New("en", "Hello, {$name}!", &messageformat.MessageFormatOptions{
+mf, err := messageformat.Parse([]string{"en"}, "Hello, {$name}!", messageformat.Options(messageformat.MessageFormatOptions{
 	BidiIsolation: messageformat.BidiNone,
 	LocaleMatcher: messageformat.LocaleBestFit,
-})
+}))
 ```
 
 ## Documentation

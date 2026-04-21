@@ -15,6 +15,48 @@ import (
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
+func normalizeTestLocales(locales any) []string {
+	switch v := locales.(type) {
+	case nil:
+		return nil
+	case string:
+		if v == "" {
+			return nil
+		}
+		return []string{v}
+	case []string:
+		return v
+	default:
+		return nil
+	}
+}
+
+func buildTestMessageFormat(locales any, source any, options *MessageFormatOptions) (*MessageFormat, error) {
+	if normalizeTestLocales(locales) == nil {
+		switch locales.(type) {
+		case nil, string, []string:
+		default:
+			return nil, pkgerrors.NewCustomSyntaxError("locales must be string, []string, or nil")
+		}
+	}
+
+	opts := []Option{}
+	if options != nil {
+		opts = append(opts, Options(*options))
+	}
+
+	switch value := source.(type) {
+	case string:
+		return Parse(normalizeTestLocales(locales), value, opts...)
+	case datamodel.Message:
+		return Compile(normalizeTestLocales(locales), value, opts...)
+	case nil:
+		return nil, pkgerrors.NewCustomSyntaxError("source cannot be nil")
+	default:
+		return nil, pkgerrors.NewCustomSyntaxError("source must be string or datamodel.Message")
+	}
+}
+
 // Constructor API Tests
 
 // TestNew tests the New constructor with various inputs
@@ -116,7 +158,7 @@ func TestNew(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New(tc.locales, tc.source, tc.options)
+			mf, err := buildTestMessageFormat(tc.locales, tc.source, tc.options)
 
 			if tc.expectError {
 				require.Error(t, err)
@@ -139,7 +181,7 @@ func TestNewWithDataModelMessage(t *testing.T) {
 	})
 	message := datamodel.NewPatternMessage(nil, pattern, "")
 
-	mf, err := New("en", message, nil)
+	mf, err := Compile([]string{"en"}, message)
 	require.NoError(t, err)
 	require.NotNil(t, mf)
 	assert.Equal(t, []string{"en"}, mf.locales)
@@ -147,7 +189,7 @@ func TestNewWithDataModelMessage(t *testing.T) {
 
 func TestNewLocalesDefensiveCopy(t *testing.T) {
 	locales := []string{"en", "fr"}
-	mf, err := New(locales, "Hello", nil)
+	mf, err := Parse(locales, "Hello")
 	require.NoError(t, err)
 	require.NotNil(t, mf)
 
@@ -202,7 +244,7 @@ func TestNewErrorHandling(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New(tc.locales, tc.source)
+			mf, err := buildTestMessageFormat(tc.locales, tc.source, nil)
 			require.Error(t, err)
 			assert.Nil(t, mf)
 			if tc.errorType != "" {
@@ -289,10 +331,10 @@ func TestFormat(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.source, nil)
+			mf, err := Parse([]string{"en"}, tc.source)
 			require.NoError(t, err)
 
-			result, err := mf.Format(tc.values, tc.onError)
+			result, err := mf.Format(tc.values, WithErrorHandler(tc.onError))
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -333,10 +375,10 @@ func TestFormatToPartsAPI(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.source, nil)
+			mf, err := Parse([]string{"en"}, tc.source)
 			require.NoError(t, err)
 
-			parts, err := mf.FormatToParts(tc.values, nil)
+			parts, err := mf.FormatToParts(tc.values)
 			require.NoError(t, err)
 			assert.Len(t, parts, tc.expectedParts)
 
@@ -409,7 +451,11 @@ func TestMessageFormatOptions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", "Hello", tc.options)
+			opts := []Option{}
+			if tc.options != nil {
+				opts = append(opts, Options(*tc.options))
+			}
+			mf, err := Parse([]string{"en"}, "Hello", opts...)
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectedBidi, mf.bidiIsolation)
@@ -427,7 +473,7 @@ func TestResolvedOptionsAPI(t *testing.T) {
 		LocaleMatcher: LocaleLookup,
 	}
 
-	mf, err := New("en", "Hello", options)
+	mf, err := Parse([]string{"en"}, "Hello", Options(*options))
 	require.NoError(t, err)
 
 	resolved := mf.ResolvedOptions()
@@ -445,7 +491,7 @@ func TestResolvedOptionsAPI(t *testing.T) {
 
 // TestDefaultFunctions tests that default functions are available
 func TestDefaultFunctions(t *testing.T) {
-	mf, err := New("en", "Hello", nil)
+	mf, err := Parse([]string{"en"}, "Hello")
 	require.NoError(t, err)
 
 	expectedFunctions := []string{"string", "number", "integer"}
@@ -466,7 +512,7 @@ func TestCustomFunctionsAPI(t *testing.T) {
 		},
 	}
 
-	mf, err := New("en", "Hello", options)
+	mf, err := Parse([]string{"en"}, "Hello", Options(*options))
 	require.NoError(t, err)
 
 	// Custom function should be available
@@ -516,7 +562,7 @@ func TestLocaleHandling(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New(tc.locales, "Hello", nil)
+			mf, err := Parse(normalizeTestLocales(tc.locales), "Hello")
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedDir, mf.dir)
 		})
@@ -584,7 +630,7 @@ one *      {{They have one item}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.pattern)
+			mf, err := Parse([]string{"en"}, tc.pattern)
 			require.NoError(t, err)
 
 			result, err := mf.Format(tc.values)
@@ -600,7 +646,7 @@ func TestLocalDeclarations(t *testing.T) {
 .local $punctuation = {|!| :string}
 {{{$greeting}, {$name}{$punctuation}}}`
 
-	mf, err := New("en", pattern)
+	mf, err := Parse([]string{"en"}, pattern)
 	require.NoError(t, err)
 
 	result, err := mf.Format(map[string]any{"name": "World"})
@@ -618,17 +664,17 @@ func TestErrorCallback(t *testing.T) {
 		capturedErrors = append(capturedErrors, err)
 	}
 
-	mf, err := New("en", "Hello {$name}", nil)
+	mf, err := Parse([]string{"en"}, "Hello {$name}")
 	require.NoError(t, err)
 
 	// Valid case - no errors should be captured
-	result, err := mf.Format(map[string]any{"name": "World"}, onError)
+	result, err := mf.Format(map[string]any{"name": "World"}, WithErrorHandler(onError))
 	require.NoError(t, err)
 	assert.Equal(t, "Hello World", result)
 	assert.Empty(t, capturedErrors)
 
 	// Missing variable case - should still work with fallback
-	result, err = mf.Format(map[string]any{}, onError)
+	result, err = mf.Format(map[string]any{}, WithErrorHandler(onError))
 	require.NoError(t, err)
 	assert.Equal(t, "Hello {$name}", result)
 	// Error callback behavior may vary based on implementation
@@ -670,7 +716,7 @@ func TestInvalidPatterns(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mf, err := New("en", tc.pattern)
+			mf, err := Parse([]string{"en"}, tc.pattern)
 			switch {
 			case tc.expectParse:
 				// Should parse successfully but may fail at format time
@@ -697,7 +743,7 @@ func TestAPIEdgeCases(t *testing.T) {
 			longPattern.WriteString("{$var" + fmt.Sprintf("%d", i) + "} ")
 		}
 
-		mf, err := New("en", longPattern.String())
+		mf, err := Parse([]string{"en"}, longPattern.String())
 		require.NoError(t, err)
 
 		values := make(map[string]any)
@@ -712,7 +758,7 @@ func TestAPIEdgeCases(t *testing.T) {
 
 	t.Run("nested braces in text", func(t *testing.T) {
 		// Test escaped braces
-		mf, err := New("en", "Object: \\{key: {$value}\\}")
+		mf, err := Parse([]string{"en"}, "Object: \\{key: {$value}\\}")
 		require.NoError(t, err)
 
 		result, err := mf.Format(map[string]any{"value": "test"})
@@ -721,7 +767,7 @@ func TestAPIEdgeCases(t *testing.T) {
 	})
 
 	t.Run("unicode in patterns and values", func(t *testing.T) {
-		mf, err := New("zh-CN", "你好，{$name}！")
+		mf, err := Parse([]string{"zh-CN"}, "你好，{$name}！")
 		require.NoError(t, err)
 
 		result, err := mf.Format(map[string]any{"name": "世界"})
@@ -736,11 +782,11 @@ func TestTypeScriptCompatibility(t *testing.T) {
 	t.Run("offset function integration", func(t *testing.T) {
 		// Test that matches TypeScript behavior: offset function with add/subtract
 		pattern := `{$count :offset add=1} people liked this`
-		mf, err := New("en", pattern, &MessageFormatOptions{
+		mf, err := Parse([]string{"en"}, pattern, Options(MessageFormatOptions{
 			Functions: map[string]functions.MessageFunction{
 				"offset": functions.OffsetFunction,
 			},
-		})
+		}))
 		require.NoError(t, err)
 
 		result, err := mf.Format(map[string]any{"count": 5})
@@ -751,13 +797,13 @@ func TestTypeScriptCompatibility(t *testing.T) {
 	t.Run("error handling matches TypeScript patterns", func(t *testing.T) {
 		// Test that errors are handled the same way as TypeScript
 		pattern := `{$invalid :unknown}`
-		mf, err := New("en", pattern)
+		mf, err := Parse([]string{"en"}, pattern)
 		require.NoError(t, err)
 
 		var capturedErrors []error
-		result, err := mf.Format(map[string]any{}, func(err error) {
+		result, err := mf.Format(map[string]any{}, WithErrorHandler(func(err error) {
 			capturedErrors = append(capturedErrors, err)
-		})
+		}))
 
 		// Should not fail Format() but should capture errors
 		require.NoError(t, err)
@@ -768,7 +814,7 @@ func TestTypeScriptCompatibility(t *testing.T) {
 	t.Run("bidi isolation default behavior", func(t *testing.T) {
 		// Test default bidi isolation behavior matches TypeScript
 		pattern := `Hello {$name}!`
-		mf, err := New("ar", pattern) // RTL locale
+		mf, err := Parse([]string{"ar"}, pattern) // RTL locale
 		require.NoError(t, err)
 
 		result, err := mf.Format(map[string]any{"name": "عالم"})
@@ -780,9 +826,9 @@ func TestTypeScriptCompatibility(t *testing.T) {
 	t.Run("formatToParts structure matches TypeScript", func(t *testing.T) {
 		// Test that parts structure is similar to TypeScript implementation
 		pattern := `Hello {$name :string}!`
-		mf, err := New("en", pattern, &MessageFormatOptions{
+		mf, err := Parse([]string{"en"}, pattern, Options(MessageFormatOptions{
 			BidiIsolation: BidiNone, // Disable bidi isolation to match expected output
-		})
+		}))
 		require.NoError(t, err)
 
 		parts, err := mf.FormatToParts(map[string]any{"name": "World"})
@@ -799,7 +845,7 @@ func TestTypeScriptCompatibility(t *testing.T) {
 
 	t.Run("locale resolution matches TypeScript", func(t *testing.T) {
 		// Test that locale resolution behavior matches TypeScript
-		mf, err := New([]string{"en-US", "en", "fr"}, "Hello {$name}")
+		mf, err := Parse([]string{"en-US", "en", "fr"}, "Hello {$name}")
 		require.NoError(t, err)
 
 		// Should resolve options properly like TypeScript
@@ -816,9 +862,9 @@ func TestTypeScriptCompatibility(t *testing.T) {
 			},
 		}
 
-		mf, err := New("en", "{$val :test}", &MessageFormatOptions{
+		mf, err := Parse([]string{"en"}, "{$val :test}", Options(MessageFormatOptions{
 			Functions: customFuncs,
-		})
+		}))
 		require.NoError(t, err)
 
 		result, err := mf.Format(map[string]any{"val": "input"})
@@ -900,10 +946,10 @@ func TestBidiIsolationOptions(t *testing.T) {
 			options := &MessageFormatOptions{
 				BidiIsolation: tc.bidiIsolation,
 			}
-			mf, err := New("en", tc.source, options)
+			mf, err := Parse([]string{"en"}, tc.source, Options(*options))
 			require.NoError(t, err)
 
-			result, err := mf.Format(tc.values, nil)
+			result, err := mf.Format(tc.values)
 			require.NoError(t, err)
 
 			if tc.expectIsolation {
@@ -968,7 +1014,7 @@ func TestPatternSelectionFixes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mf, err := New("en", tt.source)
+			mf, err := Parse([]string{"en"}, tt.source)
 			require.NoError(t, err, "Failed to create MessageFormat for test: %s", tt.name)
 
 			result, err := mf.Format(tt.values)
@@ -1021,7 +1067,7 @@ func TestLocalDeclarationsFixes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mf, err := New("en", tt.source)
+			mf, err := Parse([]string{"en"}, tt.source)
 			require.NoError(t, err, "Failed to create MessageFormat for test: %s", tt.name)
 
 			result, err := mf.Format(tt.values)
@@ -1074,13 +1120,13 @@ func TestMissingVariableHandlingFixes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mf, err := New("en", tt.source)
+			mf, err := Parse([]string{"en"}, tt.source)
 			require.NoError(t, err, "Failed to create MessageFormat for test: %s", tt.name)
 
 			// Use error callback to suppress warnings during testing
-			result, err := mf.Format(tt.values, func(error) {
+			result, err := mf.Format(tt.values, WithErrorHandler(func(error) {
 				// Suppress warnings for missing variables in tests
-			})
+			}))
 			require.NoError(t, err, "Failed to format message for test: %s", tt.name)
 
 			assert.Equal(t, tt.expected, result, "Unexpected result for test: %s", tt.name)
@@ -1148,7 +1194,7 @@ func TestExpressionParsingFixes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mf, err := New("en", tt.source)
+			mf, err := Parse([]string{"en"}, tt.source)
 			require.NoError(t, err, "Failed to create MessageFormat for test: %s", tt.name)
 
 			result, err := mf.Format(tt.values)

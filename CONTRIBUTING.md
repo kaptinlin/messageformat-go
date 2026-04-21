@@ -14,29 +14,32 @@ Thank you for your interest in contributing to the MessageFormat 2.0 Go implemen
 ### Development Setup
 
 1. **Fork and Clone**
+
    ```bash
    # Fork the repository on GitHub, then clone your fork
    git clone --recurse-submodules https://github.com/YOUR_USERNAME/messageformat-go.git
    cd messageformat-go
-   
+
    # Add upstream remote
    git remote add upstream https://github.com/kaptinlin/messageformat-go.git
    ```
 
 2. **Initialize Submodules**
+
    ```bash
    # Required for official test suite
    git submodule update --init --recursive
    ```
 
 3. **Verify Setup**
+
    ```bash
    # Run all tests to ensure everything works
    go test ./...
-   
+
    # Check code formatting
    go fmt ./...
-   
+
    # Run linter
    go vet ./...
    ```
@@ -102,7 +105,7 @@ Then create a pull request on GitHub.
 
 We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
 
-```
+```text
 <type>[optional scope]: <description>
 
 [optional body]
@@ -142,7 +145,8 @@ test(functions): add comprehensive number formatting tests
    - Write clear, concise comments
 
 2. **Package Structure**
-   ```
+
+   ```text
    messageformat/
    ├── messageformat.go          # Main API
    ├── options.go               # Configuration options
@@ -169,10 +173,10 @@ test(functions): add comprehensive number formatting tests
    - Use similar option names and structures
    - Provide equivalent functionality
 
-2. **Backward Compatibility**
-   - Don't break existing APIs
-   - Use functional options for new features
-   - Deprecate features gracefully
+2. **Forward-Looking API Design**
+   - Prefer clearer APIs over compatibility shims
+   - Remove ambiguous entry points instead of preserving them
+   - Keep public signatures strongly typed
 
 ### Testing Requirements
 
@@ -189,6 +193,7 @@ test(functions): add comprehensive number formatting tests
    - Performance tests for critical paths
 
 3. **Test Naming**
+
    ```go
    func TestFunctionName(t *testing.T) {
        t.Run("specific case description", func(t *testing.T) {
@@ -221,21 +226,22 @@ go test ./tests/
 ### Writing Tests
 
 1. **Test Structure**
+
    ```go
    func TestNewFeature(t *testing.T) {
        t.Run("should handle valid input", func(t *testing.T) {
            // Arrange
            input := "test input"
            expected := "expected output"
-           
+
            // Act
            result, err := NewFeature(input)
-           
+
            // Assert
            require.NoError(t, err)
            assert.Equal(t, expected, result)
        })
-       
+
        t.Run("should return error for invalid input", func(t *testing.T) {
            // Test error cases
        })
@@ -266,6 +272,7 @@ The official MessageFormat 2.0 test suite is included as a git submodule. When c
 ### Code Documentation
 
 1. **Package Documentation**
+
    ```go
    // Package messageformat provides a complete implementation of MessageFormat 2.0
    // for internationalization (i18n) support in Go applications.
@@ -273,13 +280,15 @@ The official MessageFormat 2.0 test suite is included as a git submodule. When c
    ```
 
 2. **Function Documentation**
+
    ```go
-   // New creates a new MessageFormat instance with the specified locale and pattern.
-   // It returns an error if the pattern is invalid or the locale is not supported.
-   func New(locale, pattern string, options ...Option) (*MessageFormat, error) {
+   // Parse creates a new MessageFormat instance from source text and locales.
+   // It returns an error if the pattern is invalid.
+   func Parse(locales []string, source string, options ...Option) (*MessageFormat, error) {
    ```
 
 3. **Type Documentation**
+
    ```go
    // MessageFormat represents a compiled MessageFormat 2.0 pattern that can be
    // used to format messages with variable substitution and localization.
@@ -326,9 +335,9 @@ What should happen
 What actually happens
 
 ## Environment
-- Go version: 
-- OS: 
-- Library version: 
+- Go version:
+- OS:
+- Library version:
 
 ## Additional Context
 Any other relevant information
@@ -406,4 +415,4 @@ Contributors will be recognized in:
 - Release notes
 - Git commit history
 
-Thank you for contributing to MessageFormat 2.0 Go implementation! 
+Thank you for contributing to MessageFormat 2.0 Go implementation!

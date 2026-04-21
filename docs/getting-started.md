@@ -26,7 +26,7 @@ import (
 )
 
 func main() {
-	mf, err := messageformat.New("en", "Hello, {$name}!")
+	mf, err := messageformat.Parse([]string{"en"}, "Hello, {$name}!")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func main() {
 
 MessageFormat Go v2 revolves around three ideas:
 
-- a message is parsed once with `messageformat.New(...)`
+- a message is parsed once with `messageformat.Parse(...)`
 - variables are passed to `Format(...)` or `FormatToParts(...)`
 - selection logic is expressed in the template, not in surrounding application code
 
@@ -59,8 +59,8 @@ Hello, {$name}!
 Multiple variables:
 
 ```go
-mf, err := messageformat.New(
-	"en",
+mf, err := messageformat.Parse(
+	[]string{"en"},
 	"Hello {$firstName} {$lastName}! You have {$count :number} messages.",
 )
 ```
@@ -78,8 +78,8 @@ Built-in functions are attached inline:
 Example:
 
 ```go
-mf, err := messageformat.New(
-	"en",
+mf, err := messageformat.Parse(
+	[]string{"en"},
 	"Total: {$amount :number style=currency currency=USD}",
 )
 if err != nil {
@@ -107,7 +107,7 @@ one {{One item}}
 *   {{{$count} items}}
 `
 
-mf, err := messageformat.New("en", source)
+mf, err := messageformat.Parse([]string{"en"}, source)
 if err != nil {
 	log.Fatal(err)
 }
@@ -137,8 +137,8 @@ That means basic formatting does not insert bidi isolation markers unless you op
 If you need explicit isolation for mixed-direction output:
 
 ```go
-mf, err := messageformat.New(
-	"ar",
+mf, err := messageformat.Parse(
+	[]string{"ar"},
 	"مرحبا {$name}!",
 	messageformat.WithBidiIsolation(messageformat.BidiDefault),
 )
@@ -149,7 +149,7 @@ mf, err := messageformat.New(
 Construction errors are returned immediately:
 
 ```go
-mf, err := messageformat.New("en", ".match {$count}")
+mf, err := messageformat.Parse([]string{"en"}, ".match {$count}")
 if err != nil {
 	log.Fatal(err)
 }
@@ -158,7 +158,7 @@ if err != nil {
 Runtime issues are reported through fallbacks and optional error handlers:
 
 ```go
-mf, err := messageformat.New("en", "Hello {$name}")
+mf, err := messageformat.Parse([]string{"en"}, "Hello {$name}")
 if err != nil {
 	log.Fatal(err)
 }
@@ -176,7 +176,7 @@ if err != nil {
 fmt.Println(out)
 ```
 
-Use `New(...)` for all construction paths and handle invalid templates through the returned error.
+Use `Parse(...)` for source text and `Compile(...)` for an existing data model. Handle invalid templates through the returned error.
 
 ## Next Steps
 

@@ -74,8 +74,8 @@ func uppercase(
 }
 
 func main() {
-	mf, err := messageformat.New(
-		"en",
+	mf, err := messageformat.Parse(
+		[]string{"en"},
 		"Hello, {$name :uppercase}!",
 		messageformat.WithFunction("uppercase", uppercase),
 	)
@@ -152,8 +152,8 @@ Usage in a message:
 Register one function:
 
 ```go
-mf, err := messageformat.New(
-	"en",
+mf, err := messageformat.Parse(
+	[]string{"en"},
 	"Hello, {$name :uppercase}!",
 	messageformat.WithFunction("uppercase", uppercase),
 )
@@ -162,8 +162,8 @@ mf, err := messageformat.New(
 Register multiple functions:
 
 ```go
-mf, err := messageformat.New(
-	"en",
+mf, err := messageformat.Parse(
+	[]string{"en"},
 	template,
 	messageformat.WithFunction("uppercase", uppercase),
 	messageformat.WithFunction("truncate", truncate),
@@ -178,8 +178,8 @@ funcs := map[string]messageformat.MessageFunction{
 	"truncate":  truncate,
 }
 
-mf, err := messageformat.New(
-	"en",
+mf, err := messageformat.Parse(
+	[]string{"en"},
 	template,
 	messageformat.WithFunctions(funcs),
 )

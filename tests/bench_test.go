@@ -8,7 +8,7 @@ import (
 )
 
 func BenchmarkSimpleMessage(b *testing.B) {
-	mf, err := messageformat.New("en", "Hello, {$name}!")
+	mf, err := messageformat.Parse([]string{"en"}, "Hello, {$name}!")
 	require.NoError(b, err)
 
 	data := map[string]any{
@@ -23,7 +23,7 @@ func BenchmarkSimpleMessage(b *testing.B) {
 }
 
 func BenchmarkNumberFormatting(b *testing.B) {
-	mf, err := messageformat.New("en", "You have {$count :number} messages")
+	mf, err := messageformat.Parse([]string{"en"}, "You have {$count :number} messages")
 	require.NoError(b, err)
 
 	data := map[string]any{
@@ -38,7 +38,7 @@ func BenchmarkNumberFormatting(b *testing.B) {
 }
 
 func BenchmarkSelectMessage(b *testing.B) {
-	mf, err := messageformat.New("en", `
+	mf, err := messageformat.Parse([]string{"en"}, `
 .input {$count :number}
 .match $count
 0   {{No items}}
@@ -59,7 +59,7 @@ one {{One item}}
 }
 
 func BenchmarkComplexMessage(b *testing.B) {
-	mf, err := messageformat.New("en", `
+	mf, err := messageformat.Parse([]string{"en"}, `
 .input {$userName :string}
 .input {$photoCount :number}
 .input {$userGender :string}
@@ -90,7 +90,7 @@ one *      {{{$userName} added one photo to their album.}}
 }
 
 func BenchmarkFormatToParts(b *testing.B) {
-	mf, err := messageformat.New("en", "Hello, {$name}! You have {$count :number} messages.")
+	mf, err := messageformat.Parse([]string{"en"}, "Hello, {$name}! You have {$count :number} messages.")
 	require.NoError(b, err)
 
 	data := map[string]any{
@@ -110,7 +110,7 @@ func BenchmarkMessageCreation(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		_, err := messageformat.New("en", pattern)
+		_, err := messageformat.Parse([]string{"en"}, pattern)
 		require.NoError(b, err)
 	}
 }

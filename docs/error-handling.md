@@ -9,17 +9,17 @@ That split is intentional. Invalid templates should be rejected immediately. Run
 
 ## Construction-Time Errors
 
-`messageformat.New(...)` parses and validates the message before returning a `MessageFormat` instance.
+`messageformat.Parse(...)` parses and validates source text before returning a `MessageFormat` instance. Use `messageformat.Compile(...)` when you already have a `datamodel.Message`.
 
 ```go
-mf, err := messageformat.New("en", "Hello {$name")
+mf, err := messageformat.Parse([]string{"en"}, "Hello {$name")
 if err != nil {
 	log.Fatal(err)
 }
 _ = mf
 ```
 
-Use `New(...)` when you want explicit error handling.
+Use `Parse(...)` when you want explicit error handling for source text.
 
 Construction failures are always returned as `error` values, including package initialization and test setup.
 
@@ -48,7 +48,7 @@ Examples of syntax-related categories include:
 Example:
 
 ```go
-_, err := messageformat.New("en", ".match {$count}")
+_, err := messageformat.Parse([]string{"en"}, ".match {$count}")
 if err != nil {
 	var syntaxErr *errors.MessageSyntaxError
 	if stdErrors.As(err, &syntaxErr) {
@@ -80,7 +80,7 @@ These do not usually cause `Format(...)` itself to fail. Instead, the formatter 
 Example:
 
 ```go
-mf, err := messageformat.New("en", "Hello {$name} and {$missing}!")
+mf, err := messageformat.Parse([]string{"en"}, "Hello {$name} and {$missing}!")
 if err != nil {
 	log.Fatal(err)
 }
@@ -111,7 +111,7 @@ If a selector fails during evaluation, the error can be reported and the formatt
 Use `messageformat.WithErrorHandler(...)` to observe recoverable runtime problems:
 
 ```go
-mf, err := messageformat.New("en", "Hello {$name} and {$missing}!")
+mf, err := messageformat.Parse([]string{"en"}, "Hello {$name} and {$missing}!")
 if err != nil {
 	log.Fatal(err)
 }
@@ -131,8 +131,6 @@ if err != nil {
 fmt.Println(out)
 fmt.Println(len(warnings))
 ```
-
-You can also pass a raw `func(error)` callback for compatibility, but `WithErrorHandler(...)` is the clearer API.
 
 ## Error Type Inspection
 
@@ -176,7 +174,7 @@ This is especially useful when a higher-level formatting error wraps an underlyi
 
 ## Practical Guidance
 
-Use `New(...)` when:
+Use `Parse(...)` when:
 
 - templates are static and checked during development
 - templates come from configuration, user input, or external files
@@ -191,7 +189,7 @@ Use `WithErrorHandler(...)` when:
 
 ```go
 func compileTemplate(locale, source string) (*messageformat.MessageFormat, error) {
-	mf, err := messageformat.New(locale, source)
+	mf, err := messageformat.Parse([]string{locale}, source)
 	if err != nil {
 		return nil, fmt.Errorf("invalid template: %w", err)
 	}

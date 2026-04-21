@@ -49,7 +49,7 @@ func main() {
 
 	// Example 1: FormatToParts - Structured output
 	fmt.Println("1. Structured Output with FormatToParts:")
-	mf1, err := messageformat.New("en", "Hello, {$name}! You have {$count :number} new messages.", messageformat.WithBidiIsolation(messageformat.BidiNone))
+	mf1, err := messageformat.Parse([]string{"en"}, "Hello, {$name}! You have {$count :number} new messages.", messageformat.WithBidiIsolation(messageformat.BidiNone))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func main() {
 	fmt.Println("2. Bidirectional Text Support:")
 
 	// English with Arabic name
-	mf2a, err := messageformat.New("en", "User {$name} sent a message",
+	mf2a, err := messageformat.Parse([]string{"en"}, "User {$name} sent a message",
 		messageformat.WithBidiIsolation(messageformat.BidiDefault),
 		messageformat.WithDir(messageformat.DirLTR),
 	)
@@ -89,7 +89,7 @@ func main() {
 	fmt.Printf("   LTR with Arabic name: %s\n", result2a)
 
 	// Without bidi isolation
-	mf2b, err := messageformat.New("en", "User {$name} sent a message",
+	mf2b, err := messageformat.Parse([]string{"en"}, "User {$name} sent a message",
 		messageformat.WithBidiIsolation(messageformat.BidiNone),
 	)
 	if err != nil {
@@ -120,7 +120,7 @@ user  1 *      {{User {$name} has 1 message}}
 user  * *      {{User {$name} has {$count} messages}}
 *     * *      {{{$name} ({$userType}) has {$count} items ({$status})}}`
 
-	mf3, err := messageformat.New("en", complexMessage)
+	mf3, err := messageformat.Parse([]string{"en"}, complexMessage)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -149,7 +149,7 @@ user  * *      {{User {$name} has {$count} messages}}
 
 	// Example 4: Custom functions with complex logic
 	fmt.Println("4. Custom Functions with Complex Logic:")
-	mf4, err := messageformat.New("en", "Status: {$status :highlight style=bold}, Priority: {$priority :highlight style=italic}",
+	mf4, err := messageformat.Parse([]string{"en"}, "Status: {$status :highlight style=bold}, Priority: {$priority :highlight style=italic}",
 		messageformat.WithFunction("highlight", highlightFunction),
 	)
 	if err != nil {
@@ -170,7 +170,7 @@ user  * *      {{User {$name} has {$count} messages}}
 	fmt.Println("5. Performance Optimization:")
 
 	// Create MessageFormat once
-	mf5, err := messageformat.New("en", "Processing item {$index} of {$total}: {$item}")
+	mf5, err := messageformat.Parse([]string{"en"}, "Processing item {$index} of {$total}: {$item}")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -203,7 +203,7 @@ user  * *      {{User {$name} has {$count} messages}}
 		fmt.Printf("   Error #%d: %v\n", errorCount, err)
 	}
 
-	mf6, err := messageformat.New("en", "Value: {$missing_var}, Count: {$count :number}")
+	mf6, err := messageformat.Parse([]string{"en"}, "Value: {$missing_var}, Count: {$count :number}")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -225,7 +225,7 @@ user  * *      {{User {$name} has {$count} messages}}
 .local $punctuation = {|!| :string}
 {{{$greeting}, {$name}{$punctuation} Welcome to our {$service}.}}
 `
-	mf7, err := messageformat.New("en", nestedMessage)
+	mf7, err := messageformat.Parse([]string{"en"}, nestedMessage)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -250,7 +250,7 @@ user  * *      {{User {$name} has {$count} messages}}
 	}
 
 	for _, locale := range locales {
-		mf, err := messageformat.New(locale, messages[locale])
+		mf, err := messageformat.Parse([]string{locale}, messages[locale])
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -275,7 +275,7 @@ sms {{📱 SMS from {$sender}: {$text}}}
 push {{🔔 Push notification: {$title}}}
 * {{📬 {$type} notification}}
 `
-	mf9, err := messageformat.New("en", structuredMessage)
+	mf9, err := messageformat.Parse([]string{"en"}, structuredMessage)
 	if err != nil {
 		log.Fatal(err)
 	}

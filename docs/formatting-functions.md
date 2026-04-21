@@ -33,7 +33,7 @@ Formats a value as text and is commonly used in selection.
 Example:
 
 ```go
-mf, err := messageformat.New("en", "Message: {$text :string}")
+mf, err := messageformat.Parse([]string{"en"}, "Message: {$text :string}")
 if err != nil {
 	log.Fatal(err)
 }
@@ -62,7 +62,7 @@ Formats numeric values and is also used for plural/category selection.
 Example:
 
 ```go
-mf, err := messageformat.New("en", "Count: {$count :number}")
+mf, err := messageformat.Parse([]string{"en"}, "Count: {$count :number}")
 if err != nil {
 	log.Fatal(err)
 }
@@ -176,10 +176,10 @@ Example:
 
 ## Locale Behavior
 
-Formatting depends on the active locale list passed to `messageformat.New(...)`.
+Formatting depends on the active locale list passed to `messageformat.Parse(...)` or `messageformat.Compile(...)`.
 
 ```go
-mf, err := messageformat.New(
+mf, err := messageformat.Parse(
 	[]string{"de-DE", "en"},
 	"Price: {$amount :number style=currency currency=EUR}",
 )

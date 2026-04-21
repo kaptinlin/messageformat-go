@@ -41,8 +41,8 @@ These docs assume the current package defaults:
 If you need bidi isolation markers for RTL-safe embedding, opt in explicitly:
 
 ```go
-mf, err := messageformat.New(
-	"ar",
+mf, err := messageformat.Parse(
+	[]string{"ar"},
 	"مرحبا {$name}!",
 	messageformat.WithBidiIsolation(messageformat.BidiDefault),
 )
@@ -54,7 +54,8 @@ For quick lookup, these are the APIs most users start with:
 
 | API | Purpose |
 |-----|---------|
-| `messageformat.New(...)` | Parse and validate a message |
+| `messageformat.Parse(...)` | Parse and validate a message from source text |
+| `messageformat.Compile(...)` | Create an instance from a parsed data model |
 | `mf.Format(...)` | Format to a string |
 | `mf.FormatToParts(...)` | Format to structured parts |
 | `messageformat.ParseMessage(...)` | Parse to the public data model |

@@ -14,7 +14,6 @@ import (
 	"github.com/kaptinlin/messageformat-go/internal/selector"
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
-	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 	"github.com/kaptinlin/messageformat-go/pkg/logger"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
@@ -79,6 +78,8 @@ type MessageFormatOptions struct {
 
 	// Logger for this MessageFormat instance. If nil, uses global logger.
 	Logger *slog.Logger `json:"-"`
+
+	bidiIsolationSet bool
 }
 
 // NewOptions creates a new MessageFormatOptions with defaults
@@ -124,172 +125,60 @@ type MessageFormat struct {
 	logger        *slog.Logger // instance-specific logger
 }
 
-// New creates a new MessageFormat from locales, source, and options
-// Supports both traditional options struct and functional options pattern
-// TypeScript original code:
-// constructor(
-//
-//	locales: string | string[] | undefined,
-//	source: string | Message,
-//	options?: MessageFormatOptions<T, P>
-//
-//	) {
-//	  this.#bidiIsolation = options?.bidiIsolation !== 'none';
-//	  this.#localeMatcher = options?.localeMatcher ?? 'best fit';
-//	  this.#locales = Array.isArray(locales) ? locales.map(lc => new Intl.Locale(lc)) : locales ? [new Intl.Locale(locales)] : [];
-//	  this.#dir = options?.dir ?? getLocaleDir(this.#locales[0]);
-//	  this.#message = typeof source === 'string' ? parseMessage(source) : source;
-//	  validate(this.#message);
-//	  this.#functions = options?.functions ? Object.assign(Object.create(null), DefaultFunctions, options.functions) : DefaultFunctions;
-//	}
-func New(
-	locales any, // string | []string | nil
-	source any, // string | datamodel.Message
-	options ...any, // *MessageFormatOptions or ...Option
-) (*MessageFormat, error) {
-	// Parse locales parameter - matches TypeScript: string | string[] | undefined
-	var localeList []string
-	switch l := locales.(type) {
-	case string:
-		if l != "" {
-			localeList = []string{l}
-		} else {
-			localeList = []string{}
-		}
-	case []string:
-		if l == nil {
-			localeList = []string{}
-		} else {
-			localeList = slices.Clone(l)
-		}
-	case nil:
-		localeList = []string{}
-	default:
-		return nil, errors.NewCustomSyntaxError("locales must be string, []string, or nil")
+// Parse creates a MessageFormat by parsing source text and applying options.
+func Parse(locales []string, source string, options ...Option) (*MessageFormat, error) {
+	cstMessage := cst.ParseCST(source, false)
+	if len(cstMessage.Errors()) > 0 {
+		return nil, cstMessage.Errors()[0]
 	}
 
-	// Parse source parameter - matches TypeScript: string | Message
-	var message datamodel.Message
-	var err error
-
-	switch s := source.(type) {
-	case string:
-		// Parse the string using CST parser and convert to datamodel
-		cstMessage := cst.ParseCST(s, false)
-
-		// Check for CST parsing errors
-		if len(cstMessage.Errors()) > 0 {
-			// Return the first CST error without rewriting its semantic type.
-			return nil, cstMessage.Errors()[0]
-		}
-
-		// Convert CST to datamodel
-		message, err = datamodel.FromCST(cstMessage)
-		if err != nil {
-			return nil, err
-		}
-	case datamodel.Message:
-		message = s
-	case nil:
-		return nil, errors.NewCustomSyntaxError("source cannot be nil")
-	default:
-		return nil, errors.NewCustomSyntaxError("source must be string or datamodel.Message")
-	}
-
-	// Validate the message
-	_, err = datamodel.ValidateMessage(message, nil)
+	message, err := datamodel.FromCST(cstMessage)
 	if err != nil {
 		return nil, err
 	}
 
-	// Handle options - support both traditional struct and functional options
-	var opts *MessageFormatOptions
-	switch len(options) {
-	case 0:
-		opts = &MessageFormatOptions{}
-	case 1:
-		// Check if it's nil (traditional way of passing no options)
-		if options[0] == nil {
-			opts = &MessageFormatOptions{}
-		} else if structOpts, ok := options[0].(*MessageFormatOptions); ok {
-			opts = structOpts
-		} else if optFunc, ok := options[0].(Option); ok {
-			// Single functional option
-			opts = applyOptions(optFunc)
-		} else {
-			end := 1
-			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
-		}
-	default:
-		// Multiple functional options
-		var funcOpts []Option
-		for _, opt := range options {
-			if optFunc, ok := opt.(Option); ok {
-				funcOpts = append(funcOpts, optFunc)
-			} else {
-				end := 1
-				return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
-			}
-		}
-		opts = applyOptions(funcOpts...)
+	return Compile(locales, message, options...)
+}
+
+// Compile creates a MessageFormat from a prebuilt data model and applies options.
+func Compile(locales []string, message datamodel.Message, options ...Option) (*MessageFormat, error) {
+	localeList := slices.Clone(locales)
+
+	_, err := datamodel.ValidateMessage(message, nil)
+	if err != nil {
+		return nil, err
 	}
 
-	// Apply defaults to options
-	opts = NewOptions(opts)
-
-	// Store if BidiIsolation was explicitly set to prevent auto-override
-	explicitBidiIsolation := false
-	for _, opt := range options {
-		if structOpts, ok := opt.(*MessageFormatOptions); ok && structOpts != nil && structOpts.BidiIsolation != "" {
-			explicitBidiIsolation = true
-			break
-		}
+	opts := NewOptions(NewMessageFormatOptions(options...))
+	if !opts.bidiIsolationSet && opts.BidiIsolation == BidiNone && len(localeList) > 0 && bidi.GetLocaleDirection(localeList[0]) == bidi.DirRTL {
+		opts.BidiIsolation = BidiDefault
 	}
 
-	// Auto-enable bidi isolation for RTL locales when not explicitly set
-	// This matches TypeScript reference implementation behavior
-	if !explicitBidiIsolation && opts.BidiIsolation == BidiNone && len(localeList) > 0 {
-		// Check if the primary locale is RTL
-		if bidi.GetLocaleDirection(localeList[0]) == bidi.DirRTL {
-			opts.BidiIsolation = BidiDefault
-		}
-	}
-
-	// Resolve bidiIsolation option (default is "default" which means true)
 	bidiIsolation := opts.BidiIsolation != BidiNone
 
-	// Resolve dir option
 	dir := string(opts.Dir)
 	if dir == "" || dir == string(DirAuto) {
 		if len(localeList) > 0 {
-			// Determine direction from first locale
 			dir = string(bidi.GetLocaleDirection(localeList[0]))
 		} else {
 			dir = "auto"
 		}
 	}
 
-	// Resolve localeMatcher option
 	localeMatcher := string(opts.LocaleMatcher)
 
-	// Set up functions
 	functionMap := make(map[string]functions.MessageFunction)
-
-	// Add default functions
 	addDefaultFunctions(functionMap)
-
-	// Add custom functions (override defaults if provided)
 	if opts.Functions != nil {
 		maps.Copy(functionMap, opts.Functions)
 	}
 
-	// Set up logger - use instance logger if provided, otherwise use global logger
 	instanceLogger := logger.GetLogger()
 	if opts.Logger != nil {
 		instanceLogger = opts.Logger
 	}
 
-	mf := &MessageFormat{
+	return &MessageFormat{
 		message:       message,
 		locales:       localeList,
 		functions:     functionMap,
@@ -297,16 +186,13 @@ func New(
 		dir:           dir,
 		localeMatcher: localeMatcher,
 		logger:        instanceLogger,
-	}
-
-	return mf, nil
+	}, nil
 }
 
-// Format formats the message with the given values and optional error handler
-// Supports both traditional onError callback and functional options pattern
+// Format formats the message with the given values and format options.
 func (mf *MessageFormat) Format(
 	values map[string]any,
-	options ...any, // func(error) or ...FormatOption
+	options ...FormatOption,
 ) (string, error) {
 	parts, err := mf.FormatToParts(values, options...)
 	if err != nil {
@@ -342,70 +228,22 @@ func (mf *MessageFormat) Format(
 	return result.String(), nil
 }
 
-// FormatToParts formats the message and returns detailed parts
-// Supports both traditional onError callback and functional options pattern
+// FormatToParts formats the message and returns detailed parts.
 func (mf *MessageFormat) FormatToParts(
 	values map[string]any,
-	options ...any, // func(error) or ...FormatOption
+	options ...FormatOption,
 ) ([]messagevalue.MessagePart, error) {
-	// Parse options - support both traditional callback and functional options
-	onError, err := mf.parseFormatOptions(options)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create resolution context with provided values
-	ctx := mf.createContext(values, onError)
-
-	// Select the pattern to format based on message type
-	pattern := selector.SelectPattern(ctx, mf.message)
-
-	// Format the selected pattern
-	return mf.formatPattern(ctx, pattern)
-}
-
-// parseFormatOptions parses variadic format options into an error handler function.
-// Supports both traditional func(error) callback and functional FormatOption pattern.
-func (mf *MessageFormat) parseFormatOptions(options []any) (func(error), error) {
-	defaultOnError := func(err error) {
+	formatOptions := NewFormatOptions(options...)
+	onError := func(err error) {
 		mf.logger.Warn("MessageFormat error", "error", err)
 	}
-
-	switch len(options) {
-	case 0:
-		return defaultOnError, nil
-	case 1:
-		if options[0] == nil {
-			return defaultOnError, nil
-		}
-		if errorFunc, ok := options[0].(func(error)); ok {
-			return errorFunc, nil
-		}
-		if formatOpt, ok := options[0].(FormatOption); ok {
-			formatOpts := applyFormatOptions(formatOpt)
-			if formatOpts.OnError != nil {
-				return formatOpts.OnError, nil
-			}
-			return defaultOnError, nil
-		}
-		end := 1
-		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
-	default:
-		funcOpts := make([]FormatOption, 0, len(options))
-		for _, opt := range options {
-			formatOpt, ok := opt.(FormatOption)
-			if !ok {
-				end := 1
-				return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
-			}
-			funcOpts = append(funcOpts, formatOpt)
-		}
-		formatOpts := applyFormatOptions(funcOpts...)
-		if formatOpts.OnError != nil {
-			return formatOpts.OnError, nil
-		}
-		return defaultOnError, nil
+	if formatOptions.OnError != nil {
+		onError = formatOptions.OnError
 	}
+
+	ctx := mf.createContext(values, onError)
+	pattern := selector.SelectPattern(ctx, mf.message)
+	return mf.formatPattern(ctx, pattern)
 }
 
 // createContext creates a resolution context with the given values and error handler
