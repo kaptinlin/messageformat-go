@@ -7,9 +7,11 @@
 
 A Go implementation of Unicode MessageFormat 2.0.
 
+This repository tracks the Unicode MessageFormat 2.0 specification and verifies behavior against the official MessageFormat Working Group test suite bundled as a git submodule in `tests/messageformat-wg/`.
+
 ## Features
 
-- **Unicode MessageFormat 2.0**: Parse, validate, and format messages using the current Unicode model.
+- **Unicode MessageFormat 2.0**: Parse, validate, and format messages using the Unicode MessageFormat 2.0 model.
 - **Go-first public API**: Strongly typed constructors and format options.
 - **Rich formatting**: Built-in support for numbers, integers, strings, dates, currencies, percentages, offsets, and units.
 - **Custom functions**: Register locale-aware formatters with `WithFunction` or `WithFunctions`.
@@ -65,6 +67,16 @@ func main() {
 | `Validate(message, scope)` | Validate a parsed message |
 
 Full API details live on [pkg.go.dev](https://pkg.go.dev/github.com/kaptinlin/messageformat-go) and in [`docs/api-reference.md`](docs/api-reference.md).
+
+## Spec And Reference Tracking
+
+- Specification: [Unicode MessageFormat 2.0](https://unicode.org/reports/tr35/tr35-messageFormat.html)
+- Official test suite submodule: `tests/messageformat-wg`
+- Current pinned test-suite commit: `dd86e42e10d1d0c9c4401d0781cdd87ee7166366`
+- TypeScript reference implementation submodule: `.reference/messageformat`
+- Current pinned reference commit: `ea2b8b9c49a5caa5d6720948a9f4b5fc4a908b72`
+
+The implementation aims to stay aligned with the spec and the official test suite first, while using the TypeScript `messageformat` project as the API-compatibility reference.
 
 ## MessageFormat 2.0 Basics
 

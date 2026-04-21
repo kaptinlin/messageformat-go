@@ -2,6 +2,10 @@
 
 Syntax reference for the MessageFormat Go v2 package, based on Unicode MessageFormat 2.0.
 
+Reference spec: <https://unicode.org/reports/tr35/tr35-messageFormat.html>
+
+The implementation is verified against the official MessageFormat Working Group test suite in `tests/messageformat-wg/`. The repository also tracks the TypeScript reference implementation in `.reference/messageformat` for API and behavior comparisons.
+
 This page focuses on the syntax the package accepts and the defaults that affect what formatted output looks like.
 
 ## Message Shapes
