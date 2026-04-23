@@ -218,6 +218,52 @@ func TestNumberSkeletonTypeSafety(t *testing.T) {
 	})
 }
 
+func TestPtr(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "string value",
+			run: func(t *testing.T) {
+				ptr := Ptr("EUR")
+				require.NotNil(t, ptr)
+				assert.Equal(t, "EUR", *ptr)
+			},
+		},
+		{
+			name: "typed constant",
+			run: func(t *testing.T) {
+				ptr := Ptr(ReturnTypeValues)
+				require.NotNil(t, ptr)
+				assert.Equal(t, ReturnTypeValues, *ptr)
+			},
+		},
+		{
+			name: "distinct pointers per call",
+			run: func(t *testing.T) {
+				left := Ptr("value")
+				right := Ptr("value")
+				require.NotNil(t, left)
+				require.NotNil(t, right)
+				assert.NotSame(t, left, right)
+
+				*left = "other"
+				assert.Equal(t, "other", *left)
+				assert.Equal(t, "value", *right)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.run(t)
+		})
+	}
+}
+
 func TestMessageExecution(t *testing.T) {
 	mf, err := New("en", nil)
 	require.NoError(t, err)
