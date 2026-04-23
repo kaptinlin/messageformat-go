@@ -46,6 +46,7 @@ build/
 TODO.md
 
 # Project-specific
+.claude/
 *.pid
 *.pid.lock
 *.seed

@@ -4,7 +4,7 @@ This guide covers the fastest path to using MessageFormat Go v2 in a real applic
 
 ## Requirements
 
-- Go 1.26.1 or newer
+- Go 1.26.2 or newer
 - `github.com/kaptinlin/messageformat-go`
 
 Install the package:

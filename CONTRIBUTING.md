@@ -6,7 +6,7 @@ Thank you for your interest in contributing to the MessageFormat 2.0 Go implemen
 
 ### Prerequisites
 
-- Go 1.19 or later
+- Go 1.26.2 or later
 - Git
 - Basic understanding of MessageFormat 2.0 specification
 - Familiarity with Go conventions and best practices

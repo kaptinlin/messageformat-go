@@ -1,6 +1,6 @@
-# Cursor Rules for MessageFormat Go
+# Agent Rules for MessageFormat Go
 
-This document provides coding rules and guidelines for the MessageFormat Go project when using Cursor AI.
+This document provides coding rules and guidelines for the MessageFormat Go project when using coding agents.
 
 ## Repository Overview
 
@@ -18,12 +18,12 @@ This repository contains **dual implementations**:
 - **Development**: Active development, new features
 - **Architecture**: CST (Concrete Syntax Tree) parsing with official WG test suite validation
 
-### v1 (Subdirectory) - ICU MessageFormat 
-- **Location**: `v1/` subdirectory  
+### v1 (Subdirectory) - ICU MessageFormat compatibility
+- **Location**: `v1/` subdirectory
 - **Module**: `github.com/kaptinlin/messageformat-go/v1`
-- **Purpose**: Legacy ICU MessageFormat compatibility
-- **Development**: **MAINTENANCE ONLY** - bug fixes and security updates
-- **Optimization**: 80%+ performance improvements using golang.org/x/text
+- **Purpose**: Supported ICU MessageFormat compatibility surface
+- **Development**: Keep `v1/` building and tested alongside the root package
+- **Optimization**: Performance-sensitive formatting built on `golang.org/x/text`
 
 ## Current Status
 
@@ -33,7 +33,7 @@ This repository contains **dual implementations**:
 - **Error Handling**: Static error definitions, err113 compliant
 - **Testing**: >80% coverage with comprehensive test suites and performance regression detection
 - **CI/CD**: Multi-version workflows with automated testing and releases
-- **Go Version**: 1.24 (unified across both versions)
+- **Go Version**: 1.26.2 (unified across both versions)
 
 ## Import Paths
 
@@ -42,7 +42,7 @@ This repository contains **dual implementations**:
 import "github.com/kaptinlin/messageformat-go"
 import "github.com/kaptinlin/messageformat-go/pkg/datamodel"
 
-// v1 (Legacy) - ICU MessageFormat
+// v1 (Compatibility) - ICU MessageFormat
 import "github.com/kaptinlin/messageformat-go/v1"
 ```
 
@@ -62,10 +62,10 @@ import "github.com/kaptinlin/messageformat-go/v1"
 
 ## Development Priorities
 
-1. **v2 First**: Default to v2 for all new development unless explicitly specified
-2. **v1 Maintenance**: Bug fixes and security updates only - no new features
+1. **v2 First**: Default to v2 for new development unless the task explicitly targets `v1/`
+2. **v1 Support**: Treat `v1/` as a supported compatibility surface; keep it building and tested
 3. **Quality Focus**: Maintain >80% test coverage and full lint compliance
-4. **Performance**: Monitor regression tests, especially for v1 optimizations
+4. **Performance**: Monitor regression tests for both the root package and `v1/`
 
 ## Common Development Tasks
 
@@ -75,11 +75,11 @@ import "github.com/kaptinlin/messageformat-go/v1"
 3. Use `pkg/` for public APIs, `internal/` for private
 4. Test against official MessageFormat 2.0 test suite
 
-### v1 Bug Fixes (Limited Scope)
-1. Work in `v1/` directory
-2. Make minimal changes only
-3. Maintain API compatibility strictly
-4. Run performance regression tests
+### v1 Work
+1. Work in `v1/` when the task explicitly targets ICU MessageFormat compatibility
+2. Maintain API compatibility strictly
+3. Keep `v1/` building and tested with the root package
+4. Run the relevant regression tests before finishing
 
 ## Mandatory Coding Standards
 
@@ -163,39 +163,20 @@ value := operand  // NOT: var value = operand
 
 ## Development Commands
 
-### v2 Development (Default)
+### Repository workflow
 ```bash
-# Primary development workflow
-make test          # Run all v2 tests + official MessageFormat 2.0 suite
-make test-unit     # Unit tests only (faster)
-make test-official # Official test suite only
-make lint          # Code quality checks
-make bench         # Performance benchmarks
-make verify        # Complete verification (format, lint, test)
-make ci           # Full CI pipeline locally
-```
-
-### v1 Maintenance (Limited)
-```bash
-# Legacy maintenance workflow  
-cd v1
-make test          # v1 basic tests
-make test-perf     # Performance regression detection
-make lint          # v1 code quality
-make bench         # v1 benchmarks
-```
-
-### Cross-Version Operations
-```bash
-# From root directory
-make test-all      # Test both v1 and v2
-make lint-all      # Lint both versions
+task test          # Run all tests with race detection
+task test-v2       # Run package tests + official MessageFormat 2.0 suite
+task test-official # Run official Unicode test suite only
+task lint          # Run golangci-lint + go mod tidy check
+task verify        # Run deps, fmt, vet, lint, test, vuln
+task bench         # Run benchmarks
 ```
 
 ## Prohibited Patterns
 
 ❌ **DON'T**:
-- Create new features in v1
+- Treat `v1/` as disposable or unsupported code
 - Use dynamic error creation (`fmt.Errorf` with messages)
 - Mix Chinese and English comments
 - Skip TypeScript original code in comments
@@ -222,14 +203,10 @@ make lint-all      # Lint both versions
 
 ### Key Documentation
 - **Main Documentation**: `CLAUDE.md` - Comprehensive development guide
-- **Architecture Status**: `IMPLEMENTATION_STATUS.md` - Current implementation overview  
-- **Best Practices**: `go-module-best-practices.md` - Go module management
+- **Repository Overview**: `README.md` - Public API and project overview
+- **Testing Guide**: `TESTING.md` - Verification commands and test layout
 - **CI/CD Configuration**: `.github/workflows/` - Automated testing and releases
-
-### Release Management
-- **v2 Tags**: `v2.x.x` - Active development releases
-- **v1 Tags**: `v1.x.x` - Maintenance and security releases
 
 ---
 
-Remember: **v2 is the future, v1 is maintenance-only.** The project is production-ready with optimized performance and comprehensive testing.
+Remember: default to the root MessageFormat 2.0 package unless the task explicitly targets `v1/`, and keep both surfaces building and tested.

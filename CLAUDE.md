@@ -100,7 +100,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 
 ### Must Follow
 
-- Go 1.26 — use modern language features (generics, slices/maps packages, clear(), for range N)
+- Go 1.26.2 — use modern language features (generics, slices/maps packages, clear(), for range N)
 - **TypeScript comment format** — Every function must include original TypeScript code:
 
   ```go
@@ -122,7 +122,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - Follow Google Go Best Practices: <https://google.github.io/go-style/best-practices>
 - Follow Google Go Style Decisions: <https://google.github.io/go-style/decisions>
 
-### Go 1.26 Features Used
+### Go 1.26.2 Features Used
 
 | Feature | Where Used |
 |---------|-----------|
