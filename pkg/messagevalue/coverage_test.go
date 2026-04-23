@@ -168,7 +168,6 @@ func TestDateTimeValueAdditionalBehaviors(t *testing.T) {
 		t.Parallel()
 
 		for _, locale := range []string{"pt-BR", "it-IT"} {
-			locale := locale
 			t.Run(locale, func(t *testing.T) {
 				t.Parallel()
 
