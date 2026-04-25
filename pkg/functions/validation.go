@@ -35,7 +35,6 @@ var forbiddenOptionKeys = map[string]struct{}{
 // Reference: Inspired by TypeScript fix for prototype pollution (commit 82cd10b4)
 // https://github.com/messageformat/messageformat/commit/82cd10b40e3f922f990bbcf88a6d14b70c0a3ce0
 func ValidateOptionKey(key string) error {
-	// Check key length
 	if len(key) > MaxOptionKeyLength {
 		return fmt.Errorf("option key too long: %d characters (max: %d)", len(key), MaxOptionKeyLength)
 	}
@@ -44,16 +43,12 @@ func ValidateOptionKey(key string) error {
 		return fmt.Errorf("option key cannot be empty")
 	}
 
-	// Check character whitelist
 	for i, ch := range key {
-		// Allow: a-z, A-Z, 0-9, underscore, hyphen
-		// Disallow: special characters, control characters, etc.
 		if !isValidOptionKeyChar(ch) {
 			return fmt.Errorf("invalid character '%c' at position %d in option key '%s'", ch, i, key)
 		}
 	}
 
-	// Check for forbidden key names
 	if _, ok := forbiddenOptionKeys[strings.ToLower(key)]; ok {
 		return fmt.Errorf("forbidden option key: '%s'", key)
 	}

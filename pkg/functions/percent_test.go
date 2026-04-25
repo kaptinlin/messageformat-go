@@ -3,6 +3,7 @@ package functions
 import (
 	"testing"
 
+	pkgerrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -122,6 +123,60 @@ func TestPercentResolvedValueNotMultiplied(t *testing.T) {
 
 	// Verify it's the original value, not multiplied
 	assert.Equal(t, 0.5, floatVal, "Resolved value should be original (0.5), not multiplied (50)")
+}
+
+func TestPercentFunctionRejectsCurrencyStyledOperand(t *testing.T) {
+	t.Parallel()
+
+	var errs []error
+	ctx := NewMessageFunctionContext(
+		[]string{"en"},
+		"test source",
+		"best fit",
+		func(err error) {
+			errs = append(errs, err)
+		},
+		nil,
+		"",
+		"",
+	)
+
+	operand := messagevalue.NewNumberValue(42, "en", "operand", map[string]any{
+		"style":    "currency",
+		"currency": "USD",
+	})
+
+	result := PercentFunction(ctx, nil, operand)
+	require.NotNil(t, result)
+	assert.Equal(t, "fallback", result.Type())
+	require.Len(t, errs, 1)
+	assertResolutionErrorType(t, errs[0], pkgerrors.ErrorTypeBadOperand)
+}
+
+func TestPercentFunctionAllowsDecimalStyledOperand(t *testing.T) {
+	t.Parallel()
+
+	var errs []error
+	ctx := NewMessageFunctionContext(
+		[]string{"en"},
+		"test source",
+		"best fit",
+		func(err error) {
+			errs = append(errs, err)
+		},
+		nil,
+		"",
+		"",
+	)
+
+	operand := messagevalue.NewNumberValue(42, "en", "operand", map[string]any{
+		"style": "decimal",
+	})
+
+	result := PercentFunction(ctx, nil, operand)
+	require.NotNil(t, result)
+	assert.Equal(t, "number", result.Type())
+	assert.Empty(t, errs)
 }
 
 // TestCurrencyCannotSelect verifies that :currency does not support selection

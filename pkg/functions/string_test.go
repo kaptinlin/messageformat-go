@@ -1,12 +1,17 @@
 package functions
 
 import (
+	"errors"
 	"testing"
 
+	"github.com/kaptinlin/messageformat-go/pkg/bidi"
+	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStringFunction(t *testing.T) {
+	t.Parallel()
+
 	ctx := NewMessageFunctionContext(
 		[]string{"en"},
 		"test source",
@@ -32,6 +37,8 @@ func TestStringFunction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			result := StringFunction(ctx, tt.options, tt.operand)
 
 			assert.Equal(t, "string", result.Type())
@@ -45,7 +52,22 @@ func TestStringFunction(t *testing.T) {
 	}
 }
 
+type errStringMessageValue struct{}
+
+func (errStringMessageValue) String() string                               { return "string fallback" }
+func (errStringMessageValue) Type() string                                 { return "test" }
+func (errStringMessageValue) Source() string                               { return "" }
+func (errStringMessageValue) Dir() bidi.Direction                          { return bidi.DirAuto }
+func (errStringMessageValue) Locale() string                               { return "" }
+func (errStringMessageValue) Options() map[string]any                      { return nil }
+func (errStringMessageValue) ToString() (string, error)                    { return "", errors.New("boom") }
+func (errStringMessageValue) ToParts() ([]messagevalue.MessagePart, error) { return nil, nil }
+func (errStringMessageValue) ValueOf() (any, error)                        { return nil, nil }
+func (errStringMessageValue) SelectKeys([]string) ([]string, error)        { return nil, nil }
+
 func TestStringFunctionWithDirection(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		contextDir  string
@@ -59,6 +81,8 @@ func TestStringFunctionWithDirection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctx := NewMessageFunctionContext(
 				[]string{"en"},
 				"test source",
@@ -73,4 +97,23 @@ func TestStringFunctionWithDirection(t *testing.T) {
 			assert.Equal(t, "string", result.Type())
 		})
 	}
+}
+
+func TestStringFunctionFallsBackWhenMessageValueToStringFails(t *testing.T) {
+	t.Parallel()
+
+	ctx := NewMessageFunctionContext(
+		[]string{"en"},
+		"test source",
+		"best fit",
+		nil,
+		nil,
+		"auto",
+		"",
+	)
+
+	result := StringFunction(ctx, nil, errStringMessageValue{})
+	str, err := result.ToString()
+	assert.NoError(t, err)
+	assert.Equal(t, "string fallback", str)
 }

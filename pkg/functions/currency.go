@@ -106,42 +106,26 @@ func CurrencyFunction(
 ) messagevalue.MessageValue {
 	source := ctx.Source()
 
-	// Read numeric operand
 	numericOperand, err := readNumericOperand(operand, source)
 	if err != nil {
 		ctx.OnError(err)
 		return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
 	}
 
-	// Start with operand options and set currency style
 	mergedOptions := make(map[string]any)
-
-	// Copy existing options from the operand if any
-	// According to the spec and tests, numbers from :number and :integer CAN be reformatted as currency
-	// Only check if it already has a conflicting style (like "percent")
-	if numericOperand.Options != nil {
-		// Copy existing options
-		maps.Copy(mergedOptions, numericOperand.Options)
-
-		// Check if it has a style already set that conflicts
-		if existingStyle, hasStyle := numericOperand.Options["style"]; hasStyle {
-			// It has a style - can only reuse if same style or if converting from basic number formatting
-			if existingStyle != "currency" && existingStyle != "decimal" {
-				// Only reject if it's a conflicting style like "percent"
-				if existingStyle == "percent" {
-					ctx.OnError(errors.NewBadOperandError("Cannot format a percent-formatted number as currency", source))
-					return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
-				}
-			}
-			// Otherwise it can be reformatted as currency
-		}
-		// Numbers from :number and :integer CAN be reformatted as currency
-		// The test suite confirms this behavior
+	maps.Copy(mergedOptions, numericOperand.Options)
+	if existingStyle, ok := numericOperand.Options["style"]; ok && existingStyle == "percent" {
+		ctx.OnError(errors.NewBadOperandError("Cannot format a percent-formatted number as currency", source))
+		return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
 	}
 	mergedOptions["localeMatcher"] = ctx.LocaleMatcher()
 	mergedOptions["style"] = "currency"
 
-	// Process expression options
+	badOptionError := func(name string, value any) {
+		msg := "Value " + toString(value) + " is not valid for :currency option " + name
+		ctx.OnError(errors.NewBadOptionError(msg, source))
+	}
+
 	for name, optval := range options {
 		if optval == nil {
 			continue
@@ -152,16 +136,14 @@ func CurrencyFunction(
 			if strval, err := asString(optval); err == nil {
 				mergedOptions[name] = strval
 			} else {
-				msg := "Value " + toString(optval) + " is not valid for :currency option " + name
-				ctx.OnError(errors.NewBadOptionError(msg, source))
+				badOptionError(name, optval)
 			}
 
 		case "minimumIntegerDigits", "minimumSignificantDigits", "maximumSignificantDigits", "roundingIncrement":
 			if intval, err := asPositiveInteger(optval); err == nil {
 				mergedOptions[name] = intval
 			} else {
-				msg := "Value " + toString(optval) + " is not valid for :currency option " + name
-				ctx.OnError(errors.NewBadOptionError(msg, source))
+				badOptionError(name, optval)
 			}
 
 		case "currencyDisplay":
@@ -172,41 +154,28 @@ func CurrencyFunction(
 					mergedOptions[name] = strval
 				}
 			} else {
-				msg := "Value " + toString(optval) + " is not valid for :currency option " + name
-				ctx.OnError(errors.NewBadOptionError(msg, source))
+				badOptionError(name, optval)
 			}
 
 		case "fractionDigits":
 			if strval, err := asString(optval); err == nil {
 				if strval == "auto" {
-					// fractionDigits=auto means to use default currency fraction digits
-					// Don't set minimumFractionDigits/maximumFractionDigits and let the formatter decide
 					delete(mergedOptions, "minimumFractionDigits")
 					delete(mergedOptions, "maximumFractionDigits")
+				} else if numval, err := asPositiveInteger(strval); err == nil {
+					mergedOptions["minimumFractionDigits"] = numval
+					mergedOptions["maximumFractionDigits"] = numval
 				} else {
-					if numval, err := asPositiveInteger(strval); err == nil {
-						mergedOptions["minimumFractionDigits"] = numval
-						mergedOptions["maximumFractionDigits"] = numval
-					} else {
-						msg := "Value " + toString(optval) + " is not valid for :currency option " + name
-						ctx.OnError(errors.NewBadOptionError(msg, source))
-					}
+					badOptionError(name, optval)
 				}
 			} else {
-				msg := "Value " + toString(optval) + " is not valid for :currency option " + name
-				ctx.OnError(errors.NewBadOptionError(msg, source))
+				badOptionError(name, optval)
 			}
 		}
 	}
 
-	// Check that currency is provided - this must be done AFTER processing options
-	// but BEFORE returning the final value. The TypeScript code throws an error
-	// when currency is not provided, which gets caught and handled as a bad-operand error
 	if _, hasCurrency := mergedOptions["currency"]; !hasCurrency {
-		// This is a bad-operand error because the operand doesn't have the required currency
-		err := errors.NewBadOperandError("A currency code is required for :currency", source)
-		// Unlike TypeScript which throws, we call OnError which will collect the error
-		ctx.OnError(err)
+		ctx.OnError(errors.NewBadOperandError("A currency code is required for :currency", source))
 		return messagevalue.NewFallbackValue(source, GetFirstLocale(ctx.Locales()))
 	}
 

@@ -39,26 +39,16 @@ func StringFunction(
 	options map[string]any,
 	operand any,
 ) messagevalue.MessageValue {
-	// Convert input to string
-	var stringValue string
-	if operand == nil {
-		stringValue = ""
-	} else {
-		// Handle MessageValue operands - get their string representation
-		if mv, ok := operand.(messagevalue.MessageValue); ok {
-			str, err := mv.ToString()
-			if err != nil {
-				// If ToString fails, fall back to basic formatting
-				stringValue = fmt.Sprintf("%v", operand)
-			} else {
-				stringValue = str
+	value := ""
+	if operand != nil {
+		value = fmt.Sprintf("%v", operand)
+		if messageValue, ok := operand.(messagevalue.MessageValue); ok {
+			if stringValue, err := messageValue.ToString(); err == nil {
+				value = stringValue
 			}
-		} else {
-			stringValue = fmt.Sprintf("%v", operand)
 		}
 	}
 
-	// Get locale from context or options
 	locale := GetFirstLocale(ctx.Locales())
 	if localeOpt, ok := options["locale"]; ok {
 		if localeStr, ok := localeOpt.(string); ok {
@@ -66,7 +56,6 @@ func StringFunction(
 		}
 	}
 
-	// Get direction from context and convert to bidi.Direction
 	var dir bidi.Direction
 	ctxDir := ctx.Dir()
 	switch ctxDir {
@@ -78,5 +67,5 @@ func StringFunction(
 		dir = bidi.DirAuto
 	}
 
-	return messagevalue.NewStringValueWithDir(stringValue, locale, ctx.Source(), dir)
+	return messagevalue.NewStringValueWithDir(value, locale, ctx.Source(), dir)
 }

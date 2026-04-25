@@ -4,6 +4,7 @@ package functions
 import (
 	"testing"
 
+	pkgerrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -370,5 +371,59 @@ func TestCurrencyBasicFunctionality(t *testing.T) {
 
 		assert.Len(t, errors, 1)
 		assert.Contains(t, errors[0].Error(), "currency code is required")
+	})
+
+	t.Run("rejects percent styled operand", func(t *testing.T) {
+		t.Parallel()
+
+		var errs []error
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test source",
+			"best fit",
+			func(err error) {
+				errs = append(errs, err)
+			},
+			nil,
+			"",
+			"",
+		)
+
+		operand := messagevalue.NewNumberValue(42, "en", "operand", map[string]any{
+			"style": "percent",
+		})
+
+		result := CurrencyFunction(ctx, map[string]any{"currency": "USD"}, operand)
+		require.NotNil(t, result)
+		assert.Equal(t, "fallback", result.Type())
+		require.Len(t, errs, 1)
+		assertResolutionErrorType(t, errs[0], pkgerrors.ErrorTypeBadOperand)
+	})
+
+	t.Run("allows decimal styled operand", func(t *testing.T) {
+		t.Parallel()
+
+		var errs []error
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test source",
+			"best fit",
+			func(err error) {
+				errs = append(errs, err)
+			},
+			nil,
+			"",
+			"",
+		)
+
+		operand := messagevalue.NewNumberValue(42, "en", "operand", map[string]any{
+			"style":    "decimal",
+			"currency": "USD",
+		})
+
+		result := CurrencyFunction(ctx, nil, operand)
+		require.NotNil(t, result)
+		assert.Equal(t, "number", result.Type())
+		assert.Empty(t, errs)
 	})
 }
