@@ -19,18 +19,14 @@ import (
 //	  return cstToMessage(cst, onError);
 //	}
 func ParseMessage(source string) (Message, error) {
-	// Parse the string using CST parser
 	cstMessage := cst.ParseCST(source, false)
 
-	// Check for CST parsing errors
 	if len(cstMessage.Errors()) > 0 {
-		// Return the first error
 		firstError := cstMessage.Errors()[0]
 		end := firstError.End
 		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, firstError.Start, &end, nil)
 	}
 
-	// Convert CST to datamodel
 	message, err := FromCST(cstMessage)
 	if err != nil {
 		return nil, err

@@ -40,7 +40,6 @@ func Visit(msg Message, visitor *Visitor) {
 		return
 	}
 
-	// Visit declarations
 	for _, decl := range msg.Declarations() {
 		var end func()
 		if visitor.Declaration != nil {
@@ -58,19 +57,16 @@ func Visit(msg Message, visitor *Visitor) {
 		}
 	}
 
-	// Visit message-specific content
 	switch m := msg.(type) {
 	case *PatternMessage:
 		handlePattern(m.Pattern(), visitor)
 	case *SelectMessage:
-		// Visit selectors
 		if visitor.Value != nil {
 			for _, selector := range m.Selectors() {
 				visitor.Value(selector, "selector", "arg")
 			}
 		}
 
-		// Visit variants
 		for _, variant := range m.Variants() {
 			var end func()
 			if visitor.Variant != nil {
@@ -79,14 +75,12 @@ func Visit(msg Message, visitor *Visitor) {
 				visitor.Node(&variant)
 			}
 
-			// Visit keys
 			if visitor.Key != nil {
 				for i, key := range variant.Keys() {
 					visitor.Key(key, i, variant.Keys())
 				}
 			}
 
-			// Visit pattern
 			handlePattern(variant.Value(), visitor)
 
 			if end != nil {
@@ -106,12 +100,10 @@ func handleElement(elem any, context string, visitor *Visitor) {
 			visitor.Node(e, context)
 		}
 
-		// Visit argument
 		if e.Arg() != nil && visitor.Value != nil {
 			visitor.Value(e.Arg(), context, "arg")
 		}
 
-		// Visit function reference
 		if e.FunctionRef() != nil {
 			var endFunc func()
 			if visitor.FunctionRef != nil {
@@ -120,7 +112,6 @@ func handleElement(elem any, context string, visitor *Visitor) {
 				visitor.Node(e.FunctionRef(), context, e.Arg())
 			}
 
-			// Visit function options
 			handleOptions(convertOptionsToMap(e.FunctionRef().Options()), context, visitor)
 
 			if endFunc != nil {
@@ -128,7 +119,6 @@ func handleElement(elem any, context string, visitor *Visitor) {
 			}
 		}
 
-		// Visit attributes
 		handleAttributes(convertAttributesToMap(e.Attributes()), context, visitor)
 
 		if end != nil {
@@ -143,10 +133,8 @@ func handleElement(elem any, context string, visitor *Visitor) {
 			visitor.Node(e, context)
 		}
 
-		// Visit markup options
 		handleOptions(convertOptionsToMap(e.Options()), context, visitor)
 
-		// Visit markup attributes
 		handleAttributes(convertAttributesToMap(e.Attributes()), context, visitor)
 
 		if end != nil {
@@ -191,7 +179,6 @@ func handleOptions(options map[string]any, context string, visitor *Visitor) {
 		end = visitor.Options(options, context)
 	}
 
-	// Visit option values
 	if visitor.Value != nil {
 		for _, value := range options {
 			if IsLiteral(value) || IsVariableRef(value) {
@@ -215,7 +202,6 @@ func handleAttributes(attributes map[string]any, context string, visitor *Visito
 		end = visitor.Attributes(attributes, context)
 	}
 
-	// Visit attribute values
 	if visitor.Value != nil {
 		for _, value := range attributes {
 			if value != true && (IsLiteral(value) || IsVariableRef(value)) {
@@ -229,7 +215,6 @@ func handleAttributes(attributes map[string]any, context string, visitor *Visito
 	}
 }
 
-// Helper functions to convert typed maps to interface{} maps
 func convertOptionsToMap(options Options) map[string]any {
 	if options == nil {
 		return nil
@@ -249,10 +234,9 @@ func convertAttributesToMap(attributes Attributes) map[string]any {
 
 	result := make(map[string]any)
 	for k, v := range attributes {
+		result[k] = v
 		if _, ok := v.(*BooleanAttribute); ok {
 			result[k] = true
-		} else {
-			result[k] = v
 		}
 	}
 	return result
