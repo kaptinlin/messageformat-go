@@ -200,7 +200,6 @@ func (mf *MessageFormat) Format(
 		return "", err
 	}
 
-	// Concatenate all parts into a string
 	var result strings.Builder
 
 	for _, part := range parts {
@@ -212,11 +211,8 @@ func (mf *MessageFormat) Format(
 		case *messagevalue.FallbackPart:
 			result.WriteString(p.Value().(string))
 		case *messagevalue.MarkupPart:
-			// Markup elements format as empty string - matches TypeScript behavior
-			// TypeScript: formatMarkup(ctx, elem); // Handle errors, but discard results
-			// Do nothing - markup doesn't contribute to string output
+			continue
 		default:
-			// For other parts, try to get string representation
 			if str, ok := p.Value().(string); ok {
 				result.WriteString(str)
 			} else {
@@ -271,13 +267,9 @@ func (mf *MessageFormat) createContext(
 	values map[string]any,
 	onError func(error),
 ) *resolve.Context {
-	// Start with base context scope
 	scope := make(map[string]any)
-
-	// Add provided values first
 	maps.Copy(scope, values)
 
-	// Add message declarations
 	if err := mf.addDeclarationsToScope(scope, values); err != nil {
 		onError(err)
 	}
@@ -295,26 +287,17 @@ func (mf *MessageFormat) addDeclarationsToScope(
 	for _, decl := range declarations {
 		switch d := decl.(type) {
 		case *datamodel.InputDeclaration:
-			// For input declarations, create an unresolved expression
-			// that will be resolved with the provided msgParams
 			expr := d.Value()
 			if varRefExpr, ok := expr.(*datamodel.VariableRefExpression); ok {
-				// Convert VariableRefExpression to Expression for resolve package
 				generalExpr := datamodel.NewExpression(varRefExpr.Arg(), varRefExpr.FunctionRef(), varRefExpr.Attributes())
 				scope[d.Name()] = resolve.NewUnresolvedExpression(generalExpr, msgParams)
 			}
 		case *datamodel.LocalDeclaration:
-			// For local declarations, create an unresolved expression
-			// that will be resolved with access to the current scope (including message parameters)
 			expr := d.Value()
 			if localExpr, ok := expr.(*datamodel.Expression); ok {
-				// Create a combined scope that includes both message parameters and the current scope
 				combinedScope := make(map[string]any)
-				// Add message parameters first
 				maps.Copy(combinedScope, msgParams)
-				// Add current scope variables, overwriting message parameters
-				// This is important: if a variable is defined via .input, we want to use
-				// the UnresolvedExpression from scope, not the raw parameter value
+				// Prefer unresolved declarations from scope over raw message parameters.
 				maps.Copy(combinedScope, scope)
 				scope[d.Name()] = resolve.NewUnresolvedExpression(localExpr, combinedScope)
 			}
@@ -353,10 +336,11 @@ func (mf *MessageFormat) formatPattern(
 			valueParts, err := mv.ToParts()
 			if err != nil {
 				ctx.OnError(err)
-				parts = append(parts, messagevalue.NewFallbackPart(mv.Source(), functions.GetFirstLocale(ctx.Locales)))
-			} else {
-				parts = append(parts, valueParts...)
+				valueParts = []messagevalue.MessagePart{
+					messagevalue.NewFallbackPart(mv.Source(), functions.GetFirstLocale(ctx.Locales)),
+				}
 			}
+			parts = append(parts, valueParts...)
 
 			if mf.shouldApplyBidiIsolation(mv) {
 				parts = append(parts, messagevalue.NewBidiIsolationPart("\u2069")) // PDI
@@ -443,18 +427,13 @@ type ResolvedMessageFormatOptions struct {
 // This method is required by the TC39 Intl.MessageFormat proposal
 // https://github.com/tc39/proposal-intl-messageformat#constructor-options-and-resolvedoptions
 func (mf *MessageFormat) ResolvedOptions() ResolvedMessageFormatOptions {
-	// Convert internal bidiIsolation boolean to BidiIsolation enum
-	var bidiIsolation BidiIsolation
+	bidiIsolation := BidiNone
 	if mf.bidiIsolation {
 		bidiIsolation = BidiDefault
-	} else {
-		bidiIsolation = BidiNone
 	}
 
-	// Convert internal dir string to Direction type
 	dir := bidi.ParseDirection(mf.dir)
 
-	// Convert internal localeMatcher string to LocaleMatcher type
 	var localeMatcher LocaleMatcher
 	switch mf.localeMatcher {
 	case "best fit":
@@ -465,7 +444,6 @@ func (mf *MessageFormat) ResolvedOptions() ResolvedMessageFormatOptions {
 		localeMatcher = LocaleBestFit
 	}
 
-	// Create a copy of the functions map to avoid external modification
 	functionsCopy := maps.Clone(mf.functions)
 
 	return ResolvedMessageFormatOptions{
