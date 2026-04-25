@@ -3,6 +3,9 @@
 package selector
 
 import (
+	"maps"
+	"slices"
+
 	"github.com/kaptinlin/messageformat-go/internal/resolve"
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
@@ -148,10 +151,7 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 			// matches TypeScript: selectKey = selector.selectKey.bind(selector);
 			selectKeyFunc = func(availableKeys map[string]bool) *string {
 				// Convert map to slice for selection
-				keySlice := make([]string, 0, len(availableKeys))
-				for key := range availableKeys {
-					keySlice = append(keySlice, key)
-				}
+				keySlice := slices.Collect(maps.Keys(availableKeys))
 
 				if len(keySlice) == 0 {
 					return nil

@@ -664,7 +664,7 @@ func (nv *NumberValue) adjustFractionDigits(formatted string, minFractionDigits,
 
 	if existingFractionDigits < minFractionDigits {
 		// Add more zeros
-		for i := existingFractionDigits; i < minFractionDigits; i++ {
+		for range minFractionDigits - existingFractionDigits {
 			formatted += "0"
 		}
 	} else if existingFractionDigits > maxFractionDigits && maxFractionDigits >= 0 {
@@ -870,8 +870,8 @@ func (nv *NumberValue) parsePercentParts(formatted string) ([]MessagePart, error
 
 	// Remove the % symbol and parse the numeric part
 	remaining := formatted
-	if strings.HasSuffix(remaining, "%") {
-		remaining = remaining[:len(remaining)-1]
+	if trimmed, ok := strings.CutSuffix(remaining, "%"); ok {
+		remaining = trimmed
 
 		// Parse numeric parts
 		numericParts := nv.parseNumericParts(remaining)
@@ -1117,8 +1117,8 @@ func (nv *NumberValue) SelectKeys(keys []string) ([]string, error) {
 	// TC39: "exact numeric match will be preferred over plural category"
 	// 1. Check for exact numeric match with =N syntax (e.g., =0, =1, =42)
 	for _, key := range keys {
-		if strings.HasPrefix(key, "=") {
-			if keyNum, err := strconv.ParseFloat(key[1:], 64); err == nil && keyNum == numVal {
+		if suffix, ok := strings.CutPrefix(key, "="); ok {
+			if keyNum, err := strconv.ParseFloat(suffix, 64); err == nil && keyNum == numVal {
 				return []string{key}, nil
 			}
 		}

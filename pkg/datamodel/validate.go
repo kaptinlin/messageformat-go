@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"hash/maphash"
+	"maps"
+	"slices"
 
 	"github.com/kaptinlin/messageformat-go/internal/cst"
 	pkgerrors "github.com/kaptinlin/messageformat-go/pkg/errors"
@@ -332,16 +334,8 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 	}
 
 	// Convert sets to slices using slices.Collect (Go 1.23+)
-	// Pre-allocate with exact capacity for better performance
-	functionList := make([]string, 0, len(functions))
-	for fn := range functions {
-		functionList = append(functionList, fn)
-	}
-
-	variableList := make([]string, 0, len(variables))
-	for variable := range variables {
-		variableList = append(variableList, variable)
-	}
+	functionList := slices.Collect(maps.Keys(functions))
+	variableList := slices.Collect(maps.Keys(variables))
 
 	return &ValidationResult{
 		Functions: functionList,

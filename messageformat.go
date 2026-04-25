@@ -466,8 +466,7 @@ func (mf *MessageFormat) ResolvedOptions() ResolvedMessageFormatOptions {
 	}
 
 	// Create a copy of the functions map to avoid external modification
-	functionsCopy := make(map[string]functions.MessageFunction)
-	maps.Copy(functionsCopy, mf.functions)
+	functionsCopy := maps.Clone(mf.functions)
 
 	return ResolvedMessageFormatOptions{
 		BidiIsolation: bidiIsolation,

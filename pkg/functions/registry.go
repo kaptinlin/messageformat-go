@@ -133,13 +133,9 @@ func (fr *FunctionRegistry) Clone() *FunctionRegistry {
 	fr.mu.RLock()
 	defer fr.mu.RUnlock()
 
-	newRegistry := &FunctionRegistry{
-		functions: make(map[string]MessageFunction, len(fr.functions)),
+	return &FunctionRegistry{
+		functions: maps.Clone(fr.functions),
 	}
-
-	maps.Copy(newRegistry.functions, fr.functions)
-
-	return newRegistry
 }
 
 // Merge merges another registry into this one
