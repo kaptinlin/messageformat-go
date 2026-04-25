@@ -335,47 +335,34 @@ func (mf *MessageFormat) formatPattern(
 	for _, element := range pattern.Elements() {
 		switch elem := element.(type) {
 		case *datamodel.TextElement:
-			// Text element
 			parts = append(parts, messagevalue.NewTextPart(elem.Value(), elem.Value(), ""))
 
 		case *datamodel.Expression:
-			// Expression placeholder
 			mv := resolve.ResolveExpression(ctx, elem)
 
-			// Check if resolution failed
 			if mv == nil {
-				// Add fallback part for failed resolution
 				parts = append(parts, messagevalue.NewFallbackPart("", functions.GetFirstLocale(ctx.Locales)))
 				continue
 			}
 
-			// Apply bidi isolation if needed (matches TypeScript logic)
 			if mf.shouldApplyBidiIsolation(mv) {
-				// Add opening isolation
 				isolationStart := mf.getBidiIsolationStart(mv.Dir())
 				parts = append(parts, messagevalue.NewBidiIsolationPart(isolationStart))
 			}
 
-			// Convert MessageValue to parts
 			valueParts, err := mv.ToParts()
 			if err != nil {
-				// Error during formatting - emit error and use fallback
 				ctx.OnError(err)
-				// Add fallback part
 				parts = append(parts, messagevalue.NewFallbackPart(mv.Source(), functions.GetFirstLocale(ctx.Locales)))
 			} else {
-				// Add the actual parts
 				parts = append(parts, valueParts...)
 			}
 
-			// Apply closing bidi isolation if we opened it
 			if mf.shouldApplyBidiIsolation(mv) {
-				// Add closing isolation
 				parts = append(parts, messagevalue.NewBidiIsolationPart("\u2069")) // PDI
 			}
 
 		case *datamodel.Markup:
-			// Markup element - format using resolve package
 			markupPart := resolve.FormatMarkup(ctx, elem)
 			parts = append(parts, markupPart)
 		}

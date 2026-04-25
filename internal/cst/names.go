@@ -116,7 +116,7 @@ func IsValidUnquotedLiteral(str string) bool {
 
 	// Check each character to handle both BMP and non-BMP characters
 	for _, r := range str {
-		if !isValidNameChar(r) {
+		if !isNameChar(r) {
 			return false
 		}
 	}
@@ -249,9 +249,5 @@ func IsNameStartChar(r rune) bool {
 	if r == '-' || r == '.' || (r >= '0' && r <= '9') {
 		return false
 	}
-	return isNameChar(r)
-}
-
-func isValidNameChar(r rune) bool {
 	return isNameChar(r)
 }

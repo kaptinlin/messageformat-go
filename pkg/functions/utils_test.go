@@ -93,48 +93,8 @@ func TestAsString(t *testing.T) {
 	}
 }
 
-func TestGetStringOption(t *testing.T) {
-	options := map[string]any{
-		"valid":   "test",
-		"invalid": 42,
-	}
-
-	assert.Equal(t, "test", getStringOption(options, "valid", "default"))
-	assert.Equal(t, "default", getStringOption(options, "invalid", "default"))
-	assert.Equal(t, "default", getStringOption(options, "missing", "default"))
-}
-
-func TestGetIntOption(t *testing.T) {
-	options := map[string]any{
-		"valid":   5,
-		"invalid": "abc",
-	}
-
-	assert.Equal(t, 5, getIntOption(options, "valid", 10))
-	assert.Equal(t, 10, getIntOption(options, "invalid", 10))
-	assert.Equal(t, 10, getIntOption(options, "missing", 10))
-}
-
-func TestGetBoolOption(t *testing.T) {
-	options := map[string]any{
-		"valid":   true,
-		"invalid": "abc",
-	}
-
-	assert.Equal(t, true, getBoolOption(options, "valid", false))
-	assert.Equal(t, false, getBoolOption(options, "invalid", false))
-	assert.Equal(t, false, getBoolOption(options, "missing", false))
-}
-
 func TestGetFirstLocale(t *testing.T) {
 	assert.Equal(t, "en-US", GetFirstLocale([]string{"en-US", "fr"}))
 	assert.Equal(t, "en", GetFirstLocale([]string{}))
 	assert.Equal(t, "en", GetFirstLocale(nil))
-}
-
-func TestNormalizeLocale(t *testing.T) {
-	assert.Equal(t, "en", normalizeLocale("en-US"))
-	assert.Equal(t, "fr", normalizeLocale("fr-CA"))
-	assert.Equal(t, "zh", normalizeLocale("zh-Hans-CN"))
-	assert.Equal(t, "en", normalizeLocale(""))
 }

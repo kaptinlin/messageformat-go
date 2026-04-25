@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 )
 
 // ErrNotBoolean indicates the value cannot be converted to a boolean.
@@ -131,55 +130,10 @@ func asString(value any) (string, error) {
 	return "", ErrNotString
 }
 
-// getStringOption safely gets a string option with a default value
-func getStringOption(options map[string]any, name, defaultValue string) string {
-	if val, ok := options[name]; ok {
-		if str, ok := val.(string); ok {
-			return str
-		}
-	}
-	return defaultValue
-}
-
-// getIntOption safely gets an integer option with a default value
-func getIntOption(options map[string]any, name string, defaultValue int) int {
-	if val, ok := options[name]; ok {
-		if intVal, err := asPositiveInteger(val); err == nil {
-			return intVal
-		}
-	}
-	return defaultValue
-}
-
-// getBoolOption safely gets a boolean option with a default value
-func getBoolOption(options map[string]any, name string, defaultValue bool) bool {
-	if val, ok := options[name]; ok {
-		if boolVal, err := asBoolean(val); err == nil {
-			return boolVal
-		}
-	}
-	return defaultValue
-}
-
 // GetFirstLocale returns the first locale from a list, or "en" as fallback
 func GetFirstLocale(locales []string) string {
 	if len(locales) > 0 {
 		return locales[0]
-	}
-	return "en"
-}
-
-// normalizeLocale normalizes a locale string by taking the primary language tag
-func normalizeLocale(locale string) string {
-	// Handle empty string
-	if locale == "" {
-		return "en"
-	}
-
-	// Use strings.Cut to extract language part before hyphen (Go 1.20+)
-	lang, _, _ := strings.Cut(locale, "-")
-	if lang != "" {
-		return strings.ToLower(lang)
 	}
 	return "en"
 }

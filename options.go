@@ -143,7 +143,6 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
-// applyOptions applies functional options to MessageFormatOptions
 func applyOptions(options ...Option) *MessageFormatOptions {
 	opts := &MessageFormatOptions{}
 	for _, option := range options {
@@ -155,7 +154,6 @@ func applyOptions(options ...Option) *MessageFormatOptions {
 	return opts
 }
 
-// applyFormatOptions applies functional options to FormatOptions
 func applyFormatOptions(options ...FormatOption) *FormatOptions {
 	opts := &FormatOptions{}
 	for _, option := range options {

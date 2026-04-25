@@ -224,28 +224,6 @@ func TestIsNameStartChar(t *testing.T) {
 	}
 }
 
-func TestIsValidNameChar(t *testing.T) {
-	tests := []struct {
-		name     string
-		char     rune
-		expected bool
-	}{
-		{name: "BMP character a", char: 'a', expected: true},
-		{name: "BMP character 0", char: '0', expected: true},
-		{name: "BMP unicode", char: '\u00A1', expected: true},
-		{name: "invalid BMP", char: '\u0000', expected: false},
-		{name: "beyond BMP valid", char: '\U00010000', expected: true},
-		{name: "beyond BMP high", char: '\U0010FFFD', expected: true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := isValidNameChar(tt.char)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestParseUnquotedLiteralValue_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name     string
