@@ -40,7 +40,6 @@ import (
 //	  return part;
 //	}
 func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePart {
-	// matches TypeScript: const part: MessageMarkupPart = { type: 'markup', kind, name };
 	part := messagevalue.NewMarkupPart(
 		markup.Kind(),
 		markup.Name(),
@@ -49,24 +48,18 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 	)
 
 	options := markup.Options()
-	// matches TypeScript: if (options?.size)
 	if len(options) > 0 {
 		partOptions := make(map[string]any)
 
-		// matches TypeScript: for (const [name, value] of options)
 		for name, value := range options {
-			// matches TypeScript: if (name === 'u:dir')
 			if name == "u:dir" {
-				// matches TypeScript: const msg = `The option ${name} is not valid for markup`;
 				msg := fmt.Sprintf("option %s is not valid for markup", name)
-				// matches TypeScript: const optSource = getValueSource(value);
 				var optSource string
 				if node, ok := value.(datamodel.Node); ok {
 					optSource = getValueSource(node)
 				} else {
 					optSource = fmt.Sprintf("%v", value)
 				}
-				// matches TypeScript: ctx.onError(new MessageResolutionError('bad-option', msg, optSource));
 				if ctx.OnError != nil {
 					ctx.OnError(errors.NewMessageResolutionError(
 						errors.ErrorTypeBadOption,
@@ -74,42 +67,37 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 						optSource,
 					))
 				}
-			} else {
-				var rv any
-
-				// matches TypeScript: let rv = resolveValue(ctx, value);
-				if node, ok := value.(datamodel.Node); ok {
-					var err error
-					rv, err = resolveValue(ctx, node)
-					if err != nil {
-						// Log error and use nil as fallback value
-						logger.Error("failed to resolve value in markup", "error", err)
-						if ctx.OnError != nil {
-							ctx.OnError(errors.NewMessageResolutionError(
-								errors.ErrorTypeUnsupportedOperation,
-								err.Error(),
-								getValueSource(node),
-							))
-						}
-						rv = nil
-					}
-				} else {
-					rv = value
-				}
-
-				// matches TypeScript: if (typeof rv === 'object' && typeof rv?.valueOf === 'function') { rv = rv.valueOf(); }
-				if mv, ok := rv.(messagevalue.MessageValue); ok {
-					if valueOf, err := mv.ValueOf(); err == nil && valueOf != nil {
-						rv = valueOf
-					}
-				}
-
-				// matches TypeScript: if (name === 'u:id') part.id = String(rv); else part.options[name] = rv;
-				partOptions[name] = rv
+				continue
 			}
+
+			var rv any
+			if node, ok := value.(datamodel.Node); ok {
+				var err error
+				rv, err = resolveValue(ctx, node)
+				if err != nil {
+					logger.Error("failed to resolve value in markup", "error", err)
+					if ctx.OnError != nil {
+						ctx.OnError(errors.NewMessageResolutionError(
+							errors.ErrorTypeUnsupportedOperation,
+							err.Error(),
+							getValueSource(node),
+						))
+					}
+					rv = nil
+				}
+			} else {
+				rv = value
+			}
+
+			if mv, ok := rv.(messagevalue.MessageValue); ok {
+				if valueOf, err := mv.ValueOf(); err == nil && valueOf != nil {
+					rv = valueOf
+				}
+			}
+
+			partOptions[name] = rv
 		}
 
-		// Create new markup part with resolved options
 		part = messagevalue.NewMarkupPart(
 			markup.Kind(),
 			markup.Name(),
@@ -118,6 +106,5 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 		)
 	}
 
-	// matches TypeScript: return part;
 	return part
 }
