@@ -270,33 +270,19 @@ func (mf *MessageFormat) createContext(
 	scope := make(map[string]any)
 	maps.Copy(scope, values)
 
-	if err := mf.addDeclarationsToScope(scope, values); err != nil {
-		onError(err)
-	}
-
-	return resolve.NewContext(mf.locales, mf.functions, scope, onError)
-}
-
-// addDeclarationsToScope adds message declarations to the scope
-func (mf *MessageFormat) addDeclarationsToScope(
-	scope map[string]any,
-	msgParams map[string]any,
-) error {
-	declarations := mf.message.Declarations()
-
-	for _, decl := range declarations {
+	for _, decl := range mf.message.Declarations() {
 		switch d := decl.(type) {
 		case *datamodel.InputDeclaration:
 			expr := d.Value()
 			if varRefExpr, ok := expr.(*datamodel.VariableRefExpression); ok {
 				generalExpr := datamodel.NewExpression(varRefExpr.Arg(), varRefExpr.FunctionRef(), varRefExpr.Attributes())
-				scope[d.Name()] = resolve.NewUnresolvedExpression(generalExpr, msgParams)
+				scope[d.Name()] = resolve.NewUnresolvedExpression(generalExpr, values)
 			}
 		case *datamodel.LocalDeclaration:
 			expr := d.Value()
 			if localExpr, ok := expr.(*datamodel.Expression); ok {
 				combinedScope := make(map[string]any)
-				maps.Copy(combinedScope, msgParams)
+				maps.Copy(combinedScope, values)
 				// Prefer unresolved declarations from scope over raw message parameters.
 				maps.Copy(combinedScope, scope)
 				scope[d.Name()] = resolve.NewUnresolvedExpression(localExpr, combinedScope)
@@ -304,7 +290,7 @@ func (mf *MessageFormat) addDeclarationsToScope(
 		}
 	}
 
-	return nil
+	return resolve.NewContext(mf.locales, mf.functions, scope, onError)
 }
 
 // formatPattern formats a pattern into message parts with bidi isolation

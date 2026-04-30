@@ -23,12 +23,26 @@ type FormatOptions struct {
 
 // NewMessageFormatOptions applies functional options to a fresh MessageFormatOptions value.
 func NewMessageFormatOptions(options ...Option) *MessageFormatOptions {
-	return applyOptions(options...)
+	opts := &MessageFormatOptions{}
+	for _, option := range options {
+		if option == nil {
+			continue
+		}
+		option(opts)
+	}
+	return opts
 }
 
 // NewFormatOptions applies functional options to a fresh FormatOptions value.
 func NewFormatOptions(options ...FormatOption) *FormatOptions {
-	return applyFormatOptions(options...)
+	opts := &FormatOptions{}
+	for _, option := range options {
+		if option == nil {
+			continue
+		}
+		option(opts)
+	}
+	return opts
 }
 
 // Options converts a configuration struct into a constructor option.
@@ -141,26 +155,4 @@ func WithLogger(logger *slog.Logger) Option {
 	return func(opts *MessageFormatOptions) {
 		opts.Logger = logger
 	}
-}
-
-func applyOptions(options ...Option) *MessageFormatOptions {
-	opts := &MessageFormatOptions{}
-	for _, option := range options {
-		if option == nil {
-			continue
-		}
-		option(opts)
-	}
-	return opts
-}
-
-func applyFormatOptions(options ...FormatOption) *FormatOptions {
-	opts := &FormatOptions{}
-	for _, option := range options {
-		if option == nil {
-			continue
-		}
-		option(opts)
-	}
-	return opts
 }

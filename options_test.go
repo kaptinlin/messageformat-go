@@ -48,6 +48,24 @@ func TestFunctionalOptions(t *testing.T) {
 	assert.Contains(t, mf.ResolvedOptions().Functions, "custom")
 }
 
+func TestOptionConstructors(t *testing.T) {
+	t.Parallel()
+
+	messageOptions := NewMessageFormatOptions(nil, WithDir(DirRTL))
+	assert.Equal(t, DirRTL, messageOptions.Dir)
+
+	freshMessageOptions := NewMessageFormatOptions()
+	assert.Equal(t, Direction(""), freshMessageOptions.Dir)
+	assert.NotSame(t, messageOptions, freshMessageOptions)
+
+	formatOptions := NewFormatOptions(nil, WithErrorHandler(func(error) {}))
+	assert.NotNil(t, formatOptions.OnError)
+
+	freshFormatOptions := NewFormatOptions()
+	assert.Nil(t, freshFormatOptions.OnError)
+	assert.NotSame(t, formatOptions, freshFormatOptions)
+}
+
 func TestStringFunctionalOptions(t *testing.T) {
 	t.Parallel()
 
