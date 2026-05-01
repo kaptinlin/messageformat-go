@@ -191,9 +191,7 @@ func (nv *NumberValue) formatNumber() (string, error) {
 	}
 
 	// Ensure maxFractionDigits is at least minFractionDigits
-	if maxFractionDigits < minFractionDigits {
-		maxFractionDigits = minFractionDigits
-	}
+	maxFractionDigits = max(maxFractionDigits, minFractionDigits)
 
 	origMinFractionDigits := 0
 	origMaxFractionDigits := -1

@@ -288,10 +288,8 @@ func demonstrateConcurrency() {
 		start := time.Now()
 
 		for g := range numGoroutines {
-			wg.Add(1)
-			go func(goroutineID int) {
-				defer wg.Done()
-
+			goroutineID := g
+			wg.Go(func() {
 				for i := range iterationsPerGoroutine {
 					data := map[string]any{
 						"user":      fmt.Sprintf("User%d", goroutineID),
@@ -305,7 +303,7 @@ func demonstrateConcurrency() {
 						return
 					}
 				}
-			}(g)
+			})
 		}
 
 		wg.Wait()

@@ -81,12 +81,8 @@ func GetDirection(text string) Direction {
 //	}
 func GetLocaleDirection(locale string) Direction {
 	// Extract language code from locale (e.g., "en-US" -> "en")
-	parts := strings.Split(locale, "-")
-	if len(parts) == 0 {
-		return DirLTR
-	}
-
-	lang := strings.ToLower(parts[0])
+	lang, _, _ := strings.Cut(locale, "-")
+	lang = strings.ToLower(lang)
 
 	// Check for RTL languages
 	rtlLanguages := map[string]bool{

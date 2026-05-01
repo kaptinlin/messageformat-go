@@ -4,6 +4,7 @@ package resolve
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
@@ -313,7 +314,7 @@ func resolveOptions(ctx *Context, options map[string]any) map[string]any {
 
 // isUniversalOption checks if an option is a universal option
 func isUniversalOption(name string) bool {
-	return len(name) > 2 && name[:2] == "u:"
+	return len(name) > 2 && strings.HasPrefix(name, "u:")
 }
 
 // convertOptionsToMap converts FunctionRef options to a map[string]interface{}

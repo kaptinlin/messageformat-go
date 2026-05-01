@@ -98,3 +98,63 @@ func TestMessages_DefaultFallback(t *testing.T) {
 	messages.SetDefaultLocale(nil)
 	assert.Empty(t, messages.GetFallback(nil))
 }
+
+func TestMessages_ResolveLocalePartialMatches(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		locales       map[string]MessageData
+		requested     string
+		wantResolved  string
+		wantNilResult bool
+	}{
+		{
+			name:         "progressive hyphen truncation",
+			locales:      map[string]MessageData{"en": {"title": "Hello"}},
+			requested:    "en-US-POSIX",
+			wantResolved: "en",
+		},
+		{
+			name:         "progressive underscore truncation",
+			locales:      map[string]MessageData{"pt_BR": {"title": "Olá"}},
+			requested:    "pt_BR_POSIX",
+			wantResolved: "pt_BR",
+		},
+		{
+			name:         "forward hyphen match",
+			locales:      map[string]MessageData{"fr-CA": {"title": "Bonjour"}},
+			requested:    "fr",
+			wantResolved: "fr-CA",
+		},
+		{
+			name:         "forward underscore match",
+			locales:      map[string]MessageData{"zh_Hant": {"title": "你好"}},
+			requested:    "zh",
+			wantResolved: "zh_Hant",
+		},
+		{
+			name:          "no partial match",
+			locales:       map[string]MessageData{"de": {"title": "Hallo"}},
+			requested:     "es",
+			wantNilResult: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			messages := NewMessages(tt.locales, "")
+			messages.SetLocale(tt.requested)
+
+			if tt.wantNilResult {
+				assert.Nil(t, messages.Locale())
+				return
+			}
+
+			require.NotNil(t, messages.Locale())
+			assert.Equal(t, tt.wantResolved, *messages.Locale())
+		})
+	}
+}
