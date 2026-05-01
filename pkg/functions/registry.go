@@ -76,26 +76,17 @@ type FunctionRegistry struct {
 
 // NewFunctionRegistry creates a new function registry
 func NewFunctionRegistry() *FunctionRegistry {
-	registry := &FunctionRegistry{
-		functions: make(map[string]MessageFunction),
+	return &FunctionRegistry{
+		functions: maps.Clone(DefaultFunctions),
 	}
-
-	// Register default functions
-	maps.Copy(registry.functions, DefaultFunctions)
-
-	return registry
 }
 
 // NewFunctionRegistryWithDraft creates a new function registry including draft functions
 func NewFunctionRegistryWithDraft() *FunctionRegistry {
 	registry := &FunctionRegistry{
-		functions: make(map[string]MessageFunction),
+		functions: maps.Clone(DefaultFunctions),
 	}
 
-	// Register default functions
-	maps.Copy(registry.functions, DefaultFunctions)
-
-	// Register draft functions
 	maps.Copy(registry.functions, DraftFunctions)
 
 	return registry
