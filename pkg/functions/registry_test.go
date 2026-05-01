@@ -42,6 +42,30 @@ func TestNewFunctionRegistryWithDraft(t *testing.T) {
 	assert.True(t, exists)
 }
 
+func TestNewFunctionRegistryClonesDefaultFunctions(t *testing.T) {
+	registry := NewFunctionRegistry()
+	customFunc := func(ctx MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+		return messagevalue.NewStringValue("custom", "en", "test")
+	}
+
+	registry.Register("custom", customFunc)
+
+	assert.NotContains(t, DefaultFunctions, "custom")
+	assert.NotContains(t, DraftFunctions, "custom")
+}
+
+func TestNewFunctionRegistryWithDraftClonesFunctionMaps(t *testing.T) {
+	registry := NewFunctionRegistryWithDraft()
+	customFunc := func(ctx MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+		return messagevalue.NewStringValue("custom", "en", "test")
+	}
+
+	registry.Register("custom", customFunc)
+
+	assert.NotContains(t, DefaultFunctions, "custom")
+	assert.NotContains(t, DraftFunctions, "custom")
+}
+
 func TestFunctionRegistryRegister(t *testing.T) {
 	registry := NewFunctionRegistry()
 

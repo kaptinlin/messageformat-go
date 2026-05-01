@@ -664,3 +664,53 @@ func TestEdgeCasesInValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateMessageErrorTypes(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		message  Message
+		wantType string
+	}{
+		{
+			name: "local option forward reference",
+			message: NewPatternMessage(
+				[]Declaration{
+					NewLocalDeclaration("formatted", NewExpression(NewLiteral("value"), NewFunctionRef("string", ConvertMapToOptions(map[string]any{"case": NewVariableRef("style")})), nil)),
+					NewLocalDeclaration("style", NewExpression(NewLiteral("title"), nil, nil)),
+				},
+				NewPattern([]PatternElement{NewTextElement("test")}),
+				"",
+			),
+			wantType: "duplicate-declaration",
+		},
+		{
+			name: "select without fallback",
+			message: NewSelectMessage(
+				nil,
+				[]VariableRef{*NewVariableRef("count")},
+				[]Variant{
+					*NewVariant([]VariantKey{NewLiteral("one")}, NewPattern([]PatternElement{NewTextElement("one")})),
+				},
+				"",
+			),
+			wantType: "missing-fallback",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotTypes []string
+			_, err := ValidateMessage(tt.message, func(errType string, node any) {
+				gotTypes = append(gotTypes, errType)
+			})
+
+			require.Error(t, err)
+			require.Len(t, gotTypes, 1)
+			assert.Equal(t, tt.wantType, gotTypes[0])
+		})
+	}
+}

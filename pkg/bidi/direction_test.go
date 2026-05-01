@@ -6,6 +6,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestParseDirection(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		text string
+		want Direction
+	}{
+		{name: "ltr", text: "ltr", want: DirLTR},
+		{name: "rtl", text: "rtl", want: DirRTL},
+		{name: "auto", text: "auto", want: DirAuto},
+		{name: "unknown defaults to auto", text: "sideways", want: DirAuto},
+		{name: "empty defaults to auto", text: "", want: DirAuto},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, ParseDirection(tt.text))
+		})
+	}
+}
+
 func TestGetDirection(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -18,6 +42,21 @@ func TestGetDirection(t *testing.T) {
 			expected: DirLTR,
 		},
 		{
+			name:     "Latin supplement text",
+			text:     "Éclair",
+			expected: DirLTR,
+		},
+		{
+			name:     "Cyrillic text",
+			text:     "Привет",
+			expected: DirLTR,
+		},
+		{
+			name:     "CJK text",
+			text:     "世界",
+			expected: DirLTR,
+		},
+		{
 			name:     "Arabic text",
 			text:     "مرحبا",
 			expected: DirRTL,
@@ -25,6 +64,21 @@ func TestGetDirection(t *testing.T) {
 		{
 			name:     "Hebrew text",
 			text:     "שלום",
+			expected: DirRTL,
+		},
+		{
+			name:     "Syriac text",
+			text:     "ܫܠܡܐ",
+			expected: DirRTL,
+		},
+		{
+			name:     "Thaana text",
+			text:     "ދިވެހި",
+			expected: DirRTL,
+		},
+		{
+			name:     "NKo text",
+			text:     "ߒߞߏ",
 			expected: DirRTL,
 		},
 		{

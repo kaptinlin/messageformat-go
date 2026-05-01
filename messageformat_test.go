@@ -9,11 +9,54 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	pkgerrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
+
+type testPart struct {
+	typ   string
+	value any
+}
+
+func (p testPart) Type() string   { return p.typ }
+func (p testPart) Value() any     { return p.value }
+func (p testPart) Source() string { return "custom" }
+func (p testPart) Locale() string { return "en" }
+func (p testPart) Dir() Direction { return DirAuto }
+
+type customValue struct {
+	part messagevalue.MessagePart
+}
+
+func (v customValue) Type() string              { return v.part.Type() }
+func (v customValue) Source() string            { return v.part.Source() }
+func (v customValue) Dir() Direction            { return v.part.Dir() }
+func (v customValue) Locale() string            { return v.part.Locale() }
+func (v customValue) Options() map[string]any   { return nil }
+func (v customValue) ToString() (string, error) { return fmt.Sprint(v.part.Value()), nil }
+func (v customValue) ToParts() ([]messagevalue.MessagePart, error) {
+	return []messagevalue.MessagePart{v.part}, nil
+}
+func (v customValue) ValueOf() (any, error)                 { return v.part.Value(), nil }
+func (v customValue) SelectKeys([]string) ([]string, error) { return nil, nil }
+
+type failingValue struct{}
+
+func (f failingValue) Type() string              { return "custom" }
+func (f failingValue) Source() string            { return "$value" }
+func (f failingValue) Dir() Direction            { return DirAuto }
+func (f failingValue) Locale() string            { return "en" }
+func (f failingValue) Options() map[string]any   { return nil }
+func (f failingValue) ToString() (string, error) { return "", nil }
+func (f failingValue) ToParts() ([]messagevalue.MessagePart, error) {
+	return nil, pkgerrors.NewMessageResolutionError(pkgerrors.ErrorTypeBadOperand, "bad operand", "$value")
+}
+func (f failingValue) ValueOf() (any, error)                 { return nil, nil }
+func (f failingValue) SelectKeys([]string) ([]string, error) { return nil, nil }
 
 func normalizeTestLocales(locales any) []string {
 	switch v := locales.(type) {
@@ -389,6 +432,107 @@ func TestFormatToPartsAPI(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFormatFocusedBehaviors(t *testing.T) {
+	t.Parallel()
+
+	t.Run("markup parts are omitted from formatted string", func(t *testing.T) {
+		t.Parallel()
+
+		mf, err := Parse([]string{"en"}, "Hello {#strong}World{/strong}!")
+		require.NoError(t, err)
+
+		formatted, err := mf.Format(nil)
+		require.NoError(t, err)
+		assert.Equal(t, "Hello World!", formatted)
+
+		parts, err := mf.FormatToParts(nil)
+		require.NoError(t, err)
+		gotTypes := make([]string, 0, len(parts))
+		for _, part := range parts {
+			gotTypes = append(gotTypes, part.Type())
+		}
+		wantTypes := []string{"text", "markup", "text", "markup", "text"}
+		if diff := cmp.Diff(wantTypes, gotTypes); diff != "" {
+			t.Errorf("FormatToParts() types mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("custom part non string value is formatted", func(t *testing.T) {
+		t.Parallel()
+
+		custom := func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+			return customValue{part: testPart{typ: "custom", value: 42}}
+		}
+		mf, err := Parse([]string{"en"}, "Value {$value :custom}", WithFunction("custom", custom))
+		require.NoError(t, err)
+
+		formatted, err := mf.Format(map[string]any{"value": "ignored"})
+		require.NoError(t, err)
+		assert.Equal(t, "Value 42", formatted)
+	})
+
+	t.Run("ToParts errors produce fallback part and callback", func(t *testing.T) {
+		t.Parallel()
+
+		custom := func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+			return failingValue{}
+		}
+		mf, err := Parse([]string{"en"}, "Value {$value :custom}", WithFunction("custom", custom))
+		require.NoError(t, err)
+
+		var captured []error
+		parts, err := mf.FormatToParts(map[string]any{"value": "ignored"}, WithErrorHandler(func(err error) {
+			captured = append(captured, err)
+		}))
+		require.NoError(t, err)
+		require.Len(t, captured, 1)
+		var resolutionErr *pkgerrors.MessageResolutionError
+		require.ErrorAs(t, captured[0], &resolutionErr)
+		assert.Equal(t, pkgerrors.ErrorTypeBadOperand, resolutionErr.ErrorType())
+		require.Len(t, parts, 2)
+		assert.Equal(t, "fallback", parts[1].Type())
+		assert.Equal(t, "{$value}", parts[1].Value())
+	})
+
+	t.Run("RTL locale enables default bidi isolation", func(t *testing.T) {
+		t.Parallel()
+
+		mf, err := Parse([]string{"ar"}, "Hello {$name}")
+		require.NoError(t, err)
+		assert.True(t, mf.BidiIsolation())
+
+		formatted, err := mf.Format(map[string]any{"name": "World"})
+		require.NoError(t, err)
+		assert.Contains(t, formatted, string('\u2068'))
+		assert.Contains(t, formatted, string('\u2069'))
+	})
+
+	t.Run("universal options annotate parts and force isolation", func(t *testing.T) {
+		t.Parallel()
+
+		mf, err := Parse([]string{"en"}, `Hello {$name :string u:dir=rtl u:locale=ar u:id=user-name}`, WithBidiIsolation(BidiDefault))
+		require.NoError(t, err)
+
+		parts, err := mf.FormatToParts(map[string]any{"name": "ليلى"})
+		require.NoError(t, err)
+		require.Len(t, parts, 4)
+		assert.Equal(t, "bidiIsolation", parts[1].Type())
+		assert.Equal(t, string('\u2067'), parts[1].Value())
+		assert.Equal(t, "string", parts[2].Type())
+		assert.Equal(t, "en", parts[2].Locale())
+		assert.Equal(t, DirRTL, parts[2].Dir())
+		assert.Equal(t, "bidiIsolation", parts[3].Type())
+		assert.Equal(t, string('\u2069'), parts[3].Value())
+
+		withID, ok := parts[2].(interface{ ID() string })
+		require.True(t, ok)
+		assert.Equal(t, "user-name", withID.ID())
+		withLocale, ok := parts[2].(interface{ PartLocale() string })
+		require.True(t, ok)
+		assert.Equal(t, "en", withLocale.PartLocale())
+	})
 }
 
 // Options API Tests

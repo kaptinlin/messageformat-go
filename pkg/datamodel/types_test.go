@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/kaptinlin/messageformat-go/internal/cst"
 )
 
 func TestPatternMessage(t *testing.T) {
@@ -201,4 +203,74 @@ func TestNilHandling(t *testing.T) {
 		assert.NotNil(t, variant.Keys())
 		assert.Len(t, variant.Keys(), 0)
 	})
+}
+
+func TestPatternOperations(t *testing.T) {
+	t.Parallel()
+
+	pattern := NewPattern(nil)
+	text := NewTextElement("Hello")
+	pattern.Add(text)
+
+	assert.Equal(t, 1, pattern.Len())
+	assert.Same(t, text, pattern.Get(0))
+	assert.Nil(t, pattern.Get(-1))
+	assert.Nil(t, pattern.Get(1))
+}
+
+func TestWithCSTConstructorsPreserveReference(t *testing.T) {
+	t.Parallel()
+
+	textCST := cst.NewText(0, 6, "source")
+	literalCST := cst.NewText(7, 21, "literal-source")
+	variableCST := cst.NewText(22, 37, "variable-source")
+	functionCST := cst.NewText(38, 53, "function-source")
+	markupCST := cst.NewText(54, 67, "markup-source")
+	inputCST := cst.NewText(68, 80, "input-source")
+	localCST := cst.NewText(81, 93, "local-source")
+	expressionCST := cst.NewText(94, 111, "expression-source")
+	messageCST := cst.NewText(112, 126, "message-source")
+	selectCST := cst.NewText(127, 140, "select-source")
+	variantCST := cst.NewText(141, 155, "variant-source")
+	catchallCST := cst.NewText(156, 171, "catchall-source")
+	booleanCST := cst.NewText(172, 186, "boolean-source")
+
+	literal := NewLiteralWithCST("hello", literalCST)
+	variable := NewVariableRefWithCST("name", variableCST)
+	functionRef := NewFunctionRefWithCST("string", ConvertMapToOptions(map[string]any{"case": "title"}), functionCST)
+	attrs := ConvertMapToAttributes(map[string]any{"required": true})
+	expression := NewExpressionWithCST(variable, functionRef, attrs, expressionCST)
+	variableExpression := NewVariableRefExpressionWithCST(variable, functionRef, attrs, expressionCST)
+	input := NewInputDeclarationWithCST("name", variableExpression, inputCST)
+	local := NewLocalDeclarationWithCST("title", expression, localCST)
+	text := NewTextElementWithCST("Hello ", textCST)
+	pattern := NewPattern([]PatternElement{text, expression})
+	message := NewPatternMessageWithCST([]Declaration{input, local}, pattern, "comment", messageCST)
+	catchall := NewCatchallKeyWithCST("", catchallCST)
+	variant := NewVariantWithCST([]VariantKey{literal, catchall}, pattern, variantCST)
+	selectMessage := NewSelectMessageWithCST([]Declaration{input}, []VariableRef{*variable}, []Variant{*variant}, "select comment", selectCST)
+	markup := NewMarkupWithCST("open", "strong", nil, attrs, markupCST)
+	booleanAttr := NewBooleanAttributeWithCST(booleanCST)
+
+	assert.Same(t, literalCST, literal.CST())
+	assert.Equal(t, "hello", literal.String())
+	assert.Same(t, variableCST, variable.CST())
+	assert.Equal(t, "name", variable.String())
+	assert.Same(t, functionCST, functionRef.CST())
+	assert.Same(t, expressionCST, expression.CST())
+	assert.Same(t, expressionCST, variableExpression.CST())
+	assert.Same(t, inputCST, input.CST())
+	assert.Same(t, localCST, local.CST())
+	assert.Same(t, textCST, text.CST())
+	assert.Same(t, messageCST, message.CST())
+	assert.Equal(t, "comment", message.Comment())
+	assert.Same(t, selectCST, selectMessage.CST())
+	assert.Equal(t, "select comment", selectMessage.Comment())
+	assert.Same(t, variantCST, variant.CST())
+	assert.Same(t, catchallCST, catchall.CST())
+	assert.Equal(t, "*", catchall.String())
+	assert.Same(t, markupCST, markup.CST())
+	assert.Same(t, booleanCST, booleanAttr.CST())
+	assert.Equal(t, "boolean", booleanAttr.Type())
+	assert.Equal(t, "true", booleanAttr.String())
 }
