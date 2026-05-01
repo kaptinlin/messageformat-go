@@ -272,42 +272,39 @@ func resolveOptions(ctx *Context, options map[string]any) map[string]any {
 	}
 
 	for name, value := range options {
-		// Skip universal options (they're handled by MessageFunctionContext)
-		if !isUniversalOption(name) {
-			var resolved any
+		if isUniversalOption(name) {
+			continue
+		}
 
-			// Try to resolve as datamodel.Node first
-			if node, ok := value.(datamodel.Node); ok {
-				var err error
-				resolved, err = resolveValue(ctx, node)
-				if err != nil {
-					logger.Error("failed to resolve option", "option", name, "error", err)
-					if ctx.OnError != nil {
-						ctx.OnError(errors.NewMessageResolutionError(
-							errors.ErrorTypeBadOption,
-							err.Error(),
-							getValueSource(node),
-							err,
-						))
-					}
-					// Use nil as fallback
-					resolved = nil
+		var resolved any
+
+		if node, ok := value.(datamodel.Node); ok {
+			var err error
+			resolved, err = resolveValue(ctx, node)
+			if err != nil {
+				logger.Error("failed to resolve option", "option", name, "error", err)
+				if ctx.OnError != nil {
+					ctx.OnError(errors.NewMessageResolutionError(
+						errors.ErrorTypeBadOption,
+						err.Error(),
+						getValueSource(node),
+						err,
+					))
 				}
-			} else {
-				// Use value directly if not a Node
-				resolved = value
+				resolved = nil
 			}
+		} else {
+			resolved = value
+		}
 
-			// If resolved value is a MessageValue with valueOf, use that
-			if mv, ok := resolved.(messagevalue.MessageValue); ok {
-				if valueOf, err := mv.ValueOf(); err == nil && valueOf != nil {
-					opt[name] = valueOf
-				} else {
-					opt[name] = resolved
-				}
+		if mv, ok := resolved.(messagevalue.MessageValue); ok {
+			if valueOf, err := mv.ValueOf(); err == nil && valueOf != nil {
+				opt[name] = valueOf
 			} else {
 				opt[name] = resolved
 			}
+		} else {
+			opt[name] = resolved
 		}
 	}
 

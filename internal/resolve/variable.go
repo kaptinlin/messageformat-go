@@ -154,37 +154,8 @@ func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) any {
 
 	// Handle unresolved expressions - matches TypeScript: value instanceof UnresolvedExpression
 	if unresolvedExpr, ok := value.(*UnresolvedExpression); ok {
-		// Check for .input declarations first - these are special cases where we should use the original parameter value
-		// But only for simple variable references without functions
-		if unresolvedExpr.Scope != nil && unresolvedExpr.Expression.Arg() != nil && unresolvedExpr.Expression.FunctionRef() == nil {
-			if varRef, ok := unresolvedExpr.Expression.Arg().(*datamodel.VariableRef); ok {
-				varRefName := varRef.Name()
-				// Check if this is an .input declaration by looking for the original parameter in the scope
-				if originalValue, exists := unresolvedExpr.Scope[varRefName]; exists {
-					if _, isUnresolved := originalValue.(*UnresolvedExpression); !isUnresolved {
-						// This is an .input declaration without function - return the original parameter value directly
-						// This avoids infinite recursion in Unicode normalization cases
-						return originalValue
-					}
-				}
-
-				// Also check for Unicode normalization cases - if the variable names normalize to the same value
-				// we should look for any non-unresolved value in the scope
-				// But only if there's exactly one non-unresolved value (to avoid ambiguity)
-				var nonUnresolvedValue any
-				var count int
-				for _, scopeValue := range unresolvedExpr.Scope {
-					if _, isUnresolved := scopeValue.(*UnresolvedExpression); !isUnresolved {
-						nonUnresolvedValue = scopeValue
-						count++
-					}
-				}
-				if count == 1 {
-					// This could be the original parameter value for a Unicode normalization case
-					// Return it directly to avoid infinite recursion
-					return nonUnresolvedValue
-				}
-			}
+		if originalValue, ok := unresolvedInputValue(unresolvedExpr); ok {
+			return originalValue
 		}
 
 		// Check for circular reference by looking if we're already resolving this variable
@@ -230,6 +201,37 @@ func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) any {
 	}
 
 	return value
+}
+
+func unresolvedInputValue(unresolvedExpr *UnresolvedExpression) (any, bool) {
+	if unresolvedExpr.Scope == nil || unresolvedExpr.Expression.Arg() == nil || unresolvedExpr.Expression.FunctionRef() != nil {
+		return nil, false
+	}
+
+	varRef, ok := unresolvedExpr.Expression.Arg().(*datamodel.VariableRef)
+	if !ok {
+		return nil, false
+	}
+
+	if originalValue, exists := unresolvedExpr.Scope[varRef.Name()]; exists {
+		if _, isUnresolved := originalValue.(*UnresolvedExpression); !isUnresolved {
+			return originalValue, true
+		}
+	}
+
+	var nonUnresolvedValue any
+	var count int
+	for _, scopeValue := range unresolvedExpr.Scope {
+		if _, isUnresolved := scopeValue.(*UnresolvedExpression); !isUnresolved {
+			nonUnresolvedValue = scopeValue
+			count++
+		}
+	}
+	if count == 1 {
+		return nonUnresolvedValue, true
+	}
+
+	return nil, false
 }
 
 // ResolveVariableRef resolves a variable reference to a MessageValue

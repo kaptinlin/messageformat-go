@@ -158,10 +158,9 @@ func Compile(locales []string, message datamodel.Message, options ...Option) (*M
 
 	dir := string(opts.Dir)
 	if dir == "" || dir == string(DirAuto) {
+		dir = "auto"
 		if len(localeList) > 0 {
 			dir = string(bidi.GetLocaleDirection(localeList[0]))
-		} else {
-			dir = "auto"
 		}
 	}
 
@@ -314,7 +313,8 @@ func (mf *MessageFormat) formatPattern(
 				continue
 			}
 
-			if mf.shouldApplyBidiIsolation(mv) {
+			applyBidiIsolation := mf.shouldApplyBidiIsolation(mv)
+			if applyBidiIsolation {
 				isolationStart := mf.getBidiIsolationStart(mv.Dir())
 				parts = append(parts, messagevalue.NewBidiIsolationPart(isolationStart))
 			}
@@ -328,7 +328,7 @@ func (mf *MessageFormat) formatPattern(
 			}
 			parts = append(parts, valueParts...)
 
-			if mf.shouldApplyBidiIsolation(mv) {
+			if applyBidiIsolation {
 				parts = append(parts, messagevalue.NewBidiIsolationPart("\u2069")) // PDI
 			}
 

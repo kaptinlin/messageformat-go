@@ -44,7 +44,6 @@ func StringifyMessage(msg Message) string {
 	}
 	res.Grow(estimatedSize)
 
-	// Stringify declarations
 	for _, decl := range msg.Declarations() {
 		res.WriteString(stringifyDeclaration(decl))
 	}
@@ -58,17 +57,14 @@ func StringifyMessage(msg Message) string {
 		sm := msg.(*SelectMessage)
 		res.WriteString(".match")
 
-		// Add selectors
 		for _, selector := range sm.Selectors() {
 			res.WriteString(" ")
 			res.WriteString(stringifyVariableRef(&selector))
 		}
 
-		// Add variants
 		for _, variant := range sm.Variants() {
 			res.WriteString("\n")
 
-			// Add keys
 			for _, key := range variant.Keys() {
 				if IsLiteral(key) {
 					res.WriteString(stringifyLiteral(key.(*Literal)))

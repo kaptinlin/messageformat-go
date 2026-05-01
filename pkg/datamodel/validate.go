@@ -360,14 +360,17 @@ func referencesAnnotatedVariable(decl Declaration, annotated map[string]bool) bo
 		return false
 	}
 
-	if localDecl, ok := decl.(*LocalDeclaration); ok && localDecl.value != nil {
-		if localDecl.value.Arg() != nil {
-			if varRef, ok := localDecl.value.Arg().(*VariableRef); ok {
-				return annotated[varRef.Name()]
-			}
-		}
+	localDecl, ok := decl.(*LocalDeclaration)
+	if !ok || localDecl.value == nil || localDecl.value.Arg() == nil {
+		return false
 	}
-	return false
+
+	varRef, ok := localDecl.value.Arg().(*VariableRef)
+	if !ok {
+		return false
+	}
+
+	return annotated[varRef.Name()]
 }
 
 // visitExpression visits an expression in a declaration

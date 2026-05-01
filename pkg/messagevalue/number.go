@@ -195,39 +195,26 @@ func (nv *NumberValue) formatNumber() (string, error) {
 		maxFractionDigits = minFractionDigits
 	}
 
+	origMinFractionDigits := 0
+	origMaxFractionDigits := -1
+	if val, ok := nv.options["minimumFractionDigits"]; ok {
+		if intVal, ok := val.(int); ok {
+			origMinFractionDigits = intVal
+		}
+	}
+	if val, ok := nv.options["maximumFractionDigits"]; ok {
+		if intVal, ok := val.(int); ok {
+			origMaxFractionDigits = intVal
+		}
+	}
+
 	// Check if this is currency formatting
 	if style, ok := nv.options["style"]; ok && style == "currency" {
-		// For currency, pass the original values and let formatCurrency handle defaults
-		origMinFractionDigits := 0
-		origMaxFractionDigits := -1
-		if val, ok := nv.options["minimumFractionDigits"]; ok {
-			if intVal, ok := val.(int); ok {
-				origMinFractionDigits = intVal
-			}
-		}
-		if val, ok := nv.options["maximumFractionDigits"]; ok {
-			if intVal, ok := val.(int); ok {
-				origMaxFractionDigits = intVal
-			}
-		}
 		return nv.formatCurrency(num, tag, origMinFractionDigits, origMaxFractionDigits)
 	}
 
 	// Check if this is percentage formatting
 	if style, ok := nv.options["style"]; ok && style == "percent" {
-		// For percentage, pass the original values and let formatPercent handle defaults
-		origMinFractionDigits := 0
-		origMaxFractionDigits := -1
-		if val, ok := nv.options["minimumFractionDigits"]; ok {
-			if intVal, ok := val.(int); ok {
-				origMinFractionDigits = intVal
-			}
-		}
-		if val, ok := nv.options["maximumFractionDigits"]; ok {
-			if intVal, ok := val.(int); ok {
-				origMaxFractionDigits = intVal
-			}
-		}
 		return nv.formatPercent(num, tag, origMinFractionDigits, origMaxFractionDigits)
 	}
 

@@ -47,30 +47,9 @@ func FromCST(msg cst.Message) (Message, error) {
 		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, firstError.Start, &end, nil)
 	}
 
-	// Convert declarations
-	var declarations []Declaration
-	switch m := msg.(type) {
-	case *cst.SimpleMessage:
-		// Simple messages have no declarations
-		declarations = []Declaration{}
-	case *cst.ComplexMessage:
-		declarations = make([]Declaration, len(m.Declarations()))
-		for i, decl := range m.Declarations() {
-			converted, err := asDeclaration(decl)
-			if err != nil {
-				return nil, err
-			}
-			declarations[i] = converted
-		}
-	case *cst.SelectMessage:
-		declarations = make([]Declaration, len(m.Declarations()))
-		for i, decl := range m.Declarations() {
-			converted, err := asDeclaration(decl)
-			if err != nil {
-				return nil, err
-			}
-			declarations[i] = converted
-		}
+	declarations, err := asDeclarations(msg)
+	if err != nil {
+		return nil, err
 	}
 
 	// Handle different message types
@@ -119,6 +98,28 @@ func FromCST(msg cst.Message) (Message, error) {
 		end := 1
 		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
 	}
+}
+
+func asDeclarations(msg cst.Message) ([]Declaration, error) {
+	var declarations []cst.Declaration
+	switch m := msg.(type) {
+	case *cst.SimpleMessage:
+		return []Declaration{}, nil
+	case *cst.ComplexMessage:
+		declarations = m.Declarations()
+	case *cst.SelectMessage:
+		declarations = m.Declarations()
+	}
+
+	convertedDeclarations := make([]Declaration, len(declarations))
+	for i, decl := range declarations {
+		converted, err := asDeclaration(decl)
+		if err != nil {
+			return nil, err
+		}
+		convertedDeclarations[i] = converted
+	}
+	return convertedDeclarations, nil
 }
 
 // asDeclaration converts a CST declaration to a data model declaration
