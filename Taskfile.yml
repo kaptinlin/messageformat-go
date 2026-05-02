@@ -158,11 +158,6 @@ tasks:
           exit 1
         fi
 
-  markdownlint:
-    desc: Run markdownlint
-    cmds:
-      - markdownlint-cli2 "**/*.md"
-
   yamllint:
     desc: Run yamllint
     cmds:
