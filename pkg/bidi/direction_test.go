@@ -143,6 +143,11 @@ func TestGetLocaleDirection(t *testing.T) {
 			expected: DirRTL,
 		},
 		{
+			name:     "Arabic Saudi locale with uppercase language",
+			locale:   "AR-SA",
+			expected: DirRTL,
+		},
+		{
 			name:     "Hebrew locale",
 			locale:   "he",
 			expected: DirRTL,

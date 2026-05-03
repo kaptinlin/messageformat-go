@@ -112,14 +112,14 @@ func handleElement(elem any, context string, visitor *Visitor) {
 				visitor.Node(e.FunctionRef(), context, e.Arg())
 			}
 
-			handleOptions(convertOptionsToMap(e.FunctionRef().Options()), context, visitor)
+			handleOptions(e.FunctionRef().Options(), context, visitor)
 
 			if endFunc != nil {
 				endFunc()
 			}
 		}
 
-		handleAttributes(convertAttributesToMap(e.Attributes()), context, visitor)
+		handleAttributes(e.Attributes(), context, visitor)
 
 		if end != nil {
 			end()
@@ -133,9 +133,9 @@ func handleElement(elem any, context string, visitor *Visitor) {
 			visitor.Node(e, context)
 		}
 
-		handleOptions(convertOptionsToMap(e.Options()), context, visitor)
+		handleOptions(e.Options(), context, visitor)
 
-		handleAttributes(convertAttributesToMap(e.Attributes()), context, visitor)
+		handleAttributes(e.Attributes(), context, visitor)
 
 		if end != nil {
 			end()
@@ -169,14 +169,14 @@ func handlePattern(pattern Pattern, visitor *Visitor) {
 	}
 }
 
-func handleOptions(options map[string]any, context string, visitor *Visitor) {
+func handleOptions(options Options, context string, visitor *Visitor) {
 	if options == nil {
 		return
 	}
 
 	var end func()
 	if visitor.Options != nil {
-		end = visitor.Options(options, context)
+		end = visitor.Options(convertOptionsToMap(options), context)
 	}
 
 	if visitor.Value != nil {
@@ -192,19 +192,22 @@ func handleOptions(options map[string]any, context string, visitor *Visitor) {
 	}
 }
 
-func handleAttributes(attributes map[string]any, context string, visitor *Visitor) {
+func handleAttributes(attributes Attributes, context string, visitor *Visitor) {
 	if attributes == nil {
 		return
 	}
 
 	var end func()
 	if visitor.Attributes != nil {
-		end = visitor.Attributes(attributes, context)
+		end = visitor.Attributes(convertAttributesToMap(attributes), context)
 	}
 
 	if visitor.Value != nil {
 		for _, value := range attributes {
-			if value != true && (IsLiteral(value) || IsVariableRef(value)) {
+			if _, ok := value.(*BooleanAttribute); ok {
+				continue
+			}
+			if IsLiteral(value) || IsVariableRef(value) {
 				visitor.Value(value, context, "attribute")
 			}
 		}

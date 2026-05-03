@@ -553,6 +553,34 @@ func TestValidateAnnotatedVariables(t *testing.T) {
 	}
 }
 
+func TestValidateSelectMessageOtherLiteralFallback(t *testing.T) {
+	t.Parallel()
+
+	message := NewSelectMessage(
+		nil,
+		[]VariableRef{*NewVariableRef("count")},
+		[]Variant{
+			*NewVariant(
+				[]VariantKey{NewLiteral("one")},
+				NewPattern([]PatternElement{NewTextElement("one")}),
+			),
+			*NewVariant(
+				[]VariantKey{NewLiteral("other")},
+				NewPattern([]PatternElement{
+					NewExpression(NewVariableRef("count"), NewFunctionRef("integer", nil), nil),
+				}),
+			),
+		},
+		"",
+	)
+
+	result, err := ValidateMessage(message, nil)
+
+	require.NoError(t, err)
+	assert.Contains(t, result.Functions, "integer")
+	assert.Contains(t, result.Variables, "count")
+}
+
 func TestValidationResultStructure(t *testing.T) {
 	msg := NewPatternMessage(
 		[]Declaration{

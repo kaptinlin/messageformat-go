@@ -114,6 +114,30 @@ func TestVisit_SelectMessageTraversal(t *testing.T) {
 	assert.Equal(t, []string{"placeholder:br"}, markupContexts)
 }
 
+func TestVisit_MarkupAttributeValues(t *testing.T) {
+	t.Parallel()
+
+	message := NewPatternMessage(
+		nil,
+		NewPattern([]PatternElement{
+			NewMarkup("open", "button", nil, Attributes{
+				"ariaLabel": NewVariableRef("label"),
+				"disabled":  NewBooleanAttribute(),
+			}),
+		}),
+		"",
+	)
+
+	var values []string
+	Visit(message, &Visitor{
+		Value: func(value any, context string, position string) {
+			values = append(values, fmt.Sprintf("%s:%s:%T", context, position, value))
+		},
+	})
+
+	assert.Equal(t, []string{"placeholder:attribute:*datamodel.VariableRef"}, values)
+}
+
 func TestVisit_NilVisitor(t *testing.T) {
 	t.Parallel()
 

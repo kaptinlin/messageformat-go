@@ -84,20 +84,12 @@ func GetLocaleDirection(locale string) Direction {
 	lang, _, _ := strings.Cut(locale, "-")
 	lang = strings.ToLower(lang)
 
-	// Check for RTL languages
-	rtlLanguages := map[string]bool{
-		"ar": true, // Arabic
-		"he": true, // Hebrew
-		"fa": true, // Persian/Farsi
-		"ur": true, // Urdu
-		"yi": true, // Yiddish
-	}
-
-	if rtlLanguages[lang] {
+	switch lang {
+	case "ar", "he", "fa", "ur", "yi":
 		return DirRTL
+	default:
+		return DirLTR
 	}
-
-	return DirLTR
 }
 
 // WrapWithIsolation wraps text with appropriate isolation characters

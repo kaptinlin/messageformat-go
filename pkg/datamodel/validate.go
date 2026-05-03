@@ -200,11 +200,8 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 			localVars[decl.Name()] = true
 		}
 
-		// TypeScript: setArgAsDeclared = decl.type === 'local';
-		setArgAsDeclared := decl.Type() == "local"
-
 		// Visit expression in declaration
-		visitExpression(decl, functions, variables, declared, setArgAsDeclared)
+		visitExpression(decl, functions, variables)
 
 		// Check for duplicate declaration
 		if declared[decl.Name()] {
@@ -217,7 +214,7 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 	// Visit message pattern or selectors/variants
 	switch m := msg.(type) {
 	case *PatternMessage:
-		visitPattern(m.Pattern(), functions, variables, onError)
+		visitPattern(m.Pattern(), functions, variables)
 	case *SelectMessage:
 		// Visit selectors
 		// TypeScript: case 'selector': selectorCount += 1; missingFallback = value; ...
@@ -279,17 +276,6 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 				hasFallback = true
 			}
 
-			// Check for 'other' fallback in plural selectors
-			// In MessageFormat 2.0, 'other' is the required fallback for plural selectors
-			for _, key := range keys {
-				if IsLiteral(key) {
-					if key.(*Literal).Value() == "other" {
-						hasFallback = true
-						break
-					}
-				}
-			}
-
 			keyHash := hashVariantKeys(variantHashSeed, keyStrs)
 			if existing, ok := variants[keyHash]; ok {
 				if variantKeysContain(existing, keyStrs) {
@@ -303,12 +289,11 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 			}
 
 			// TypeScript: missingFallback &&= keys.every(key => key.type === '*') ? null : variant;
-			hasOtherFallback := false
-			for _, key := range keys {
-				if IsLiteral(key) && key.(*Literal).Value() == "other" {
-					hasOtherFallback = true
-					break
-				}
+			hasOtherFallback := slices.ContainsFunc(keys, func(key VariantKey) bool {
+				return IsLiteral(key) && key.(*Literal).Value() == "other"
+			})
+			if hasOtherFallback {
+				hasFallback = true
 			}
 
 			if !allCatchall && !hasOtherFallback {
@@ -318,7 +303,7 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 			}
 
 			// Visit variant pattern
-			visitPattern(variant.Value(), functions, variables, onError)
+			visitPattern(variant.Value(), functions, variables)
 		}
 
 		// Check for missing fallback
@@ -376,7 +361,7 @@ func referencesAnnotatedVariable(decl Declaration, annotated map[string]bool) bo
 // visitExpression visits an expression in a declaration
 // TypeScript: expression({ functionRef }) { if (functionRef) functions.add(functionRef.name); }
 // TypeScript: value(value, context, position) { ... }
-func visitExpression(decl Declaration, functions, variables, declared map[string]bool, setArgAsDeclared bool) {
+func visitExpression(decl Declaration, functions, variables map[string]bool) {
 	switch d := decl.(type) {
 	case *InputDeclaration:
 		if d.value != nil {
@@ -444,54 +429,25 @@ func selectorHasFunction(selector VariableRef) bool {
 }
 
 // visitPattern visits a pattern for expressions
-func visitPattern(pattern Pattern, functions, variables map[string]bool, onError func(string, any)) {
+func visitPattern(pattern Pattern, functions, variables map[string]bool) {
 	for _, elem := range pattern.Elements() {
-		switch e := elem.(type) {
-		case *Expression:
-			// TypeScript: expression({ functionRef }) { if (functionRef) functions.add(functionRef.name); }
-			if e.FunctionRef() != nil {
-				functions[e.FunctionRef().Name()] = true
-				// Check for duplicate options
-				checkDuplicateOptions(e.FunctionRef(), onError)
-				// Visit function options
-				visitFunctionOptions(e.FunctionRef(), variables)
-			}
+		expr, ok := elem.(*Expression)
+		if !ok {
+			continue
+		}
 
-			// TypeScript: value(value, context, position) { if (value.type !== 'variable') return; variables.add(value.name); }
-			if e.Arg() != nil {
-				if varRef, ok := e.Arg().(*VariableRef); ok {
-					variables[varRef.Name()] = true
-				}
-			}
-		case *Markup:
-			// Check for duplicate options in markup
-			if e.Options() != nil {
-				seen := make(map[string]bool)
-				for optName := range e.Options() {
-					if seen[optName] {
-						onError("duplicate-option-name", e)
-						break
-					}
-					seen[optName] = true
-				}
+		// TypeScript: expression({ functionRef }) { if (functionRef) functions.add(functionRef.name); }
+		if expr.FunctionRef() != nil {
+			functions[expr.FunctionRef().Name()] = true
+			visitFunctionOptions(expr.FunctionRef(), variables)
+		}
+
+		// TypeScript: value(value, context, position) { if (value.type !== 'variable') return; variables.add(value.name); }
+		if expr.Arg() != nil {
+			if varRef, ok := expr.Arg().(*VariableRef); ok {
+				variables[varRef.Name()] = true
 			}
 		}
-	}
-}
-
-// checkDuplicateOptions checks for duplicate option names in a function reference
-func checkDuplicateOptions(funcRef *FunctionRef, onError func(string, any)) {
-	if funcRef.Options() == nil {
-		return
-	}
-
-	seen := make(map[string]bool)
-	for optName := range funcRef.Options() {
-		if seen[optName] {
-			onError("duplicate-option-name", funcRef)
-			return
-		}
-		seen[optName] = true
 	}
 }
 
