@@ -218,16 +218,14 @@ func parseDateTimeValue(operand any) (time.Time, error) {
 
 	// Check if operand is an object with options and/or valueOf
 	// TypeScript: if (typeof value === 'object' && value !== null)
-	if operand != nil {
-		if opMap, ok := operand.(map[string]any); ok {
-			// Extract valueOf if present
-			// TypeScript: if (typeof value.valueOf === 'function') value = value.valueOf()
-			if valueOf, ok := opMap["valueOf"]; ok {
-				value = valueOf
-			}
-			// Note: We don't extract options from operand here
-			// because we build options from expression options instead
+	if opMap, ok := operand.(map[string]any); ok {
+		// Extract valueOf if present
+		// TypeScript: if (typeof value.valueOf === 'function') value = value.valueOf()
+		if valueOf, ok := opMap["valueOf"]; ok {
+			value = valueOf
 		}
+		// Note: We don't extract options from operand here
+		// because we build options from expression options instead
 	}
 
 	// Parse the value to time.Time
@@ -272,13 +270,6 @@ func TimeFunction(
 func parseDateTime(input any) (time.Time, error) {
 	// Handle MessageValue types (e.g., from :datetime function)
 	if mv, ok := input.(messagevalue.MessageValue); ok {
-		if mv.Type() == "datetime" {
-			// For datetime values, try to get the underlying value
-			if val, err := mv.ValueOf(); err == nil {
-				return parseDateTime(val)
-			}
-		}
-		// For other MessageValue types, try to get the underlying value
 		if val, err := mv.ValueOf(); err == nil {
 			return parseDateTime(val)
 		}

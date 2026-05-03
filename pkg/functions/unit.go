@@ -110,7 +110,6 @@ func UnitFunction(
 		}
 	}
 
-	// Check that unit is provided
 	if _, hasUnit := mergedOptions["unit"]; !hasUnit {
 		msg := "A unit identifier is required for :unit"
 		ctx.OnError(pkgErrors.NewBadOperandError(msg, source))
