@@ -48,63 +48,62 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 	)
 
 	options := markup.Options()
-	if len(options) > 0 {
-		partOptions := make(map[string]any)
-
-		for name, value := range options {
-			if name == "u:dir" {
-				msg := fmt.Sprintf("option %s is not valid for markup", name)
-				var optSource string
-				if node, ok := value.(datamodel.Node); ok {
-					optSource = getValueSource(node)
-				} else {
-					optSource = fmt.Sprintf("%v", value)
-				}
-				if ctx.OnError != nil {
-					ctx.OnError(errors.NewMessageResolutionError(
-						errors.ErrorTypeBadOption,
-						msg,
-						optSource,
-					))
-				}
-				continue
-			}
-
-			var rv any
-			if node, ok := value.(datamodel.Node); ok {
-				var err error
-				rv, err = resolveValue(ctx, node)
-				if err != nil {
-					logger.Error("failed to resolve value in markup", "error", err)
-					if ctx.OnError != nil {
-						ctx.OnError(errors.NewMessageResolutionError(
-							errors.ErrorTypeUnsupportedOperation,
-							err.Error(),
-							getValueSource(node),
-						))
-					}
-					rv = nil
-				}
-			} else {
-				rv = value
-			}
-
-			if mv, ok := rv.(messagevalue.MessageValue); ok {
-				if valueOf, err := mv.ValueOf(); err == nil && valueOf != nil {
-					rv = valueOf
-				}
-			}
-
-			partOptions[name] = rv
-		}
-
-		part = messagevalue.NewMarkupPart(
-			markup.Kind(),
-			markup.Name(),
-			"", // source
-			partOptions,
-		)
+	if len(options) == 0 {
+		return part
 	}
 
-	return part
+	partOptions := make(map[string]any)
+	for name, value := range options {
+		if name == "u:dir" {
+			msg := fmt.Sprintf("option %s is not valid for markup", name)
+			var optSource string
+			if node, ok := value.(datamodel.Node); ok {
+				optSource = getValueSource(node)
+			} else {
+				optSource = fmt.Sprintf("%v", value)
+			}
+			if ctx.OnError != nil {
+				ctx.OnError(errors.NewMessageResolutionError(
+					errors.ErrorTypeBadOption,
+					msg,
+					optSource,
+				))
+			}
+			continue
+		}
+
+		var rv any
+		if node, ok := value.(datamodel.Node); ok {
+			var err error
+			rv, err = resolveValue(ctx, node)
+			if err != nil {
+				logger.Error("failed to resolve value in markup", "error", err)
+				if ctx.OnError != nil {
+					ctx.OnError(errors.NewMessageResolutionError(
+						errors.ErrorTypeUnsupportedOperation,
+						err.Error(),
+						getValueSource(node),
+					))
+				}
+				rv = nil
+			}
+		} else {
+			rv = value
+		}
+
+		if mv, ok := rv.(messagevalue.MessageValue); ok {
+			if valueOf, err := mv.ValueOf(); err == nil && valueOf != nil {
+				rv = valueOf
+			}
+		}
+
+		partOptions[name] = rv
+	}
+
+	return messagevalue.NewMarkupPart(
+		markup.Kind(),
+		markup.Name(),
+		"", // source
+		partOptions,
+	)
 }
