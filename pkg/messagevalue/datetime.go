@@ -30,17 +30,7 @@ type DateTimeValue struct {
 
 // NewDateTimeValue creates a new datetime value
 func NewDateTimeValue(value time.Time, locale, source string, options map[string]any) *DateTimeValue {
-	if options == nil {
-		options = make(map[string]any)
-	}
-
-	return &DateTimeValue{
-		value:   value,
-		locale:  locale,
-		dir:     bidi.DirAuto,
-		source:  source,
-		options: options,
-	}
+	return NewDateTimeValueWithDir(value, locale, source, bidi.DirAuto, options)
 }
 
 // NewDateTimeValueWithDir creates a new datetime value with explicit direction
