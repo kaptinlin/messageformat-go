@@ -174,10 +174,7 @@ func ParseCST(source string, resource bool) Message {
 	}
 
 	// matches TypeScript: return source.startsWith('{{', pos) ? parsePatternMessage(...) : parsePatternMessage(...);
-	if strings.HasPrefix(source[pos:], "{{") {
-		return parsePatternMessage(ctx, 0, []Declaration{}, true)
-	}
-	return parsePatternMessage(ctx, 0, []Declaration{}, false)
+	return parsePatternMessage(ctx, 0, []Declaration{}, strings.HasPrefix(source[pos:], "{{"))
 }
 
 // parsePatternMessage parses a simple or complex message
@@ -236,13 +233,8 @@ func parseSelectMessage(
 		}
 
 		ws = Whitespaces(ctx.source, pos)
-		if !ws.HasWS {
-			// Check if we're at the end or at a variant key - need whitespace between selectors
-			// Also need whitespace before '*' variant key
-			if pos < len(ctx.source) {
-				// Always require whitespace after selector, even before '*'
-				ctx.OnError("missing-syntax", pos, " ")
-			}
+		if !ws.HasWS && pos < len(ctx.source) {
+			ctx.OnError("missing-syntax", pos, " ")
 		}
 		pos = ws.End
 	}

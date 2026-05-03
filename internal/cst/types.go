@@ -573,7 +573,8 @@ func (i Identifier) Namespace() *Syntax {
 func (i Identifier) Name() *Syntax {
 	if len(i) == 1 {
 		return &i[0]
-	} else if len(i) == 3 {
+	}
+	if len(i) == 3 {
 		return &i[2]
 	}
 	return nil

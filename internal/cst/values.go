@@ -73,18 +73,7 @@ func ParseText(ctx *ParseContext, start int) *Text {
 		case '\n':
 			if ctx.Resource() {
 				nl := i
-				next := byte(0)
-				if i+1 < len(source) {
-					next = source[i+1]
-				}
-				for next == ' ' || next == '\t' {
-					i++
-					if i+1 < len(source) {
-						next = source[i+1]
-					} else {
-						break
-					}
-				}
+				i = skipResourceIndentation(source, i)
 				if i > nl {
 					value.WriteString(source[pos : nl+1])
 					pos = i + 1
@@ -117,6 +106,13 @@ loop_end:
 //	  const end = start + value.length;
 //	  return { type: 'literal', quoted: false, start, end, value };
 //	}
+func skipResourceIndentation(source string, i int) int {
+	for i+1 < len(source) && (source[i+1] == ' ' || source[i+1] == '\t') {
+		i++
+	}
+	return i
+}
+
 func ParseLiteral(ctx *ParseContext, start int, required bool) *Literal {
 	source := ctx.Source()
 
@@ -164,18 +160,7 @@ func parseQuotedLiteral(ctx *ParseContext, start int) *Literal {
 		case '\n':
 			if ctx.Resource() {
 				nl := i
-				next := byte(0)
-				if i+1 < len(source) {
-					next = source[i+1]
-				}
-				for next == ' ' || next == '\t' {
-					i++
-					if i+1 < len(source) {
-						next = source[i+1]
-					} else {
-						break
-					}
-				}
+				i = skipResourceIndentation(source, i)
 				if i > nl {
 					value.WriteString(source[pos : nl+1])
 					pos = i + 1
@@ -390,18 +375,7 @@ func ParseSimpleText(ctx *ParseContext, start int) *Text {
 		case '\n':
 			if ctx.Resource() {
 				nl := i
-				next := byte(0)
-				if i+1 < len(source) {
-					next = source[i+1]
-				}
-				for next == ' ' || next == '\t' {
-					i++
-					if i+1 < len(source) {
-						next = source[i+1]
-					} else {
-						break
-					}
-				}
+				i = skipResourceIndentation(source, i)
 				if i > nl {
 					value.WriteString(source[pos : nl+1])
 					pos = i + 1

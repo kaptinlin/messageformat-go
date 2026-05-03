@@ -278,9 +278,9 @@ type IdentifierResult struct {
 //	}
 func parseIdentifier(ctx *ParseContext, start int) *IdentifierResult {
 	source := ctx.Source()
-	name0 := ParseNameValue(source, start)
+	firstName := ParseNameValue(source, start)
 
-	if name0 == nil {
+	if firstName == nil {
 		ctx.OnError("empty-token", start, start+1)
 		return &IdentifierResult{
 			Parts: Identifier{NewSyntax(start, start, "")},
@@ -288,12 +288,12 @@ func parseIdentifier(ctx *ParseContext, start int) *IdentifierResult {
 		}
 	}
 
-	pos := name0.End
-	id0 := NewSyntax(start, pos, name0.Value)
+	pos := firstName.End
+	firstPart := NewSyntax(start, pos, firstName.Value)
 
 	if pos >= len(source) || source[pos] != ':' {
 		return &IdentifierResult{
-			Parts: Identifier{id0},
+			Parts: Identifier{firstPart},
 			End:   pos,
 		}
 	}
@@ -301,17 +301,17 @@ func parseIdentifier(ctx *ParseContext, start int) *IdentifierResult {
 	sep := NewSyntax(pos, pos+1, ":")
 	pos++
 
-	name1 := ParseNameValue(source, pos)
-	if name1 != nil {
-		id1 := NewSyntax(pos, name1.End, name1.Value)
+	secondName := ParseNameValue(source, pos)
+	if secondName != nil {
+		secondPart := NewSyntax(pos, secondName.End, secondName.Value)
 		return &IdentifierResult{
-			Parts: Identifier{id0, sep, id1},
-			End:   name1.End,
+			Parts: Identifier{firstPart, sep, secondPart},
+			End:   secondName.End,
 		}
 	}
 	ctx.OnError("empty-token", pos, pos+1)
 	return &IdentifierResult{
-		Parts: Identifier{id0, sep},
+		Parts: Identifier{firstPart, sep},
 		End:   pos,
 	}
 }
