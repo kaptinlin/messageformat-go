@@ -344,10 +344,11 @@ func stringifyAttribute(name string, value any) string {
 //	}
 func stringifyPattern(pattern Pattern, quoted bool) string {
 	var result strings.Builder
+	elements := pattern.Elements()
 
 	// Check if first element starts with dot (needs quoting)
-	if !quoted && len(pattern.Elements()) > 0 {
-		if textElem, ok := pattern.Elements()[0].(*TextElement); ok {
+	if !quoted && len(elements) > 0 {
+		if textElem, ok := elements[0].(*TextElement); ok {
 			if startsWithDotPattern.MatchString(textElem.Value()) {
 				quoted = true
 			}
@@ -355,7 +356,7 @@ func stringifyPattern(pattern Pattern, quoted bool) string {
 	}
 
 	// Process elements
-	for _, elem := range pattern.Elements() {
+	for _, elem := range elements {
 		switch e := elem.(type) {
 		case *TextElement:
 			// Escape special characters

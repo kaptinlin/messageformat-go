@@ -378,6 +378,15 @@ func TestStringifyPattern(t *testing.T) {
 			expected: "{{.local value}}",
 		},
 		{
+			name: "pattern starting with spaced dot and expression",
+			pattern: NewPattern([]PatternElement{
+				NewTextElement("  .local "),
+				NewExpression(NewVariableRef("name"), nil, nil),
+			}),
+			quoted:   false,
+			expected: "{{  .local {$name}}}",
+		},
+		{
 			name:     "pattern with special characters",
 			pattern:  NewPattern([]PatternElement{NewTextElement("Hello {world}")}),
 			quoted:   false,

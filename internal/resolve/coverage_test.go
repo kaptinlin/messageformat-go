@@ -95,6 +95,40 @@ func TestResolveFunctionRefResolvesOptionsAndReportsFailures(t *testing.T) {
 		}
 	})
 
+	t.Run("function context and resolved options use the same function ref options", func(t *testing.T) {
+		t.Parallel()
+
+		var gotLiteralKeys map[string]bool
+		var gotOptions map[string]any
+		var gotID string
+		var gotDir string
+		ctx := newResolveCoverageContext(map[string]any{"width": "wide"})
+		ctx.Functions["capture"] = func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+			gotLiteralKeys = ctx.LiteralOptionKeys()
+			gotOptions = options
+			gotID = ctx.ID()
+			gotDir = ctx.Dir()
+			return messagevalue.NewStringValue("ok", functions.GetFirstLocale(ctx.Locales()), ctx.Source())
+		}
+
+		result := ResolveFunctionRef(ctx, nil, datamodel.NewFunctionRef("capture", datamodel.Options{
+			"mode":  datamodel.NewLiteral("compact"),
+			"width": datamodel.NewVariableRef("width"),
+			"u:id":  datamodel.NewLiteral("part-id"),
+			"u:dir": datamodel.NewLiteral("rtl"),
+		}))
+		require.Equal(t, "string", result.Type())
+		assert.Equal(t, "part-id", gotID)
+		assert.Equal(t, "rtl", gotDir)
+		if diff := cmp.Diff(map[string]any{"mode": "compact", "width": "wide"}, gotOptions); diff != "" {
+			t.Errorf("resolved options mismatch (-want +got):\n%s", diff)
+		}
+		assert.True(t, gotLiteralKeys["mode"])
+		assert.True(t, gotLiteralKeys["u:id"])
+		assert.True(t, gotLiteralKeys["u:dir"])
+		assert.False(t, gotLiteralKeys["width"])
+	})
+
 	t.Run("unresolved option variable reports unresolved variable and passes nil", func(t *testing.T) {
 		t.Parallel()
 

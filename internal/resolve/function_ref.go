@@ -121,11 +121,13 @@ func resolveFunctionRefInternal(
 		)
 	}
 
+	options := convertOptionsToMap(functionRef.Options())
+
 	// matches TypeScript: const msgCtx = new MessageFunctionContext(ctx, source, options);
-	msgCtx := createMessageFunctionContext(ctx, source, convertOptionsToMap(functionRef.Options()))
+	msgCtx := createMessageFunctionContext(ctx, source, options)
 
 	// matches TypeScript: const opt = resolveOptions(ctx, options);
-	opt := resolveOptions(ctx, convertOptionsToMap(functionRef.Options()))
+	opt := resolveOptions(ctx, options)
 
 	// matches TypeScript: let res = rf(msgCtx, opt, ...fnInput);
 	var res messagevalue.MessageValue
