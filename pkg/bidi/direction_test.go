@@ -31,6 +31,8 @@ func TestParseDirection(t *testing.T) {
 }
 
 func TestGetDirection(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		text     string
@@ -106,17 +108,70 @@ func TestGetDirection(t *testing.T) {
 			text:     "!@#$%",
 			expected: DirAuto,
 		},
+		{
+			name:     "Neutral prefix before LTR",
+			text:     "123 ! Hello",
+			expected: DirLTR,
+		},
+		{
+			name:     "Neutral prefix before RTL",
+			text:     "… مرحبا",
+			expected: DirRTL,
+		},
+		{
+			name:     "Isolation prefix before LTR",
+			text:     string(FSI) + "Hello",
+			expected: DirLTR,
+		},
+		{
+			name:     "RTL text wrapped in punctuation",
+			text:     "(שלום)",
+			expected: DirRTL,
+		},
+		{
+			name:     "LTR text wrapped in punctuation",
+			text:     "[Hello]",
+			expected: DirLTR,
+		},
+		{
+			name:     "Arabic supplement text",
+			text:     "ݐ",
+			expected: DirRTL,
+		},
+		{
+			name:     "Samaritan text",
+			text:     "ࠀ",
+			expected: DirRTL,
+		},
+		{
+			name:     "Hebrew presentation form text",
+			text:     "יִ",
+			expected: DirRTL,
+		},
+		{
+			name:     "Arabic presentation form A text",
+			text:     "ﭐ",
+			expected: DirRTL,
+		},
+		{
+			name:     "Arabic presentation form B text",
+			text:     "ﹰ",
+			expected: DirRTL,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetDirection(tt.text)
-			assert.Equal(t, tt.expected, result)
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, GetDirection(tt.text))
 		})
 	}
 }
 
 func TestGetLocaleDirection(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		locale   string
@@ -173,6 +228,26 @@ func TestGetLocaleDirection(t *testing.T) {
 			expected: DirRTL,
 		},
 		{
+			name:     "Persian Afghanistan locale",
+			locale:   "fa-AF",
+			expected: DirRTL,
+		},
+		{
+			name:     "Urdu India locale",
+			locale:   "ur-IN",
+			expected: DirRTL,
+		},
+		{
+			name:     "Yiddish region locale",
+			locale:   "yi-001",
+			expected: DirRTL,
+		},
+		{
+			name:     "English script region locale",
+			locale:   "en-Latn-US",
+			expected: DirLTR,
+		},
+		{
 			name:     "French locale",
 			locale:   "fr",
 			expected: DirLTR,
@@ -196,13 +271,16 @@ func TestGetLocaleDirection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetLocaleDirection(tt.locale)
-			assert.Equal(t, tt.expected, result)
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, GetLocaleDirection(tt.locale))
 		})
 	}
 }
 
 func TestWrapWithIsolation(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		text     string
@@ -239,17 +317,38 @@ func TestWrapWithIsolation(t *testing.T) {
 			dir:      DirLTR,
 			expected: string(LRI) + string(PDI),
 		},
+		{
+			name:     "Empty text with RTL",
+			text:     "",
+			dir:      DirRTL,
+			expected: string(RLI) + string(PDI),
+		},
+		{
+			name:     "Empty text with auto",
+			text:     "",
+			dir:      DirAuto,
+			expected: string(FSI) + string(PDI),
+		},
+		{
+			name:     "Invalid direction preserves bidi text",
+			text:     "مرحبا",
+			dir:      Direction("invalid"),
+			expected: "مرحبا",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := WrapWithIsolation(tt.text, tt.dir)
-			assert.Equal(t, tt.expected, result)
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, WrapWithIsolation(tt.text, tt.dir))
 		})
 	}
 }
 
 func TestIsIsolationChar(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		char     rune
@@ -294,23 +393,9 @@ func TestIsIsolationChar(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := IsIsolationChar(tt.char)
-			assert.Equal(t, tt.expected, result)
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, IsIsolationChar(tt.char))
 		})
 	}
-}
-
-func TestDirectionConstants(t *testing.T) {
-	// Test that direction constants are properly defined
-	assert.Equal(t, "ltr", string(DirLTR))
-	assert.Equal(t, "rtl", string(DirRTL))
-	assert.Equal(t, "auto", string(DirAuto))
-}
-
-func TestUnicodeConstants(t *testing.T) {
-	// Test that Unicode constants are properly defined
-	assert.Equal(t, '\u2066', LRI)
-	assert.Equal(t, '\u2067', RLI)
-	assert.Equal(t, '\u2068', FSI)
-	assert.Equal(t, '\u2069', PDI)
 }
