@@ -5,7 +5,7 @@ go 1.26.2
 require (
 	github.com/Rhymond/go-money v1.0.15
 	github.com/dromara/carbon/v2 v2.6.16
-	github.com/go-json-experiment/json v0.0.0-20260430182902-b6187a392ed4
+	github.com/go-json-experiment/json v0.0.0-20260504200034-64a0a05799db
 	github.com/google/go-cmp v0.7.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/text v0.36.0
