@@ -314,9 +314,9 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 	}
 
 	// TypeScript: for (const lv of localVars) variables.delete(lv);
-	for localVar := range localVars {
-		delete(variables, localVar)
-	}
+	maps.DeleteFunc(variables, func(name string, _ bool) bool {
+		return localVars[name]
+	})
 
 	// Convert sets to slices using slices.Collect (Go 1.23+)
 	functionList := slices.Collect(maps.Keys(functions))

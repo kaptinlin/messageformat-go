@@ -86,6 +86,17 @@ func TestFunctionRegistryRegister(t *testing.T) {
 	assert.Contains(t, names, "custom")
 }
 
+func TestFunctionRegistryListReturnsRegisteredNames(t *testing.T) {
+	registry := NewFunctionRegistry()
+	customFunc := func(ctx MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+		return messagevalue.NewStringValue("custom", "en", "test")
+	}
+
+	registry.Register("custom", customFunc)
+
+	assert.ElementsMatch(t, []string{"integer", "number", "offset", "string", "custom"}, registry.List())
+}
+
 func TestFunctionRegistryGet(t *testing.T) {
 	registry := NewFunctionRegistry()
 

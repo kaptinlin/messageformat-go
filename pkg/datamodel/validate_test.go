@@ -626,6 +626,26 @@ func TestValidationResultStructure(t *testing.T) {
 	assert.NotContains(t, result.Variables, "date") // Local variable should not be in Variables
 }
 
+func TestValidationResultExcludesAllLocalVariables(t *testing.T) {
+	msg := NewPatternMessage(
+		[]Declaration{
+			NewLocalDeclaration("first", NewExpression(NewVariableRef("external"), nil, nil)),
+			NewLocalDeclaration("second", NewExpression(NewVariableRef("first"), nil, nil)),
+		},
+		NewPattern([]PatternElement{
+			NewExpression(NewVariableRef("first"), nil, nil),
+			NewExpression(NewVariableRef("second"), nil, nil),
+			NewExpression(NewVariableRef("external"), nil, nil),
+		}),
+		"",
+	)
+
+	result, err := ValidateMessage(msg, nil)
+
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"external"}, result.Variables)
+}
+
 func TestEdgeCasesInValidation(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -2,6 +2,7 @@ package functions
 
 import (
 	"maps"
+	"slices"
 	"sync"
 )
 
@@ -112,11 +113,7 @@ func (fr *FunctionRegistry) List() []string {
 	fr.mu.RLock()
 	defer fr.mu.RUnlock()
 
-	names := make([]string, 0, len(fr.functions))
-	for name := range fr.functions {
-		names = append(names, name)
-	}
-	return names
+	return slices.AppendSeq(make([]string, 0, len(fr.functions)), maps.Keys(fr.functions))
 }
 
 // Clone creates a copy of the registry
