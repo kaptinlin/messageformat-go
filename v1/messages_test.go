@@ -61,21 +61,22 @@ func TestMessages_AddMessages(t *testing.T) {
 	t.Parallel()
 
 	messages := NewMessages(map[string]MessageData{}, "")
+	locale := "en"
 
 	messages.AddMessages(map[string]any{"toString": "ignored", "title": "Welcome"}, "en", nil)
-	got, err := messages.Get("title", nil, Ptr("en"))
+	got, err := messages.Get("title", nil, &locale)
 	require.NoError(t, err)
 	assert.Equal(t, "Welcome", got)
-	assert.False(t, messages.HasMessage("toString", Ptr("en")))
+	assert.False(t, messages.HasMessage("toString", &locale))
 
 	messages.AddMessages(MessageFunction(func(param any) (any, error) {
 		return "Account", nil
 	}), "en", []string{"pages", "account"})
 
-	assert.True(t, messages.HasObject("pages", Ptr("en")))
-	assert.True(t, messages.HasMessage([]string{"pages", "account"}, Ptr("en")))
+	assert.True(t, messages.HasObject("pages", &locale))
+	assert.True(t, messages.HasMessage([]string{"pages", "account"}, &locale))
 
-	got, err = messages.Get([]string{"pages", "account"}, nil, Ptr("en"))
+	got, err = messages.Get([]string{"pages", "account"}, nil, &locale)
 	require.NoError(t, err)
 	assert.Equal(t, "Account", got)
 }
