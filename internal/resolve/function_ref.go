@@ -91,7 +91,7 @@ func resolveFunctionRefInternal(
 	source string,
 ) (messagevalue.MessageValue, error) {
 	// matches TypeScript: const fnInput = operand ? [resolveValue(ctx, operand)] : [];
-	var fnInput []any
+	var input any
 	if operand != nil {
 		resolved, err := resolveValue(ctx, operand)
 		if err != nil {
@@ -104,9 +104,7 @@ func resolveFunctionRefInternal(
 				err,
 			)
 		}
-		fnInput = []any{resolved}
-	} else {
-		fnInput = []any{}
+		input = resolved
 	}
 
 	// matches TypeScript: const rf = ctx.functions[name];
@@ -130,12 +128,7 @@ func resolveFunctionRefInternal(
 	opt := resolveOptions(ctx, options)
 
 	// matches TypeScript: let res = rf(msgCtx, opt, ...fnInput);
-	var res messagevalue.MessageValue
-	if len(fnInput) > 0 {
-		res = rf(msgCtx, opt, fnInput[0])
-	} else {
-		res = rf(msgCtx, opt, nil)
-	}
+	res := rf(msgCtx, opt, input)
 
 	// matches TypeScript: if (res === null || ...) { throw new MessageError('bad-function-result', ...); }
 	if res == nil {

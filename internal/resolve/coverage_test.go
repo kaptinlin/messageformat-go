@@ -166,6 +166,45 @@ func TestResolveFunctionRefResolvesOptionsAndReportsFailures(t *testing.T) {
 	})
 }
 
+func TestResolveFunctionRefPassesOperandValue(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		scope   map[string]any
+		operand datamodel.Node
+		want    any
+	}{
+		{
+			name: "nil operand",
+			want: nil,
+		},
+		{
+			name:    "variable operand",
+			scope:   map[string]any{"name": "Ada"},
+			operand: datamodel.NewVariableRef("name"),
+			want:    "Ada",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var got any
+			ctx := newResolveCoverageContext(tc.scope)
+			ctx.Functions["capture"] = func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+				got = operand
+				return messagevalue.NewStringValue("ok", functions.GetFirstLocale(ctx.Locales()), ctx.Source())
+			}
+
+			result := ResolveFunctionRef(ctx, tc.operand, datamodel.NewFunctionRef("capture", nil))
+			require.Equal(t, "string", result.Type())
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestResolveFunctionRefUsesFallbackSource(t *testing.T) {
 	t.Parallel()
 
