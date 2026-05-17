@@ -1,6 +1,7 @@
 package messagevalue
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"strconv"
@@ -136,10 +137,7 @@ func (nv *NumberValue) formatNumber() (string, error) {
 	}
 
 	// Parse locale
-	locale := nv.locale
-	if locale == "" {
-		locale = "en-US"
-	}
+	locale := cmp.Or(nv.locale, "en-US")
 
 	// Parse language tag
 	tag, err := language.Parse(locale)

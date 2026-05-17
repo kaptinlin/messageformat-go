@@ -196,10 +196,10 @@ func DateFormatter(value any, lc string, size string) (string, error) {
 		// Parse string as date - try multiple common formats
 		var err error
 		formats := []string{
-			time.RFC3339,          // "2006-01-02T15:04:05Z07:00"
-			"2006-01-02",          // "2023-12-25"
-			"01/02/2006",          // "12/25/2023"
-			"2006-01-02 15:04:05", // "2023-12-25 00:00:00"
+			time.RFC3339,  // "2006-01-02T15:04:05Z07:00"
+			time.DateOnly, // "2023-12-25"
+			"01/02/2006",  // "12/25/2023"
+			time.DateTime, // "2023-12-25 00:00:00"
 		}
 
 		for _, format := range formats {
@@ -251,10 +251,10 @@ func TimeFormatter(value any, lc string, size string) (string, error) {
 		// Parse string as time - try multiple common formats
 		var err error
 		formats := []string{
-			time.RFC3339,          // "2006-01-02T15:04:05Z07:00"
-			"2006-01-02",          // "2023-12-25"
-			"01/02/2006",          // "12/25/2023"
-			"2006-01-02 15:04:05", // "2023-12-25 00:00:00"
+			time.RFC3339,  // "2006-01-02T15:04:05Z07:00"
+			time.DateOnly, // "2023-12-25"
+			"01/02/2006",  // "12/25/2023"
+			time.DateTime, // "2023-12-25 00:00:00"
 		}
 
 		for _, format := range formats {

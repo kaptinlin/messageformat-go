@@ -3,6 +3,7 @@
 package resolve
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
@@ -67,10 +68,7 @@ func ResolveFunctionRef(
 	functionRef *datamodel.FunctionRef,
 ) messagevalue.MessageValue {
 	// matches TypeScript: const source = getValueSource(operand) ?? `:${name}`;
-	source := getValueSource(operand)
-	if source == "" {
-		source = ":" + functionRef.Name()
-	}
+	source := cmp.Or(getValueSource(operand), ":"+functionRef.Name())
 
 	// matches TypeScript: try { ... } catch (error) { ctx.onError(error); return fallback(source); }
 	result, err := resolveFunctionRefInternal(ctx, operand, functionRef, source)

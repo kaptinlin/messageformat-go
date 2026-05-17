@@ -1,6 +1,8 @@
 package functions
 
 import (
+	"cmp"
+
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
@@ -15,8 +17,5 @@ import (
 //	  toString: () => `{${source}}`
 //	});
 func FallbackFunction(source string, locale string) messagevalue.MessageValue {
-	if source == "" {
-		source = "�"
-	}
-	return messagevalue.NewFallbackValue(source, locale)
+	return messagevalue.NewFallbackValue(cmp.Or(source, "�"), locale)
 }

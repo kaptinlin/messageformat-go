@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"cmp"
 	"strconv"
 	"time"
 
@@ -167,10 +168,7 @@ func dateTimeImplementation(
 
 		// Read dateFields with default value
 		// TypeScript: const dateFieldsValue = readStringOption(...) ?? 'year-month-day'
-		dateFields := readStringOption(ctx, exprOpt, fieldsName, dateFieldsValues)
-		if dateFields == "" {
-			dateFields = "year-month-day" // TypeScript default
-		}
+		dateFields := cmp.Or(readStringOption(ctx, exprOpt, fieldsName, dateFieldsValues), "year-month-day")
 		dtOptions["dateFields"] = dateFields
 
 		// Read dateLength (optional, no default)
@@ -300,8 +298,8 @@ func parseDateTime(input any) (time.Time, error) {
 			"2006-01-02T15:04:05.000000Z",   // 2006-01-02T15:04:05.000000Z
 			"2006-01-02T15:04:05.000000000", // 2006-01-02T15:04:05.000000000
 			"2006-01-02T15:04:05Z",          // 2006-01-02T15:04:05Z
-			"2006-01-02",                    // 2006-01-02 (date only)
-			"2006-01-02 15:04:05",           // 2006-01-02 15:04:05
+			time.DateOnly,                   // 2006-01-02 (date only)
+			time.DateTime,                   // 2006-01-02 15:04:05
 			"2006-01-02 15:04:05.000",       // 2006-01-02 15:04:05.000
 		}
 

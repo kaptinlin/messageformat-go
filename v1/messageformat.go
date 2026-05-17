@@ -139,6 +139,7 @@
 package v1
 
 import (
+	"cmp"
 	"fmt"
 	"regexp"
 	"slices"
@@ -378,11 +379,8 @@ func getPlural(locale any) *PluralObject {
 func getAllPlurals(defaultLocale string) []PluralObject {
 	// In real implementation, this would return all supported locales
 	// Use defaultLocale as fallback if needed
-	if defaultLocale == "" {
-		defaultLocale = "en"
-	}
 	return []PluralObject{
-		*getPlural(defaultLocale),
+		*getPlural(cmp.Or(defaultLocale, "en")),
 	}
 }
 
