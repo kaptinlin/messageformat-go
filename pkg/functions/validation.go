@@ -1,39 +1,16 @@
 package functions
 
-import (
-	"fmt"
-	"strings"
-)
+import "fmt"
 
 // MaxOptionKeyLength defines the maximum allowed length for an option key
 const MaxOptionKeyLength = 100
 
-// MaxOptionsCount defines the maximum number of options allowed to prevent DoS
+// MaxOptionsCount defines the maximum number of options allowed in a function call.
 const MaxOptionsCount = 50
 
-// forbiddenOptionKeys contains key names that are forbidden for security reasons.
-// While Go doesn't have prototype pollution, we prevent confusion with
-// reserved keywords or internal fields from JavaScript-like environments.
-var forbiddenOptionKeys = map[string]struct{}{
-	"__proto__":        {},
-	"constructor":      {},
-	"prototype":        {},
-	"__definegetter__": {},
-	"__definesetter__": {},
-	"__lookupgetter__": {},
-	"__lookupsetter__": {},
-}
-
-// ValidateOptionKey validates an option key name to prevent security issues.
-// This function prevents potential injection attacks or malformed keys.
-//
-// Security checks performed:
-// 1. Key length validation (max 100 characters)
-// 2. Character whitelist (alphanumeric, underscore, hyphen only)
-// 3. Forbidden key names (dangerous JavaScript-like keys)
-//
-// Reference: Inspired by TypeScript fix for prototype pollution (commit 82cd10b4)
-// https://github.com/messageformat/messageformat/commit/82cd10b40e3f922f990bbcf88a6d14b70c0a3ce0
+// ValidateOptionKey validates an option key name.
+// It follows the identifier shape accepted by this package's option boundary:
+// ASCII alphanumeric characters plus underscore, hyphen, and namespace colon.
 func ValidateOptionKey(key string) error {
 	if len(key) > MaxOptionKeyLength {
 		return fmt.Errorf("option key too long: %d characters (max: %d)", len(key), MaxOptionKeyLength)
@@ -49,10 +26,6 @@ func ValidateOptionKey(key string) error {
 		}
 	}
 
-	if _, ok := forbiddenOptionKeys[strings.ToLower(key)]; ok {
-		return fmt.Errorf("forbidden option key: '%s'", key)
-	}
-
 	return nil
 }
 
@@ -62,20 +35,17 @@ func isValidOptionKeyChar(ch rune) bool {
 		(ch >= 'A' && ch <= 'Z') ||
 		(ch >= '0' && ch <= '9') ||
 		ch == '_' ||
-		ch == '-'
+		ch == '-' ||
+		ch == ':'
 }
 
 // ValidateOptions validates an entire options map.
-// This prevents DoS attacks through excessive options and validates all keys.
-//
-// Reference: Based on security best practices from TypeScript implementation
-func ValidateOptions(options map[string]any) error {
-	// Check options count to prevent DoS
+// It validates key shape and caps option count at the package boundary.
+func ValidateOptions(options Options) error {
 	if len(options) > MaxOptionsCount {
 		return fmt.Errorf("too many options: %d (max: %d)", len(options), MaxOptionsCount)
 	}
 
-	// Validate each key
 	for key := range options {
 		if err := ValidateOptionKey(key); err != nil {
 			return fmt.Errorf("invalid option: %w", err)
@@ -86,10 +56,8 @@ func ValidateOptions(options map[string]any) error {
 }
 
 // SanitizeOptions creates a sanitized copy of options map, filtering out invalid keys.
-// This is useful when you want to be permissive but still protect against malicious input.
-//
-// Returns a new map containing only valid options.
-func SanitizeOptions(options map[string]any) map[string]any {
+// This is useful when you want to be permissive while preserving option-key rules.
+func SanitizeOptions(options Options) map[string]any {
 	if options == nil {
 		return nil
 	}
@@ -99,7 +67,6 @@ func SanitizeOptions(options map[string]any) map[string]any {
 		if ValidateOptionKey(key) == nil {
 			sanitized[key] = value
 		}
-		// Silently skip invalid keys
 	}
 
 	return sanitized

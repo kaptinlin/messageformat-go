@@ -71,13 +71,13 @@ type Pattern struct { ... }        // Text pattern with placeholders
 // Function system (pkg/functions)
 type MessageFunction func(
     ctx MessageFunctionContext,
-    options map[string]any,
+    options Options,
     operand any,
 ) messagevalue.MessageValue
 
-// Built-in function registries
-var DefaultFunctions map[string]MessageFunction  // :integer, :number, :string, :offset
-var DraftFunctions map[string]MessageFunction    // :currency, :date, :datetime, :math, :percent, :time, :unit
+// Built-in function registry snapshots
+func DefaultFunctionMap() map[string]MessageFunction  // :integer, :number, :string, :offset
+func DraftFunctionMap() map[string]MessageFunction    // :currency, :date, :datetime, :percent, :time, :unit (MF2 RECOMMENDED) plus :math (TypeScript-compat extension, not in MF2 spec)
 ```
 
 ### Processing Flow
@@ -89,7 +89,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 ## Design Philosophy
 
 - **TypeScript API Compatibility** — Maintains identical method signatures and behavior with TypeScript reference implementation. Every function includes original TypeScript code in comments for traceability.
-- **Specification Compliance** — Strict adherence to Unicode MessageFormat 2.0 specification. Official test suite (git submodule) validates 100% compliance.
+- **Specification Compliance** — Strict adherence to Unicode MessageFormat 2.0 specification. Official test suite (git submodule at `tests/messageformat-wg/`, HEAD past LDML49 with PR #1104 well-formedness) is run by `task test-official` and passes 477 subtests covering bidi, data-model-errors, fallback, pattern-selection, syntax, u-options, and functions/{currency,date,datetime,integer,number,offset,percent,string,time}.
 - **Two-Phase Processing** — Clean separation: CST parsing → DataModel conversion → Resolution/Formatting. Each phase has clear boundaries and responsibilities.
 - **Keep `v1` Intact** — The `v1/` package is a supported compatibility surface, not legacy code. Do not prune, delete, sideline, or treat it as dead code during cleanup, modernization, or refactoring.
 - **KISS** — Simple, focused implementations. No premature abstractions. Three similar lines are better than a helper used once.
@@ -100,7 +100,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 
 ### Must Follow
 
-- Go 1.26.2 — use modern language features (generics, slices/maps packages, clear(), for range N)
+- Use the Go toolchain pinned in `go.mod` — assume its modern language features are available (generics, `slices` / `maps` packages, `clear()`, `for range N`, range-over-func iterators)
 - **TypeScript comment format** — Every function must include original TypeScript code:
 
   ```go
@@ -122,14 +122,14 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - Follow Google Go Best Practices: <https://google.github.io/go-style/best-practices>
 - Follow Google Go Style Decisions: <https://google.github.io/go-style/decisions>
 
-### Go 1.26.2 Features Used
+### Modern Go Features Used
 
 | Feature | Where Used |
 |---------|-----------|
 | `maps.Clone()` | Function registry cloning |
 | `maps` package | Options and attributes handling |
 | `slices` package | Pattern and variant operations |
-| Generics | messagevalue types, datamodel nodes |
+| Generics | `messagevalue` types, `datamodel` nodes |
 | `for range N` | Iteration patterns throughout |
 
 ### Forbidden
@@ -168,9 +168,8 @@ go tool cover -html=coverage.out
 
 | Dependency | Purpose |
 |------------|---------|
-| `golang.org/x/text` | Unicode text processing, plural rules, language tags |
-| `github.com/dromara/carbon/v2` | Date/time formatting for :date, :datetime, :time functions |
-| `github.com/Rhymond/go-money` | Currency formatting for :currency function |
+| `github.com/agentable/go-intl` | ECMA-402 Intl runtime — backs `:number` / `:integer` / `:string` / `:currency` / `:date` / `:datetime` / `:time` / `:percent` / `:unit` via `numberformat`, `datetimeformat`, `pluralrules`. Constructors are variadic `New(loc, options ...Options)`; `Append*` and `CanonicalKey` helpers do not exist on the dependency surface and must not be relied on. Delegated CLDR/TZDB validation covers MF2 well-formed `timeZone` / `calendar` / `unit` values. |
+| `golang.org/x/text` | BCP 47 / Unicode text utilities for `pkg/datamodel`, `internal/cst`, and `pkg/messagevalue/string.go` (no longer used for plural/number/message) |
 | `github.com/go-json-experiment/json` | JSON v2 experimental API (for future use) |
 | `github.com/stretchr/testify` | Testing framework (test-only) |
 
@@ -195,11 +194,12 @@ All errors are static package-level variables to prevent information leakage and
 
 ## Linting
 
-golangci-lint v2.9.0. Config in `.golangci.yml`.
+golangci-lint pinned via `.golangci.version`. Config in `.golangci.yml`.
 
 - Strict configuration with standard linters enabled
 - Test files excluded from certain rules (funlen, gosec)
 - Examples and internal packages have relaxed rules
+- The `//go:fix inline` directive is incompatible with `govet inline` on generic functions and must not be applied to generic helpers (see `v1/types.go::Ptr`).
 
 ## CI
 

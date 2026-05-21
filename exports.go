@@ -37,11 +37,15 @@ type (
 	MessageFunctionContext = functions.MessageFunctionContext
 )
 
-// DefaultFunctions provides access to built-in functions
-var DefaultFunctions = functions.DefaultFunctions
+// DefaultFunctionMap returns a snapshot of built-in functions.
+func DefaultFunctionMap() map[string]functions.MessageFunction {
+	return functions.DefaultFunctionMap()
+}
 
-// DraftFunctions provides access to draft functions (beta)
-var DraftFunctions = functions.DraftFunctions
+// DraftFunctionMap returns a snapshot of draft functions (beta).
+func DraftFunctionMap() map[string]functions.MessageFunction {
+	return functions.DraftFunctionMap()
+}
 
 // MessageValue types for parts formatting
 type (

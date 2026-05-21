@@ -3,10 +3,15 @@
 package datamodel
 
 import (
+	"errors"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/kaptinlin/messageformat-go/internal/cst"
 )
+
+var ErrInvalidMarkupKind = errors.New("invalid markup kind")
 
 // Options represents the options of FunctionRef and Markup
 // TypeScript original code:
@@ -18,6 +23,7 @@ type Options map[string]OptionValue
 type OptionValue interface {
 	Node
 	String() string
+	optionValue()
 }
 
 // Attributes represents the attributes of Markup
@@ -30,7 +36,107 @@ type Attributes map[string]AttributeValue
 type AttributeValue interface {
 	Node
 	String() string
+	attributeValue()
 }
+
+func cloneDeclarations(declarations []Declaration) []Declaration {
+	if declarations == nil {
+		return []Declaration{}
+	}
+	return slices.Clone(declarations)
+}
+
+func cloneVariableRefs(refs []VariableRef) []VariableRef {
+	if refs == nil {
+		return []VariableRef{}
+	}
+	return slices.Clone(refs)
+}
+
+func cloneVariants(variants []Variant) []Variant {
+	if variants == nil {
+		return []Variant{}
+	}
+	cloned := make([]Variant, len(variants))
+	for i := range variants {
+		cloned[i] = cloneVariantValue(variants[i])
+	}
+	return cloned
+}
+
+func cloneVariantKeys(keys []VariantKey) []VariantKey {
+	if keys == nil {
+		return []VariantKey{}
+	}
+	return slices.Clone(keys)
+}
+
+func clonePattern(pattern Pattern) Pattern {
+	if pattern == nil {
+		return Pattern{}
+	}
+	return Pattern(slices.Clone([]PatternElement(pattern)))
+}
+
+func cloneOptions(options Options) Options {
+	if options == nil {
+		return nil
+	}
+	return maps.Clone(options)
+}
+
+func cloneAttributes(attributes Attributes) Attributes {
+	if attributes == nil {
+		return nil
+	}
+	return maps.Clone(attributes)
+}
+
+func cloneVariantValue(variant Variant) Variant {
+	return Variant{
+		keys:  cloneVariantKeys(variant.keys),
+		value: clonePattern(variant.value),
+		cst:   variant.cst,
+	}
+}
+
+// ExpressionArg represents a literal or variable reference expression argument.
+// TypeScript original code: Literal | VariableRef
+type ExpressionArg interface {
+	Node
+	String() string
+	expressionArg()
+}
+
+// MarkupKind identifies whether markup opens, closes, or stands alone.
+// TypeScript original code: 'open' | 'standalone' | 'close'
+type MarkupKind string
+
+const (
+	MarkupOpen       MarkupKind = "open"
+	MarkupStandalone MarkupKind = "standalone"
+	MarkupClose      MarkupKind = "close"
+)
+
+// VisitContext identifies where a visited node appears.
+// TypeScript original code: 'declaration' | 'selector' | 'placeholder'
+type VisitContext string
+
+const (
+	VisitDeclaration VisitContext = "declaration"
+	VisitSelector    VisitContext = "selector"
+	VisitPlaceholder VisitContext = "placeholder"
+)
+
+// ValuePosition identifies how a visited value is used.
+// TypeScript original code: 'arg' | 'option' | 'attribute'
+type ValuePosition string
+
+const (
+	ValueArg       ValuePosition = "arg"
+	ValueOption    ValuePosition = "option"
+	ValueAttribute ValuePosition = "attribute"
+)
 
 // BooleanAttribute represents a boolean attribute (true value)
 // TypeScript original code: true
@@ -43,8 +149,8 @@ func NewBooleanAttribute() *BooleanAttribute {
 	return &BooleanAttribute{}
 }
 
-// NewBooleanAttributeWithCST creates a new boolean attribute with CST reference
-func NewBooleanAttributeWithCST(cst cst.Node) *BooleanAttribute {
+// newBooleanAttributeWithCST creates a new boolean attribute with CST reference
+func newBooleanAttributeWithCST(cst cst.Node) *BooleanAttribute {
 	return &BooleanAttribute{cst: cst}
 }
 
@@ -56,9 +162,11 @@ func (ba *BooleanAttribute) String() string {
 	return "true"
 }
 
-func (ba *BooleanAttribute) CST() cst.Node {
+func (ba *BooleanAttribute) cstNode() cst.Node {
 	return ba.cst
 }
+
+func (ba *BooleanAttribute) attributeValue() {}
 
 // Node represents a node in a message data model
 // TypeScript original code:
@@ -74,8 +182,6 @@ func (ba *BooleanAttribute) CST() cst.Node {
 //	| Markup;
 type Node interface {
 	Type() string
-	// CST returns the associated CST node if available
-	CST() cst.Node
 }
 
 // Message represents the root of a message data model
@@ -85,8 +191,6 @@ type Message interface {
 	Type() string
 	Declarations() []Declaration
 	Comment() string
-	// CST returns the associated CST node if available
-	CST() cst.Node
 }
 
 // PatternMessage represents a single message with no variants
@@ -109,25 +213,19 @@ type PatternMessage struct {
 
 // NewPatternMessage creates a new pattern message
 func NewPatternMessage(declarations []Declaration, pattern Pattern, comment string) *PatternMessage {
-	if declarations == nil {
-		declarations = []Declaration{}
-	}
 	return &PatternMessage{
-		declarations: declarations,
-		pattern:      pattern,
+		declarations: cloneDeclarations(declarations),
+		pattern:      clonePattern(pattern),
 		comment:      comment,
 		cst:          nil,
 	}
 }
 
-// NewPatternMessageWithCST creates a new pattern message with CST reference
-func NewPatternMessageWithCST(declarations []Declaration, pattern Pattern, comment string, cst cst.Node) *PatternMessage {
-	if declarations == nil {
-		declarations = []Declaration{}
-	}
+// newPatternMessageWithCST creates a new pattern message with CST reference
+func newPatternMessageWithCST(declarations []Declaration, pattern Pattern, comment string, cst cst.Node) *PatternMessage {
 	return &PatternMessage{
-		declarations: declarations,
-		pattern:      pattern,
+		declarations: cloneDeclarations(declarations),
+		pattern:      clonePattern(pattern),
 		comment:      comment,
 		cst:          cst,
 	}
@@ -149,7 +247,7 @@ func (pm *PatternMessage) Comment() string {
 	return pm.comment
 }
 
-func (pm *PatternMessage) CST() cst.Node {
+func (pm *PatternMessage) cstNode() cst.Node {
 	return pm.cst
 }
 
@@ -183,39 +281,21 @@ type SelectMessage struct {
 
 // NewSelectMessage creates a new select message
 func NewSelectMessage(declarations []Declaration, selectors []VariableRef, variants []Variant, comment string) *SelectMessage {
-	if declarations == nil {
-		declarations = []Declaration{}
-	}
-	if selectors == nil {
-		selectors = []VariableRef{}
-	}
-	if variants == nil {
-		variants = []Variant{}
-	}
 	return &SelectMessage{
-		declarations: declarations,
-		selectors:    selectors,
-		variants:     variants,
+		declarations: cloneDeclarations(declarations),
+		selectors:    cloneVariableRefs(selectors),
+		variants:     cloneVariants(variants),
 		comment:      comment,
 		cst:          nil,
 	}
 }
 
-// NewSelectMessageWithCST creates a new select message with CST reference
-func NewSelectMessageWithCST(declarations []Declaration, selectors []VariableRef, variants []Variant, comment string, cst cst.Node) *SelectMessage {
-	if declarations == nil {
-		declarations = []Declaration{}
-	}
-	if selectors == nil {
-		selectors = []VariableRef{}
-	}
-	if variants == nil {
-		variants = []Variant{}
-	}
+// newSelectMessageWithCST creates a new select message with CST reference
+func newSelectMessageWithCST(declarations []Declaration, selectors []VariableRef, variants []Variant, comment string, cst cst.Node) *SelectMessage {
 	return &SelectMessage{
-		declarations: declarations,
-		selectors:    selectors,
-		variants:     variants,
+		declarations: cloneDeclarations(declarations),
+		selectors:    cloneVariableRefs(selectors),
+		variants:     cloneVariants(variants),
 		comment:      comment,
 		cst:          cst,
 	}
@@ -241,7 +321,7 @@ func (sm *SelectMessage) Comment() string {
 	return sm.comment
 }
 
-func (sm *SelectMessage) CST() cst.Node {
+func (sm *SelectMessage) cstNode() cst.Node {
 	return sm.cst
 }
 
@@ -254,11 +334,7 @@ func (sm *SelectMessage) CST() cst.Node {
 type Declaration interface {
 	Node // Extends Node interface
 	Name() string
-	// Value returns the expression value - type varies by declaration type
-	// InputDeclaration: VariableRefExpression, LocalDeclaration: Expression
-	GetValue() any
-	// Value provides backward compatibility - returns interface{} to handle both types
-	Value() any
+	declaration()
 }
 
 // InputDeclaration represents .input declarations
@@ -292,17 +368,17 @@ func NewVariableRefExpression(arg *VariableRef, functionRef *FunctionRef, attrib
 	return &VariableRefExpression{
 		arg:         arg,
 		functionRef: functionRef,
-		attributes:  attributes,
+		attributes:  cloneAttributes(attributes),
 		cst:         nil,
 	}
 }
 
-// NewVariableRefExpressionWithCST creates a new variable reference expression with CST reference
-func NewVariableRefExpressionWithCST(arg *VariableRef, functionRef *FunctionRef, attributes Attributes, cst cst.Node) *VariableRefExpression {
+// newVariableRefExpressionWithCST creates a new variable reference expression with CST reference
+func newVariableRefExpressionWithCST(arg *VariableRef, functionRef *FunctionRef, attributes Attributes, cst cst.Node) *VariableRefExpression {
 	return &VariableRefExpression{
 		arg:         arg,
 		functionRef: functionRef,
-		attributes:  attributes,
+		attributes:  cloneAttributes(attributes),
 		cst:         cst,
 	}
 }
@@ -323,7 +399,7 @@ func (vre *VariableRefExpression) Attributes() Attributes {
 	return vre.attributes
 }
 
-func (vre *VariableRefExpression) CST() cst.Node {
+func (vre *VariableRefExpression) cstNode() cst.Node {
 	return vre.cst
 }
 
@@ -336,8 +412,8 @@ func NewInputDeclaration(name string, value *VariableRefExpression) *InputDeclar
 	}
 }
 
-// NewInputDeclarationWithCST creates a new input declaration with CST reference
-func NewInputDeclarationWithCST(name string, value *VariableRefExpression, cst cst.Node) *InputDeclaration {
+// newInputDeclarationWithCST creates a new input declaration with CST reference
+func newInputDeclarationWithCST(name string, value *VariableRefExpression, cst cst.Node) *InputDeclaration {
 	return &InputDeclaration{
 		name:  name,
 		value: value,
@@ -353,17 +429,15 @@ func (id *InputDeclaration) Name() string {
 	return id.name
 }
 
-func (id *InputDeclaration) Value() any {
+func (id *InputDeclaration) Value() *VariableRefExpression {
 	return id.value
 }
 
-func (id *InputDeclaration) GetValue() any {
-	return id.value
-}
-
-func (id *InputDeclaration) CST() cst.Node {
+func (id *InputDeclaration) cstNode() cst.Node {
 	return id.cst
 }
+
+func (id *InputDeclaration) declaration() {}
 
 // LocalDeclaration represents .local declarations
 // TypeScript original code:
@@ -389,8 +463,8 @@ func NewLocalDeclaration(name string, value *Expression) *LocalDeclaration {
 	}
 }
 
-// NewLocalDeclarationWithCST creates a new local declaration with CST reference
-func NewLocalDeclarationWithCST(name string, value *Expression, cst cst.Node) *LocalDeclaration {
+// newLocalDeclarationWithCST creates a new local declaration with CST reference
+func newLocalDeclarationWithCST(name string, value *Expression, cst cst.Node) *LocalDeclaration {
 	return &LocalDeclaration{
 		name:  name,
 		value: value,
@@ -406,17 +480,15 @@ func (ld *LocalDeclaration) Name() string {
 	return ld.name
 }
 
-func (ld *LocalDeclaration) Value() any {
+func (ld *LocalDeclaration) Value() *Expression {
 	return ld.value
 }
 
-func (ld *LocalDeclaration) GetValue() any {
-	return ld.value
-}
-
-func (ld *LocalDeclaration) CST() cst.Node {
+func (ld *LocalDeclaration) cstNode() cst.Node {
 	return ld.cst
 }
+
+func (ld *LocalDeclaration) declaration() {}
 
 // Variant represents select message variants
 // TypeScript original code:
@@ -436,23 +508,17 @@ type Variant struct {
 
 // NewVariant creates a new variant
 func NewVariant(keys []VariantKey, value Pattern) *Variant {
-	if keys == nil {
-		keys = []VariantKey{}
-	}
 	return &Variant{
-		keys:  keys,
-		value: value,
+		keys:  cloneVariantKeys(keys),
+		value: clonePattern(value),
 	}
 }
 
-// NewVariantWithCST creates a new variant with CST reference
-func NewVariantWithCST(keys []VariantKey, value Pattern, cst cst.Node) *Variant {
-	if keys == nil {
-		keys = []VariantKey{}
-	}
+// newVariantWithCST creates a new variant with CST reference
+func newVariantWithCST(keys []VariantKey, value Pattern, cst cst.Node) *Variant {
 	return &Variant{
-		keys:  keys,
-		value: value,
+		keys:  cloneVariantKeys(keys),
+		value: clonePattern(value),
 		cst:   cst,
 	}
 }
@@ -465,7 +531,7 @@ func (v *Variant) Value() Pattern {
 	return v.value
 }
 
-func (v *Variant) CST() cst.Node {
+func (v *Variant) cstNode() cst.Node {
 	return v.cst
 }
 
@@ -474,6 +540,7 @@ func (v *Variant) CST() cst.Node {
 type VariantKey interface {
 	Node // Extends Node interface
 	String() string
+	variantKey()
 }
 
 // CatchallKey represents the catch-all key that matches all values
@@ -498,8 +565,8 @@ func NewCatchallKey(value string) *CatchallKey {
 	}
 }
 
-// NewCatchallKeyWithCST creates a new catchall key with CST reference
-func NewCatchallKeyWithCST(value string, cst cst.Node) *CatchallKey {
+// newCatchallKeyWithCST creates a new catchall key with CST reference
+func newCatchallKeyWithCST(value string, cst cst.Node) *CatchallKey {
 	return &CatchallKey{
 		value: value,
 		cst:   cst,
@@ -521,9 +588,11 @@ func (ck *CatchallKey) String() string {
 	return "*"
 }
 
-func (ck *CatchallKey) CST() cst.Node {
+func (ck *CatchallKey) cstNode() cst.Node {
 	return ck.cst
 }
+
+func (ck *CatchallKey) variantKey() {}
 
 // Pattern represents the body of a message composed of a sequence of parts
 // The body of each Message is composed of a sequence of parts,
@@ -538,9 +607,9 @@ type Pattern []PatternElement
 // TypeScript original code: Pattern array construction
 func NewPattern(elements []PatternElement) Pattern {
 	if elements == nil {
-		elements = []PatternElement{}
+		return Pattern{}
 	}
-	return Pattern(elements)
+	return Pattern(slices.Clone(elements))
 }
 
 // Elements returns the pattern elements
@@ -574,6 +643,7 @@ func (p Pattern) Get(index int) PatternElement {
 // TypeScript original code: string | Expression | Markup
 type PatternElement interface {
 	Node // Extends Node interface
+	patternElement()
 }
 
 // TextElement represents literal text in patterns
@@ -590,8 +660,8 @@ func NewTextElement(value string) *TextElement {
 	}
 }
 
-// NewTextElementWithCST creates a new text element with CST reference
-func NewTextElementWithCST(value string, cst cst.Node) *TextElement {
+// newTextElementWithCST creates a new text element with CST reference
+func newTextElementWithCST(value string, cst cst.Node) *TextElement {
 	return &TextElement{
 		value: value,
 		cst:   cst,
@@ -606,9 +676,11 @@ func (te *TextElement) Value() string {
 	return te.value
 }
 
-func (te *TextElement) CST() cst.Node {
+func (te *TextElement) cstNode() cst.Node {
 	return te.cst
 }
+
+func (te *TextElement) patternElement() {}
 
 // Expression represents expressions used in declarations and placeholders
 // Expressions are used in declarations and as placeholders.
@@ -631,28 +703,28 @@ func (te *TextElement) CST() cst.Node {
 //	? { arg: A; functionRef?: FunctionRef }
 //	: { arg?: never; functionRef: FunctionRef });
 type Expression struct {
-	arg         any // Literal, VariableRef, or nil
+	arg         ExpressionArg // Literal, VariableRef, or nil
 	functionRef *FunctionRef
 	attributes  Attributes // Attributes instead of map[string]interface{}
 	cst         cst.Node   // [cstKey]?: CST.Expression
 }
 
 // NewExpression creates a new expression
-func NewExpression(arg any, functionRef *FunctionRef, attributes Attributes) *Expression {
+func NewExpression(arg ExpressionArg, functionRef *FunctionRef, attributes Attributes) *Expression {
 	return &Expression{
 		arg:         arg,
 		functionRef: functionRef,
-		attributes:  attributes,
+		attributes:  cloneAttributes(attributes),
 		cst:         nil,
 	}
 }
 
-// NewExpressionWithCST creates a new expression with CST reference
-func NewExpressionWithCST(arg any, functionRef *FunctionRef, attributes Attributes, cst cst.Node) *Expression {
+// newExpressionWithCST creates a new expression with CST reference
+func newExpressionWithCST(arg ExpressionArg, functionRef *FunctionRef, attributes Attributes, cst cst.Node) *Expression {
 	return &Expression{
 		arg:         arg,
 		functionRef: functionRef,
-		attributes:  attributes,
+		attributes:  cloneAttributes(attributes),
 		cst:         cst,
 	}
 }
@@ -661,7 +733,7 @@ func (e *Expression) Type() string {
 	return "expression"
 }
 
-func (e *Expression) Arg() any {
+func (e *Expression) Arg() ExpressionArg {
 	return e.arg
 }
 
@@ -673,9 +745,11 @@ func (e *Expression) Attributes() Attributes {
 	return e.attributes
 }
 
-func (e *Expression) CST() cst.Node {
+func (e *Expression) cstNode() cst.Node {
 	return e.cst
 }
+
+func (e *Expression) patternElement() {}
 
 // Literal represents an immediately defined literal value
 // An immediately defined literal value.
@@ -705,8 +779,8 @@ func NewLiteral(value string) *Literal {
 	}
 }
 
-// NewLiteralWithCST creates a new literal with CST reference
-func NewLiteralWithCST(value string, cst cst.Node) *Literal {
+// newLiteralWithCST creates a new literal with CST reference
+func newLiteralWithCST(value string, cst cst.Node) *Literal {
 	return &Literal{
 		value: value,
 		cst:   cst,
@@ -725,9 +799,17 @@ func (l *Literal) String() string {
 	return l.value
 }
 
-func (l *Literal) CST() cst.Node {
+func (l *Literal) cstNode() cst.Node {
 	return l.cst
 }
+
+func (l *Literal) expressionArg() {}
+
+func (l *Literal) optionValue() {}
+
+func (l *Literal) attributeValue() {}
+
+func (l *Literal) variantKey() {}
 
 // VariableRef represents a reference to a variable
 // The value of a VariableRef is defined by a declaration,
@@ -754,8 +836,8 @@ func NewVariableRef(name string) *VariableRef {
 	}
 }
 
-// NewVariableRefWithCST creates a new variable reference with CST reference
-func NewVariableRefWithCST(name string, cst cst.Node) *VariableRef {
+// newVariableRefWithCST creates a new variable reference with CST reference
+func newVariableRefWithCST(name string, cst cst.Node) *VariableRef {
 	return &VariableRef{
 		name: name,
 		cst:  cst,
@@ -774,14 +856,18 @@ func (vr *VariableRef) String() string {
 	return vr.name
 }
 
-func (vr *VariableRef) CST() cst.Node {
+func (vr *VariableRef) cstNode() cst.Node {
 	return vr.cst
 }
+
+func (vr *VariableRef) expressionArg() {}
+
+func (vr *VariableRef) optionValue() {}
 
 // FunctionRef represents a reference to a function
 // To resolve a FunctionRef, a MessageFunction is called.
 //
-// The name identifies one of the DefaultFunctions,
+// The name identifies one of the default functions,
 // or a function included in the MessageFormatOptions.functions.
 // TypeScript original code:
 //
@@ -802,16 +888,16 @@ type FunctionRef struct {
 func NewFunctionRef(name string, options Options) *FunctionRef {
 	return &FunctionRef{
 		name:    name,
-		options: options,
+		options: cloneOptions(options),
 		cst:     nil,
 	}
 }
 
-// NewFunctionRefWithCST creates a new function reference with CST reference
-func NewFunctionRefWithCST(name string, options Options, cst cst.Node) *FunctionRef {
+// newFunctionRefWithCST creates a new function reference with CST reference
+func newFunctionRefWithCST(name string, options Options, cst cst.Node) *FunctionRef {
 	return &FunctionRef{
 		name:    name,
-		options: options,
+		options: cloneOptions(options),
 		cst:     cst,
 	}
 }
@@ -828,7 +914,7 @@ func (fr *FunctionRef) Options() Options {
 	return fr.options
 }
 
-func (fr *FunctionRef) CST() cst.Node {
+func (fr *FunctionRef) cstNode() cst.Node {
 	return fr.cst
 }
 
@@ -845,7 +931,7 @@ func (fr *FunctionRef) CST() cst.Node {
 //	  [cstKey]?: CST.Expression;
 //	}
 type Markup struct {
-	kind       string // "open", "standalone", "close"
+	kind       MarkupKind
 	name       string
 	options    Options    // Options instead of map[string]interface{}
 	attributes Attributes // Attributes instead of map[string]interface{}
@@ -853,32 +939,38 @@ type Markup struct {
 }
 
 // NewMarkup creates a new markup element
-func NewMarkup(kind, name string, options Options, attributes Attributes) *Markup {
-	return &Markup{
-		kind:       kind,
-		name:       name,
-		options:    options,
-		attributes: attributes,
-		cst:        nil,
+func NewMarkup(kind MarkupKind, name string, options Options, attributes Attributes) (*Markup, error) {
+	return newMarkupWithCST(kind, name, options, attributes, nil)
+}
+
+func validMarkupKind(kind MarkupKind) bool {
+	switch kind {
+	case MarkupOpen, MarkupStandalone, MarkupClose:
+		return true
+	default:
+		return false
 	}
 }
 
-// NewMarkupWithCST creates a new markup element with CST reference
-func NewMarkupWithCST(kind, name string, options Options, attributes Attributes, cst cst.Node) *Markup {
+// newMarkupWithCST creates a new markup element with CST reference
+func newMarkupWithCST(kind MarkupKind, name string, options Options, attributes Attributes, cst cst.Node) (*Markup, error) {
+	if !validMarkupKind(kind) {
+		return nil, ErrInvalidMarkupKind
+	}
 	return &Markup{
 		kind:       kind,
 		name:       name,
-		options:    options,
-		attributes: attributes,
+		options:    cloneOptions(options),
+		attributes: cloneAttributes(attributes),
 		cst:        cst,
-	}
+	}, nil
 }
 
 func (m *Markup) Type() string {
 	return "markup"
 }
 
-func (m *Markup) Kind() string {
+func (m *Markup) Kind() MarkupKind {
 	return m.kind
 }
 
@@ -894,9 +986,11 @@ func (m *Markup) Attributes() Attributes {
 	return m.attributes
 }
 
-func (m *Markup) CST() cst.Node {
+func (m *Markup) cstNode() cst.Node {
 	return m.cst
 }
+
+func (m *Markup) patternElement() {}
 
 // Helper functions for type conversion and compatibility
 
@@ -909,7 +1003,7 @@ func ConvertExpressionToVariableRefExpression(expr *Expression) *VariableRefExpr
 
 	// Check if the arg is a VariableRef
 	if varRef, ok := expr.arg.(*VariableRef); ok {
-		return NewVariableRefExpressionWithCST(varRef, expr.functionRef, expr.attributes, expr.cst)
+		return newVariableRefExpressionWithCST(varRef, expr.functionRef, expr.attributes, expr.cst)
 	}
 
 	// If not a VariableRef, we can't convert - this should not happen for InputDeclaration

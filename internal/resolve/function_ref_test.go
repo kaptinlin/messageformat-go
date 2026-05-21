@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/kaptinlin/messageformat-go/internal/cst"
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	pkgErrors "github.com/kaptinlin/messageformat-go/pkg/errors"
@@ -18,8 +17,7 @@ import (
 
 type mockInvalidOperandNode struct{}
 
-func (m *mockInvalidOperandNode) Type() string  { return "invalid-operand" }
-func (m *mockInvalidOperandNode) CST() cst.Node { return nil }
+func (m *mockInvalidOperandNode) Type() string { return "invalid-operand" }
 
 // TestCustomFunction tests custom function implementation
 // TypeScript original code:
@@ -51,7 +49,7 @@ func TestCustomFunction(t *testing.T) {
 	// Create a custom function that mimics the TypeScript behavior
 	customFunc := func(
 		ctx functions.MessageFunctionContext,
-		options map[string]any,
+		options functions.Options,
 		input any,
 	) messagevalue.MessageValue {
 		locale := "en"
@@ -309,7 +307,7 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 		// Create a mock datetime function for testing
 		datetimeFunc := func(
 			ctx functions.MessageFunctionContext,
-			options map[string]any,
+			options functions.Options,
 			operand any,
 		) messagevalue.MessageValue {
 			// Mock implementation that respects hour12 option
@@ -387,7 +385,7 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 		// Create a mock datetime function that handles variable hour12 values
 		datetimeFunc := func(
 			ctx functions.MessageFunctionContext,
-			options map[string]any,
+			options functions.Options,
 			operand any,
 		) messagevalue.MessageValue {
 			hour12 := options["hour12"]
@@ -474,7 +472,7 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 		// Create a function that returns an invalid MessageValue (missing required methods)
 		failFunc := func(
 			ctx functions.MessageFunctionContext,
-			options map[string]any,
+			options functions.Options,
 			operand any,
 		) messagevalue.MessageValue {
 			// Return nil to simulate invalid return
@@ -527,7 +525,7 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 		// Create a function that returns nil
 		failFunc := func(
 			ctx functions.MessageFunctionContext,
-			options map[string]any,
+			options functions.Options,
 			operand any,
 		) messagevalue.MessageValue {
 			return nil

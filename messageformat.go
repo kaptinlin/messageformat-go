@@ -148,6 +148,7 @@ func Compile(locales []string, message datamodel.Message, options ...Option) (*M
 	if err != nil {
 		return nil, err
 	}
+	messageSnapshot := datamodel.CloneMessage(message)
 
 	opts := NewOptions(NewMessageFormatOptions(options...))
 	if !opts.bidiIsolationSet && opts.BidiIsolation == BidiNone && len(localeList) > 0 && bidi.GetLocaleDirection(localeList[0]) == bidi.DirRTL {
@@ -178,7 +179,7 @@ func Compile(locales []string, message datamodel.Message, options ...Option) (*M
 	}
 
 	return &MessageFormat{
-		message:       message,
+		message:       messageSnapshot,
 		locales:       localeList,
 		functions:     functionMap,
 		bidiIsolation: bidiIsolation,
@@ -272,14 +273,12 @@ func (mf *MessageFormat) createContext(
 	for _, decl := range mf.message.Declarations() {
 		switch d := decl.(type) {
 		case *datamodel.InputDeclaration:
-			expr := d.Value()
-			if varRefExpr, ok := expr.(*datamodel.VariableRefExpression); ok {
+			if varRefExpr := d.Value(); varRefExpr != nil {
 				generalExpr := datamodel.NewExpression(varRefExpr.Arg(), varRefExpr.FunctionRef(), varRefExpr.Attributes())
 				scope[d.Name()] = resolve.NewUnresolvedExpression(generalExpr, values)
 			}
 		case *datamodel.LocalDeclaration:
-			expr := d.Value()
-			if localExpr, ok := expr.(*datamodel.Expression); ok {
+			if localExpr := d.Value(); localExpr != nil {
 				combinedScope := make(map[string]any)
 				maps.Copy(combinedScope, values)
 				// Prefer unresolved declarations from scope over raw message parameters.
@@ -395,8 +394,8 @@ func (mf *MessageFormat) BidiIsolation() bool {
 // TypeScript original code:
 // this.#functions = options?.functions ? Object.assign(Object.create(null), DefaultFunctions, options.functions) : DefaultFunctions;
 func addDefaultFunctions(functionMap map[string]functions.MessageFunction) {
-	maps.Copy(functionMap, functions.DefaultFunctions)
-	maps.Copy(functionMap, functions.DraftFunctions)
+	maps.Copy(functionMap, functions.DefaultFunctionMap())
+	maps.Copy(functionMap, functions.DraftFunctionMap())
 }
 
 // ResolvedMessageFormatOptions represents the resolved options for a MessageFormat instance

@@ -48,7 +48,7 @@ import (
 //	}
 func OffsetFunction(
 	ctx MessageFunctionContext,
-	options map[string]any,
+	options Options,
 	operand any,
 ) messagevalue.MessageValue {
 	// Read numeric operand - matches TypeScript: let { value, options } = readNumericOperand(operand);
@@ -62,7 +62,7 @@ func OffsetFunction(
 
 	// Parse add option - matches TypeScript: add = 'add' in exprOpt ? asPositiveInteger(exprOpt.add) : -1;
 	add := -1
-	if addVal, hasAdd := options["add"]; hasAdd {
+	if addVal, hasAdd := options.Value("add"); hasAdd {
 		if addInt, err := asPositiveInteger(addVal); err == nil {
 			add = addInt
 		} else {
@@ -74,7 +74,7 @@ func OffsetFunction(
 
 	// Parse subtract option - matches TypeScript: sub = 'subtract' in exprOpt ? asPositiveInteger(exprOpt.subtract) : -1;
 	sub := -1
-	if subVal, hasSubtract := options["subtract"]; hasSubtract {
+	if subVal, hasSubtract := options.Value("subtract"); hasSubtract {
 		if subInt, err := asPositiveInteger(subVal); err == nil {
 			sub = subInt
 		} else {

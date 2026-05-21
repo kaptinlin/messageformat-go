@@ -4,7 +4,7 @@ This guide covers the fastest path to using MessageFormat Go v2 in a real applic
 
 ## Requirements
 
-- Go 1.26.2 or newer
+- Go 1.26 or newer
 - `github.com/kaptinlin/messageformat-go`
 
 Install the package:
@@ -71,7 +71,7 @@ Built-in functions are attached inline:
 
 ```text
 {$count :number}
-{$amount :number style=currency currency=USD}
+{$amount :currency currency=USD}
 {$createdAt :datetime dateStyle=full}
 ```
 
@@ -80,7 +80,7 @@ Example:
 ```go
 mf, err := messageformat.Parse(
 	[]string{"en"},
-	"Total: {$amount :number style=currency currency=USD}",
+	"Total: {$amount :currency currency=USD}",
 )
 if err != nil {
 	log.Fatal(err)

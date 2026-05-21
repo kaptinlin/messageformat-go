@@ -6,8 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestEdgeCases tests edge cases in function registry handling
-// Reference: TypeScript commit 09b01970 - tests for prototype pollution prevention
+// TestEdgeCases tests edge cases in function registry handling.
 func TestEdgeCases(t *testing.T) {
 	t.Run("unknown function with reserved name", func(t *testing.T) {
 		registry := NewFunctionRegistry()
@@ -131,7 +130,7 @@ func TestEdgeCases(t *testing.T) {
 // TestDefaultFunctionsImmutability ensures default functions can't be accidentally modified
 func TestDefaultFunctionsImmutability(t *testing.T) {
 	// Get count of default functions
-	originalCount := len(DefaultFunctions)
+	originalCount := len(DefaultFunctionMap())
 
 	// Create new registry
 	registry := NewFunctionRegistry()
@@ -140,18 +139,19 @@ func TestDefaultFunctionsImmutability(t *testing.T) {
 	registry.Register("custom", StringFunction)
 
 	// DefaultFunctions should still have same count
-	assert.Equal(t, originalCount, len(DefaultFunctions),
+	defaults := DefaultFunctionMap()
+	assert.Equal(t, originalCount, len(defaults),
 		"DefaultFunctions should not be modified by registry operations")
 
 	// Should not contain the custom function
-	_, exists := DefaultFunctions["custom"]
+	_, exists := defaults["custom"]
 	assert.False(t, exists, "DefaultFunctions should not contain custom functions")
 }
 
 // TestDraftFunctionsImmutability ensures draft functions can't be accidentally modified
 func TestDraftFunctionsImmutability(t *testing.T) {
 	// Get count of draft functions
-	originalCount := len(DraftFunctions)
+	originalCount := len(DraftFunctionMap())
 
 	// Create new registry with draft functions
 	registry := NewFunctionRegistryWithDraft()
@@ -160,10 +160,11 @@ func TestDraftFunctionsImmutability(t *testing.T) {
 	registry.Register("custom", StringFunction)
 
 	// DraftFunctions should still have same count
-	assert.Equal(t, originalCount, len(DraftFunctions),
+	drafts := DraftFunctionMap()
+	assert.Equal(t, originalCount, len(drafts),
 		"DraftFunctions should not be modified by registry operations")
 
 	// Should not contain the custom function
-	_, exists := DraftFunctions["custom"]
+	_, exists := drafts["custom"]
 	assert.False(t, exists, "DraftFunctions should not contain custom functions")
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/logger"
+	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
 // SelectPattern selects the appropriate pattern from a message
@@ -145,26 +146,40 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 
 		var selectKeyFunc func(map[string]bool) *string
 		// matches TypeScript: if (typeof selector.selectKey === 'function')
-		// Check if the MessageValue supports selection by testing with a dummy key
-		testKeys := []string{"test"}
-		if _, err := mv.SelectKeys(testKeys); err == nil {
-			// matches TypeScript: selectKey = selector.selectKey.bind(selector);
-			selectKeyFunc = func(availableKeys map[string]bool) *string {
-				// Convert map to slice for selection
-				keySlice := slices.Collect(maps.Keys(availableKeys))
-
-				if len(keySlice) == 0 {
-					return nil
+		if selector, ok := mv.(messagevalue.Selector); ok {
+			if _, err := selector.SelectKeys([]string{"test"}); err != nil {
+				if context.OnError != nil {
+					context.OnError(errors.NewMessageSelectionError(
+						errors.ErrorTypeBadSelector,
+						err,
+					))
 				}
+				selectKeyFunc = func(map[string]bool) *string { return nil }
+			} else {
+				// matches TypeScript: selectKey = selector.selectKey.bind(selector);
+				selectKeyFunc = func(availableKeys map[string]bool) *string {
+					// Convert map to slice for selection
+					keySlice := slices.Collect(maps.Keys(availableKeys))
 
-				// Call the MessageValue's SelectKeys method
-				selectedKeys, err := mv.SelectKeys(keySlice)
-				if err != nil || len(selectedKeys) == 0 {
-					return nil
+					if len(keySlice) == 0 {
+						return nil
+					}
+
+					// Call the MessageValue's SelectKeys method
+					selectedKeys, err := selector.SelectKeys(keySlice)
+					if err != nil || len(selectedKeys) == 0 {
+						if err != nil && context.OnError != nil {
+							context.OnError(errors.NewMessageSelectionError(
+								errors.ErrorTypeBadSelector,
+								err,
+							))
+						}
+						return nil
+					}
+
+					// Return the first selected key
+					return &selectedKeys[0]
 				}
-
-				// Return the first selected key
-				return &selectedKeys[0]
 			}
 		} else {
 			// matches TypeScript: context.onError(new MessageSelectionError('bad-selector')); selectKey = () => null;

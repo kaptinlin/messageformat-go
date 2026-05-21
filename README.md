@@ -1,23 +1,21 @@
 # MessageFormat Go
 
-[![Go Version](https://img.shields.io/badge/go-%3E%3D1.26.2-blue)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/go-%3E%3D1.26-blue)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/github.com/kaptinlin/messageformat-go.svg)](https://pkg.go.dev/github.com/kaptinlin/messageformat-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kaptinlin/messageformat-go)](https://goreportcard.com/report/github.com/kaptinlin/messageformat-go)
 
-A Go implementation of Unicode MessageFormat 2.0.
-
-This repository tracks the Unicode MessageFormat 2.0 specification and verifies behavior against the official MessageFormat Working Group test suite bundled as a git submodule in `tests/messageformat-wg/`.
+A Go implementation of Unicode MessageFormat 2.0 for parsing, validating, and formatting localized messages
 
 ## Features
 
-- **Unicode MessageFormat 2.0**: Parse, validate, and format messages using the Unicode MessageFormat 2.0 model.
-- **Go-first public API**: Strongly typed constructors and format options.
-- **Rich formatting**: Built-in support for numbers, integers, strings, dates, currencies, percentages, offsets, and units.
-- **Custom functions**: Register locale-aware formatters with `WithFunction` or `WithFunctions`.
-- **Structured output**: Render to strings with `Format` or rich parts with `FormatToParts`.
-- **Predictable defaults**: Instances are safe for concurrent use after construction and default to clean output without bidi isolation markers.
-- **Spec verification**: The repository includes the official MessageFormat Working Group test suite as a git submodule.
+- **MessageFormat 2.0**: Parse, validate, select, and format messages with the Unicode MessageFormat 2.0 model.
+- **Go-first API**: Use typed options, immutable formatter snapshots, structured parts, and explicit error returns.
+- **Locale-aware functions**: Format numbers, dates, currencies, percentages, offsets, strings, and units through [`github.com/agentable/go-intl`](https://github.com/agentable/go-intl).
+- **Custom formatters**: Register application functions with `WithFunction` or `WithFunctions`.
+- **Structured rendering**: Use `FormatToParts` for rich text, markup-aware rendering, and post-processing.
+- **Migration path**: Keep existing ICU MessageFormat v1 code on the supported `github.com/kaptinlin/messageformat-go/v1` package.
+- **Official conformance**: Run the Unicode MessageFormat Working Group test suite with `task test-official` or `task test-v2`.
 
 ## Installation
 
@@ -25,11 +23,13 @@ This repository tracks the Unicode MessageFormat 2.0 specification and verifies 
 go get github.com/kaptinlin/messageformat-go
 ```
 
-Requires **Go 1.26.2+**.
+Requires **Go 1.26+**.
 
-This repository keeps the MessageFormat 2.0 implementation and the supported `v1/` compatibility package in the same root Go module.
+For ICU MessageFormat v1 compatibility, import:
 
-For ICU MessageFormat v1 compatibility, import `github.com/kaptinlin/messageformat-go/v1` while versioning the root module.
+```go
+import messageformatv1 "github.com/kaptinlin/messageformat-go/v1"
+```
 
 ## Quick Start
 
@@ -62,35 +62,21 @@ func main() {
 
 | API | Purpose |
 |-----|---------|
-| `Parse(locales, source, options...)` | Parse and validate a message from source text |
-| `Compile(locales, message, options...)` | Reuse a prebuilt data model |
+| `Parse(locales, source, options...)` | Parse source text into a formatter |
+| `Compile(locales, message, options...)` | Build a formatter from a parsed data model |
 | `(*MessageFormat).Format(values, options...)` | Format to a string |
 | `(*MessageFormat).FormatToParts(values, options...)` | Format to structured parts |
 | `ParseMessage(source)` | Parse source into the public data model |
 | `StringifyMessage(message)` | Convert the data model back to source |
-| `Validate(message, scope)` | Validate a parsed message |
+| `Validate(message, onError)` | Validate a parsed message |
 
-Full API details live on [pkg.go.dev](https://pkg.go.dev/github.com/kaptinlin/messageformat-go) and in [`docs/api-reference.md`](docs/api-reference.md).
+Full API details are available on [pkg.go.dev](https://pkg.go.dev/github.com/kaptinlin/messageformat-go) and in [`docs/api-reference.md`](docs/api-reference.md).
 
-## Spec And Reference Tracking
+## Common Usage
 
-- Specification: [Unicode MessageFormat 2.0](https://unicode.org/reports/tr35/tr35-messageFormat.html)
-- Official test suite submodule: `tests/messageformat-wg`
-- Current pinned test-suite commit: `dd86e42e10d1d0c9c4401d0781cdd87ee7166366`
-- TypeScript reference implementation submodule: `.reference/messageformat`
-- Current pinned reference commit: `ea2b8b9c49a5caa5d6720948a9f4b5fc4a908b72`
+### Select Messages
 
-The implementation aims to stay aligned with the spec and the official test suite first, while using the TypeScript `messageformat` project as the API-compatibility reference.
-
-## MessageFormat 2.0 Basics
-
-Variables use the MessageFormat 2.0 form with a `$` prefix:
-
-```go
-mf, err := messageformat.Parse([]string{"en"}, "Hello, {$name}!")
-```
-
-Select messages require declared selectors:
+Declare selectors before `.match` messages:
 
 ```go
 mf, err := messageformat.Parse([]string{"en"}, `
@@ -100,18 +86,26 @@ mf, err := messageformat.Parse([]string{"en"}, `
 one {{One item}}
 *   {{{$count} items}}
 `)
+if err != nil {
+	log.Fatal(err)
+}
+
+out, err := mf.Format(map[string]any{"count": 3})
+if err != nil {
+	log.Fatal(err)
+}
+
+fmt.Println(out)
 ```
 
-The parser preserves syntax error types, so malformed selectors and missing syntax are reported with specific error categories instead of a generic parse error.
+### Built-In Formatting
 
-## Formatting Examples
-
-### Numbers and currencies
+Use MessageFormat functions directly in source text:
 
 ```go
 mf, err := messageformat.Parse(
 	[]string{"en"},
-	"Total: {$amount :number style=currency currency=USD}",
+	"Total: {$amount :currency currency=USD}",
 )
 if err != nil {
 	log.Fatal(err)
@@ -125,15 +119,14 @@ if err != nil {
 fmt.Println(out)
 ```
 
-### Structured parts
+Built-in functions include `:number`, `:integer`, `:string`, `:offset`, `:currency`, `:date`, `:datetime`, `:percent`, `:time`, and `:unit`.
+
+### Structured Parts
+
+Use `FormatToParts` when a UI needs typed output instead of one string:
 
 ```go
-mf, err := messageformat.Parse([]string{"en"}, "Hello, {$name}!")
-if err != nil {
-	log.Fatal(err)
-}
-
-parts, err := mf.FormatToParts(map[string]any{"name": "World"})
+parts, err := mf.FormatToParts(map[string]any{"amount": 29.99})
 if err != nil {
 	log.Fatal(err)
 }
@@ -143,17 +136,24 @@ for _, part := range parts {
 }
 ```
 
-### Custom functions
+### Custom Functions
+
+Custom functions receive locale context, resolved options, and the operand value:
 
 ```go
 func uppercase(
 	ctx messageformat.MessageFunctionContext,
-	options map[string]any,
+	options functions.Options,
 	operand any,
 ) messagevalue.MessageValue {
+	locale := "en"
+	if locales := ctx.Locales(); len(locales) > 0 {
+		locale = locales[0]
+	}
+
 	return messagevalue.NewStringValue(
 		strings.ToUpper(fmt.Sprint(operand)),
-		ctx.Locales()[0],
+		locale,
 		ctx.Source(),
 	)
 }
@@ -165,17 +165,22 @@ mf, err := messageformat.Parse(
 )
 ```
 
-See [`examples/custom-functions/main.go`](examples/custom-functions/main.go) for a fuller example.
+See [`docs/custom-functions.md`](docs/custom-functions.md) and [`examples/custom-functions`](examples/custom-functions) for complete examples.
 
-## Defaults and Configuration
+## Configuration
 
-This package deliberately chooses simple defaults:
+Use functional options for focused constructor changes:
 
-- `BidiIsolation` defaults to `BidiNone`, so formatted output does not include Unicode isolation markers unless you opt in.
-- `LocaleMatcher` defaults to `LocaleBestFit`.
-- `MessageFormat` instances defensively copy locale input and are safe for concurrent use after construction.
+| Option | Purpose | Default |
+|--------|---------|---------|
+| `WithBidiIsolation(strategy)` | Control Unicode bidi isolation markers | `BidiNone` |
+| `WithDir(direction)` | Set message base direction | Locale-derived |
+| `WithLocaleMatcher(matcher)` | Select locale matching behavior | `LocaleBestFit` |
+| `WithFunction(name, fn)` | Register one custom function | Built-ins only |
+| `WithFunctions(funcs)` | Register multiple custom functions | Built-ins only |
+| `WithLogger(logger)` | Attach an instance logger | Package logger |
 
-Use functional options when you want focused overrides:
+Example:
 
 ```go
 mf, err := messageformat.Parse(
@@ -189,39 +194,50 @@ mf, err := messageformat.Parse(
 Use `messageformat.Options(...)` when a struct is more convenient:
 
 ```go
-mf, err := messageformat.Parse([]string{"en"}, "Hello, {$name}!", messageformat.Options(messageformat.MessageFormatOptions{
-	BidiIsolation: messageformat.BidiNone,
-	LocaleMatcher: messageformat.LocaleBestFit,
-}))
+mf, err := messageformat.Parse(
+	[]string{"en"},
+	"Hello, {$name}!",
+	messageformat.Options(messageformat.MessageFormatOptions{
+		BidiIsolation: messageformat.BidiNone,
+		LocaleMatcher: messageformat.LocaleBestFit,
+	}),
+)
 ```
+
+## Conformance
+
+This repository verifies behavior against the official Unicode MessageFormat Working Group test suite in `tests/messageformat-wg/`.
+
+```bash
+task test-official  # Official MessageFormat 2.0 suite only
+task test-v2        # Package tests plus official suite, with race detection
+```
+
+The TypeScript `messageformat` project is kept as a reference for behavior and API parity. Project design contracts live in [`SPECS/`](SPECS/).
 
 ## Documentation
 
-| Guide | Description |
-|-------|-------------|
-| [`docs/getting-started.md`](docs/getting-started.md) | Installation, first steps, and basic concepts |
-| [`docs/message-syntax.md`](docs/message-syntax.md) | MessageFormat 2.0 syntax reference |
-| [`docs/api-reference.md`](docs/api-reference.md) | Public API overview |
+| Guide | Use it for |
+|-------|------------|
+| [`docs/getting-started.md`](docs/getting-started.md) | Installation and first steps |
+| [`docs/message-syntax.md`](docs/message-syntax.md) | MessageFormat 2.0 syntax |
 | [`docs/formatting-functions.md`](docs/formatting-functions.md) | Built-in formatter behavior |
-| [`docs/custom-functions.md`](docs/custom-functions.md) | Writing and registering custom functions |
-| [`docs/error-handling.md`](docs/error-handling.md) | Error categories and handling patterns |
-| [`TESTING.md`](TESTING.md) | Test layout and verification commands |
+| [`docs/custom-functions.md`](docs/custom-functions.md) | Custom formatter authoring |
+| [`docs/error-handling.md`](docs/error-handling.md) | Syntax, resolution, and selection errors |
+| [`docs/api-reference.md`](docs/api-reference.md) | Public API reference |
+| [`SPECS/`](SPECS/) | Design contracts and architecture boundaries |
+
+Runnable examples live in [`examples/`](examples/).
 
 ## Development
 
 ```bash
-task test           # Run all tests with race detection
-task test-v2        # Run the official MessageFormat 2.0 suite and package tests
-task test-official  # Run the official MessageFormat 2.0 suite only
-task lint           # Run golangci-lint and tidy checks
-task verify         # Run deps, fmt, vet, lint, test, and vuln
-task examples       # Run all example programs
-```
-
-If this is a fresh clone, initialize the test suite submodule first:
-
-```bash
-task submodules
+task submodules      # Initialize official test suite submodule
+task test            # Run all tests with race detection
+task test-v2         # Run package tests and the official suite
+task lint            # Run golangci-lint and go mod tidy checks
+task verify          # Run deps, fmt, vet, lint, test, and vuln
+task examples        # Run example programs
 ```
 
 ## Contributing

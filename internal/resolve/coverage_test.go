@@ -40,7 +40,9 @@ func TestResolveFunctionRefAppliesUniversalOptions(t *testing.T) {
 			assert.Equal(t, `|hello|`, result.Source())
 			assert.Equal(t, tc.wantDir, result.Dir())
 			assert.Equal(t, "en", result.Locale())
-			assert.Nil(t, result.Options())
+			optioned, ok := result.(messagevalue.OptionedValue)
+			require.True(t, ok)
+			assert.Nil(t, optioned.Options())
 			assert.True(t, result.(interface{ HasBidiIsolate() bool }).HasBidiIsolate())
 			assert.Equal(t, "part-id", result.(interface{ ID() string }).ID())
 
@@ -52,7 +54,9 @@ func TestResolveFunctionRefAppliesUniversalOptions(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, "hello", value)
 
-			keys, err := result.SelectKeys([]string{"hello", "other"})
+			selector, ok := result.(messagevalue.Selector)
+			require.True(t, ok)
+			keys, err := selector.SelectKeys([]string{"hello", "other"})
 			require.NoError(t, err)
 			if diff := cmp.Diff([]string{"hello"}, keys); diff != "" {
 				t.Errorf("selected keys mismatch (-want +got):\n%s", diff)
@@ -80,7 +84,7 @@ func TestResolveFunctionRefResolvesOptionsAndReportsFailures(t *testing.T) {
 
 		var got map[string]any
 		ctx := newResolveCoverageContext(map[string]any{"width": "wide"})
-		ctx.Functions["capture"] = func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+		ctx.Functions["capture"] = func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 			got = options
 			return messagevalue.NewStringValue("ok", functions.GetFirstLocale(ctx.Locales()), ctx.Source())
 		}
@@ -103,7 +107,7 @@ func TestResolveFunctionRefResolvesOptionsAndReportsFailures(t *testing.T) {
 		var gotID string
 		var gotDir string
 		ctx := newResolveCoverageContext(map[string]any{"width": "wide"})
-		ctx.Functions["capture"] = func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+		ctx.Functions["capture"] = func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 			gotLiteralKeys = ctx.LiteralOptionKeys()
 			gotOptions = options
 			gotID = ctx.ID()
@@ -136,7 +140,7 @@ func TestResolveFunctionRefResolvesOptionsAndReportsFailures(t *testing.T) {
 		var got map[string]any
 		ctx := newResolveCoverageContext(nil)
 		ctx.OnError = func(err error) { errs = append(errs, err) }
-		ctx.Functions["capture"] = func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+		ctx.Functions["capture"] = func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 			got = options
 			return messagevalue.NewStringValue("ok", functions.GetFirstLocale(ctx.Locales()), ctx.Source())
 		}
@@ -193,7 +197,7 @@ func TestResolveFunctionRefPassesOperandValue(t *testing.T) {
 
 			var got any
 			ctx := newResolveCoverageContext(tc.scope)
-			ctx.Functions["capture"] = func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+			ctx.Functions["capture"] = func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 				got = operand
 				return messagevalue.NewStringValue("ok", functions.GetFirstLocale(ctx.Locales()), ctx.Source())
 			}
@@ -227,7 +231,7 @@ func TestFormatMarkupResolvesOptionsAndReportsUniversalDir(t *testing.T) {
 		"class": messagevalue.NewStringValue("primary", "en", "$class"),
 	})
 	ctx.OnError = func(err error) { errs = append(errs, err) }
-	part := FormatMarkup(ctx, datamodel.NewMarkup("open", "span", datamodel.Options{
+	part := FormatMarkup(ctx, mustMarkup(t, "open", "span", datamodel.Options{
 		"class": datamodel.NewVariableRef("class"),
 		"role":  datamodel.NewLiteral("button"),
 		"u:id":  datamodel.NewLiteral("cta"),
@@ -295,7 +299,7 @@ func newResolveCoverageContext(scope map[string]any) *Context {
 		scope,
 		nil,
 	)
-	ctx.Functions["identity"] = func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+	ctx.Functions["identity"] = func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 		return messagevalue.NewStringValue(operand.(string), functions.GetFirstLocale(ctx.Locales()), ctx.Source())
 	}
 	return ctx

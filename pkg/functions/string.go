@@ -36,7 +36,7 @@ import (
 //	}
 func StringFunction(
 	ctx MessageFunctionContext,
-	options map[string]any,
+	options Options,
 	operand any,
 ) messagevalue.MessageValue {
 	value := ""
@@ -50,10 +50,8 @@ func StringFunction(
 	}
 
 	locale := GetFirstLocale(ctx.Locales())
-	if localeOpt, ok := options["locale"]; ok {
-		if localeStr, ok := localeOpt.(string); ok {
-			locale = localeStr
-		}
+	if localeOpt, ok := options.String("locale"); ok {
+		locale = localeOpt
 	}
 
 	var dir bidi.Direction

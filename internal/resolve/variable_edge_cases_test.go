@@ -35,7 +35,7 @@ func TestResolveVariableRef_CircularReference(t *testing.T) {
 
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			map[string]any{
 				"a": NewUnresolvedExpression(expr, nil),
 			},
@@ -76,7 +76,7 @@ func TestResolveVariableRef_CircularReference(t *testing.T) {
 
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			scope,
 			onError,
 		)
@@ -105,7 +105,7 @@ func TestResolveVariableRef_CircularReference(t *testing.T) {
 
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			scope,
 			nil,
 		)
@@ -207,7 +207,7 @@ func TestResolveVariableRef_NestedPaths(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := NewContext(
 				[]string{"en"},
-				functions.DefaultFunctions,
+				functions.DefaultFunctionMap(),
 				tt.scope,
 				nil,
 			)
@@ -242,7 +242,7 @@ func TestResolveVariableRef_MissingVariables(t *testing.T) {
 
 	ctx := NewContext(
 		[]string{"en"},
-		functions.DefaultFunctions,
+		functions.DefaultFunctionMap(),
 		map[string]any{},
 		onError,
 	)
@@ -268,7 +268,7 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			map[string]any{
 				"x": NewUnresolvedExpression(expr, nil),
 			},
@@ -299,7 +299,7 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			map[string]any{
 				"x": NewUnresolvedExpression(expr, customScope),
 				"y": "outer value", // This should be ignored
@@ -338,7 +338,7 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			map[string]any{
 				"local": NewUnresolvedExpression(expr, scopeWithParam),
 			},
@@ -494,7 +494,7 @@ func TestResolveVariableRef_PointerTypes(t *testing.T) {
 		value := 42
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			map[string]any{
 				"val": &value,
 			},
@@ -514,7 +514,7 @@ func TestResolveVariableRef_PointerTypes(t *testing.T) {
 		value := "test"
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			map[string]any{
 				"val": &value,
 			},
@@ -539,7 +539,7 @@ func TestResolveVariableRef_LocalVarsTracking(t *testing.T) {
 
 	ctx := NewContext(
 		[]string{"en"},
-		functions.DefaultFunctions,
+		functions.DefaultFunctionMap(),
 		map[string]any{
 			"local": NewUnresolvedExpression(expr, nil),
 		},
@@ -566,7 +566,7 @@ func TestResolveVariableRef_FallbackType(t *testing.T) {
 
 	ctx := NewContext(
 		[]string{"en"},
-		functions.DefaultFunctions,
+		functions.DefaultFunctionMap(),
 		map[string]any{
 			"val": fallbackValue,
 		},
@@ -585,7 +585,7 @@ func TestResolveVariableRef_FallbackType(t *testing.T) {
 func TestResolveVariableRef_NoErrorHandler(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
-		functions.DefaultFunctions,
+		functions.DefaultFunctionMap(),
 		map[string]any{},
 		nil, // No error handler
 	)
@@ -612,7 +612,7 @@ func TestResolveVariableRef_ComplexObject(t *testing.T) {
 
 	ctx := NewContext(
 		[]string{"en"},
-		functions.DefaultFunctions,
+		functions.DefaultFunctionMap(),
 		map[string]any{
 			"obj": customObj,
 		},

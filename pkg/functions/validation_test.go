@@ -35,6 +35,26 @@ func TestValidateOptionKey(t *testing.T) {
 			expectErr: false,
 		},
 		{
+			name:      "valid namespaced key",
+			key:       "u:dir",
+			expectErr: false,
+		},
+		{
+			name:      "valid javascript object key",
+			key:       "__proto__",
+			expectErr: false,
+		},
+		{
+			name:      "valid constructor key",
+			key:       "constructor",
+			expectErr: false,
+		},
+		{
+			name:      "valid prototype key",
+			key:       "prototype",
+			expectErr: false,
+		},
+		{
 			name:      "empty key",
 			key:       "",
 			expectErr: true,
@@ -57,30 +77,6 @@ func TestValidateOptionKey(t *testing.T) {
 			key:       "option$value",
 			expectErr: true,
 			errMsg:    "invalid character",
-		},
-		{
-			name:      "forbidden key __proto__",
-			key:       "__proto__",
-			expectErr: true,
-			errMsg:    "forbidden",
-		},
-		{
-			name:      "forbidden key constructor",
-			key:       "constructor",
-			expectErr: true,
-			errMsg:    "forbidden",
-		},
-		{
-			name:      "forbidden key prototype",
-			key:       "prototype",
-			expectErr: true,
-			errMsg:    "forbidden",
-		},
-		{
-			name:      "forbidden key case insensitive",
-			key:       "__PROTO__",
-			expectErr: true,
-			errMsg:    "forbidden",
 		},
 		{
 			name:      "key with dot",
@@ -127,11 +123,11 @@ func TestValidateOptions(t *testing.T) {
 	t.Run("invalid option key", func(t *testing.T) {
 		options := map[string]any{
 			"valid_option": 1,
-			"__proto__":    "malicious",
+			"bad$key":      "invalid",
 		}
 		err := ValidateOptions(options)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "forbidden")
+		assert.Contains(t, err.Error(), "invalid character")
 	})
 
 	t.Run("empty options map", func(t *testing.T) {
@@ -145,19 +141,19 @@ func TestSanitizeOptions(t *testing.T) {
 	t.Run("filters out invalid keys", func(t *testing.T) {
 		options := map[string]any{
 			"validOption":  1,
-			"__proto__":    "malicious",
-			"constructor":  "bad",
+			"__proto__":    "ok",
+			"constructor":  "also ok",
 			"anotherValid": "ok",
 			"bad$key":      "invalid",
 		}
 
 		sanitized := SanitizeOptions(options)
 
-		assert.Len(t, sanitized, 2)
+		assert.Len(t, sanitized, 4)
 		assert.Contains(t, sanitized, "validOption")
 		assert.Contains(t, sanitized, "anotherValid")
-		assert.NotContains(t, sanitized, "__proto__")
-		assert.NotContains(t, sanitized, "constructor")
+		assert.Contains(t, sanitized, "__proto__")
+		assert.Contains(t, sanitized, "constructor")
 		assert.NotContains(t, sanitized, "bad$key")
 	})
 
@@ -177,12 +173,12 @@ func TestSanitizeOptions(t *testing.T) {
 }
 
 func TestIsValidOptionKeyChar(t *testing.T) {
-	validChars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
+	validChars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-:"
 	for _, ch := range validChars {
 		assert.True(t, isValidOptionKeyChar(ch), "Character '%c' should be valid", ch)
 	}
 
-	invalidChars := " !@#$%^&*()+=[]{}|\\:;\"'<>,.?/~`"
+	invalidChars := " !@#$%^&*()+=[]{}|\\;\"'<>,.?/~`"
 	for _, ch := range invalidChars {
 		assert.False(t, isValidOptionKeyChar(ch), "Character '%c' should be invalid", ch)
 	}

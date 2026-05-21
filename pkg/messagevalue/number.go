@@ -1,17 +1,15 @@
 package messagevalue
 
 import (
-	"cmp"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/Rhymond/go-money"
+	"github.com/agentable/go-intl/numberformat"
+	"github.com/agentable/go-intl/pluralrules"
+	"github.com/kaptinlin/messageformat-go/internal/intlbridge"
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
-	"golang.org/x/text/number"
 )
 
 // Static errors to avoid dynamic error creation
@@ -19,77 +17,51 @@ var (
 	ErrNumberNotSelectable = errors.New("number value does not support selection")
 )
 
-// NumberValue implements MessageValue for numbers
-// TypeScript original code:
-//
-//	export class NumberValue implements MessageValue<'number'> {
-//	  readonly type = 'number';
-//	  constructor(
-//	    public readonly source: string,
-//	    public readonly value: number,
-//	    public readonly locale?: string,
-//	    public readonly dir?: Direction,
-//	    public readonly options?: Intl.NumberFormatOptions
-//	  ) {}
-//	  valueOf() { return this.value; }
-//	  toString() { return String(this.value); }
-//	  toParts() { return [{ type: 'number', value: this.value, source: this.source }]; }
-//	  selectKeys(keys: string[]) { /* plural selection logic */ }
-//	}
+// NumberValue implements MessageValue for numbers.
+// Formatting and plural selection are both delegated to go-intl (numberformat
+// and pluralrules), matching the TypeScript reference's reliance on
+// Intl.NumberFormat and Intl.PluralRules.
 type NumberValue struct {
 	value      any // int64, float64, or other numeric types
 	locale     string
 	dir        bidi.Direction
 	source     string
 	options    map[string]any
-	selectable bool // whether this number value supports selection
+	selectable bool
 }
 
 // NewNumberValue creates a new number value
 func NewNumberValue(value any, locale, source string, options map[string]any) *NumberValue {
-	if options == nil {
-		options = make(map[string]any)
-	}
-
 	return &NumberValue{
 		value:      value,
 		locale:     locale,
 		dir:        bidi.DirAuto,
 		source:     source,
-		options:    options,
-		selectable: true, // default to supporting selection
+		options:    cloneOptions(options),
+		selectable: true,
 	}
 }
 
 // NewNumberValueWithDir creates a new number value with explicit direction
 func NewNumberValueWithDir(value any, locale, source string, dir bidi.Direction, options map[string]any) *NumberValue {
-	if options == nil {
-		options = make(map[string]any)
-	}
-
 	return &NumberValue{
 		value:      value,
 		locale:     locale,
 		dir:        dir,
 		source:     source,
-		options:    options,
-		selectable: true, // default to supporting selection
+		options:    cloneOptions(options),
+		selectable: true,
 	}
 }
 
 // NewNumberValueWithSelection creates a new number value with specified selection capability
-// TypeScript original code: new NumberValue(source, value, locale, dir, options) with selectable parameter
 func NewNumberValueWithSelection(value any, locale, source string, dir bidi.Direction, options map[string]any, selectable bool) *NumberValue {
-	if options == nil {
-		options = make(map[string]any)
-	}
-
 	return &NumberValue{
 		value:      value,
 		locale:     locale,
 		dir:        dir,
 		source:     source,
-		options:    options,
+		options:    cloneOptions(options),
 		selectable: selectable,
 	}
 }
@@ -115,953 +87,121 @@ func (nv *NumberValue) Options() map[string]any {
 }
 
 func (nv *NumberValue) ToString() (string, error) {
-	// Apply number formatting options
-	return nv.formatNumber()
-}
-
-// formatNumber formats the number according to the options
-func (nv *NumberValue) formatNumber() (string, error) {
-	// Convert value to float64 for formatting
-	var num float64
-	switch v := nv.value.(type) {
-	case int:
-		num = float64(v)
-	case int64:
-		num = float64(v)
-	case float64:
-		num = v
-	case float32:
-		num = float64(v)
-	default:
-		return fmt.Sprintf("%v", v), nil
-	}
-
-	// Parse locale
-	locale := cmp.Or(nv.locale, "en-US")
-
-	// Parse language tag
-	tag, err := language.Parse(locale)
+	formatter, num, ok, err := nv.newFormatter()
 	if err != nil {
-		// Fallback to English if locale parsing fails
-		tag = language.English
+		return fmt.Sprintf("%v", nv.value), err
 	}
-
-	// Create printer for the locale
-	p := message.NewPrinter(tag)
-
-	// Get formatting options
-	minFractionDigits := 0
-	maxFractionDigits := -1 // -1 means use default
-	useGrouping := true     // Default to true for thousand separators
-
-	if val, ok := nv.options["minimumFractionDigits"]; ok {
-		if intVal, ok := val.(int); ok {
-			minFractionDigits = intVal
-		}
-	}
-
-	if val, ok := nv.options["maximumFractionDigits"]; ok {
-		if intVal, ok := val.(int); ok {
-			maxFractionDigits = intVal
-		}
-	}
-
-	if val, ok := nv.options["useGrouping"]; ok {
-		if strVal, ok := val.(string); ok {
-			useGrouping = strVal != "never" && strVal != "false"
-		} else if boolVal, ok := val.(bool); ok {
-			useGrouping = boolVal
-		}
-	}
-
-	// If maxFractionDigits is not set, use a reasonable default
-	if maxFractionDigits == -1 {
-		if minFractionDigits > 0 {
-			maxFractionDigits = minFractionDigits
-		} else {
-			// For integers, use 0; for floats, use up to 3
-			if num == float64(int64(num)) && minFractionDigits == 0 {
-				maxFractionDigits = 0
-			} else {
-				maxFractionDigits = 3
-			}
-		}
-	}
-
-	// Ensure maxFractionDigits is at least minFractionDigits
-	maxFractionDigits = max(maxFractionDigits, minFractionDigits)
-
-	origMinFractionDigits := 0
-	origMaxFractionDigits := -1
-	if val, ok := nv.options["minimumFractionDigits"]; ok {
-		if intVal, ok := val.(int); ok {
-			origMinFractionDigits = intVal
-		}
-	}
-	if val, ok := nv.options["maximumFractionDigits"]; ok {
-		if intVal, ok := val.(int); ok {
-			origMaxFractionDigits = intVal
-		}
-	}
-
-	// Check if this is currency formatting
-	if style, ok := nv.options["style"]; ok && style == "currency" {
-		return nv.formatCurrency(num, tag, origMinFractionDigits, origMaxFractionDigits)
-	}
-
-	// Check if this is percentage formatting
-	if style, ok := nv.options["style"]; ok && style == "percent" {
-		return nv.formatPercent(num, tag, origMinFractionDigits, origMaxFractionDigits)
-	}
-
-	// Check if this is unit formatting
-	if style, ok := nv.options["style"]; ok && style == "unit" {
-		return nv.formatUnit(num, tag, minFractionDigits, maxFractionDigits)
-	}
-
-	// Create number formatter and format the number
-	var formatted string
-
-	if useGrouping {
-		// Use decimal formatting with grouping (default)
-		var result strings.Builder
-		if _, err := p.Fprintf(&result, "%v", number.Decimal(num)); err != nil {
-			// Fallback to simple formatting if there's an error
-			return strconv.FormatFloat(num, 'f', maxFractionDigits, 64), err
-		}
-		formatted = result.String()
-	} else {
-		// Format without grouping - strconv.FormatFloat is appropriate here
-		formatted = strconv.FormatFloat(num, 'f', maxFractionDigits, 64)
-	}
-
-	// Handle fraction digits manually since golang.org/x/text doesn't fully support all options
-	if minFractionDigits > 0 || maxFractionDigits >= 0 {
-		formatted = nv.adjustFractionDigits(formatted, minFractionDigits, maxFractionDigits)
-	}
-
-	// Handle signDisplay option
-	if val, ok := nv.options["signDisplay"]; ok {
-		if signDisplay, ok := val.(string); ok {
-			formatted = nv.applySignDisplay(formatted, num, signDisplay)
-		}
-	}
-
-	return formatted, nil
-}
-
-// formatCurrency formats the number as currency using go-money
-func (nv *NumberValue) formatCurrency(num float64, tag language.Tag, minFractionDigits, maxFractionDigits int) (string, error) {
-	// Get currency code
-	currency, ok := nv.options["currency"]
 	if !ok {
-		return fmt.Sprintf("%v", num), nil
+		return fmt.Sprintf("%v", nv.value), nil
 	}
+	return formatter.Format(numberformat.Float(num)), nil
+}
 
-	currencyCode, ok := currency.(string)
+// newFormatter resolves the value to a float64 and constructs a NumberFormat
+// using the bridge-translated options. The bool indicates whether a formatter
+// could be built (false for non-numeric values, which the caller falls back to
+// fmt.Sprintf for).
+//
+// If go-intl rejects the options (e.g., currency style with no currency code,
+// unit style with no unit identifier), the style-specific fields are dropped
+// and the formatter is rebuilt with the remaining options. ECMA-402 throws on
+// these inputs, but MF2's spec calls for graceful fallback instead of failing
+// the whole message.
+func (nv *NumberValue) newFormatter() (*numberformat.NumberFormat, float64, bool, error) {
+	num, ok := numberAsFloat(nv.value)
 	if !ok {
-		return fmt.Sprintf("%v", num), nil
+		return nil, 0, false, nil
 	}
-
-	// Create money object from float using go-money
-	moneyObj := money.NewFromFloat(num, strings.ToUpper(currencyCode))
-	if moneyObj == nil {
-		// Fallback if currency not supported
-		return fmt.Sprintf("%v %s", num, currencyCode), nil
+	loc := intlbridge.ParseLocale(nv.locale)
+	opts := intlbridge.NumberOptions(nv.options)
+	f, err := numberformat.New(loc, opts)
+	if err == nil {
+		return f, num, true, nil
 	}
-
-	// Handle currency sign for accounting format
-	isAccounting := false
-	if currencySign, ok := nv.options["currencySign"]; ok && currencySign == "accounting" {
-		isAccounting = true
+	opts.Style = ""
+	opts.Currency = ""
+	opts.Unit = ""
+	if f2, err2 := numberformat.New(loc, opts); err2 == nil {
+		return f2, num, true, nil
 	}
-
-	// Get currency display option
-	currencyDisplay := "symbol" // default
-	if display, ok := nv.options["currencyDisplay"]; ok {
-		if displayStr, ok := display.(string); ok {
-			currencyDisplay = displayStr
-		}
-	}
-
-	// Format using go-money's capabilities
-	var formatted string
-
-	switch currencyDisplay {
-	case "code":
-		// Use currency code instead of symbol
-		if isAccounting && moneyObj.IsNegative() {
-			formatted = fmt.Sprintf("(%s %s)", moneyObj.Currency().Code, moneyObj.Absolute().Display())
-		} else {
-			formatted = fmt.Sprintf("%s %s", moneyObj.Currency().Code, moneyObj.Display())
-		}
-		// Remove the symbol from go-money's display and replace with code
-		formatted = nv.replaceCurrencySymbolWithCode(formatted, moneyObj.Currency())
-
-	case "name":
-		// Use currency name
-		currencyName := nv.getCurrencyName(moneyObj.Currency().Code)
-		if isAccounting && moneyObj.IsNegative() {
-			amountStr := moneyObj.Absolute().Display()
-			amountStr = nv.removeCurrencySymbol(amountStr, moneyObj.Currency())
-			formatted = fmt.Sprintf("(%s %s)", amountStr, currencyName)
-		} else {
-			amountStr := moneyObj.Display()
-			amountStr = nv.removeCurrencySymbol(amountStr, moneyObj.Currency())
-			formatted = fmt.Sprintf("%s %s", amountStr, currencyName)
-		}
-
-	case "narrowSymbol", "symbol":
-		fallthrough
-	default:
-		// Use go-money's default formatting with symbol
-		if isAccounting && moneyObj.IsNegative() {
-			formatted = fmt.Sprintf("(%s)", moneyObj.Absolute().Display())
-		} else {
-			formatted = moneyObj.Display()
-		}
-	}
-
-	return formatted, nil
+	return nil, num, false, err
 }
 
-// getCurrencyName returns the currency name for common currencies
-func (nv *NumberValue) getCurrencyName(currencyCode string) string {
-	switch currencyCode {
-	case "USD":
-		return "US dollars"
-	case "EUR":
-		return "euros"
-	case "GBP":
-		return "British pounds"
-	case "JPY":
-		return "Japanese yen"
-	case "CNY":
-		return "Chinese yuan"
-	case "CAD":
-		return "Canadian dollars"
-	case "AUD":
-		return "Australian dollars"
-	case "CHF":
-		return "Swiss francs"
-	case "SEK":
-		return "Swedish kronor"
-	case "NOK":
-		return "Norwegian kroner"
-	case "DKK":
-		return "Danish kroner"
-	case "PLN":
-		return "Polish zloty"
-	case "CZK":
-		return "Czech koruna"
-	case "HUF":
-		return "Hungarian forint"
-	case "RUB":
-		return "Russian rubles"
-	case "INR":
-		return "Indian rupees"
-	case "KRW":
-		return "South Korean won"
-	case "SGD":
-		return "Singapore dollars"
-	case "HKD":
-		return "Hong Kong dollars"
-	case "NZD":
-		return "New Zealand dollars"
-	case "MXN":
-		return "Mexican pesos"
-	case "BRL":
-		return "Brazilian reais"
-	case "ZAR":
-		return "South African rand"
-	case "TRY":
-		return "Turkish lira"
-	case "ILS":
-		return "Israeli shekels"
-	case "THB":
-		return "Thai baht"
-	case "MYR":
-		return "Malaysian ringgit"
-	case "PHP":
-		return "Philippine pesos"
-	case "IDR":
-		return "Indonesian rupiah"
-	case "VND":
-		return "Vietnamese dong"
-	default:
-		// Fallback to code if name not available
-		return currencyCode
+func numberAsFloat(v any) (float64, bool) {
+	switch x := v.(type) {
+	case int:
+		return float64(x), true
+	case int8:
+		return float64(x), true
+	case int16:
+		return float64(x), true
+	case int32:
+		return float64(x), true
+	case int64:
+		return float64(x), true
+	case uint:
+		return float64(x), true
+	case uint8:
+		return float64(x), true
+	case uint16:
+		return float64(x), true
+	case uint32:
+		return float64(x), true
+	case uint64:
+		return float64(x), true
+	case float32:
+		return float64(x), true
+	case float64:
+		return x, true
 	}
-}
-
-// replaceCurrencySymbolWithCode replaces currency symbol with code in formatted string
-func (nv *NumberValue) replaceCurrencySymbolWithCode(formatted string, currency *money.Currency) string {
-	// Replace the symbol with code
-	symbol := currency.Grapheme
-	if symbol != "" && strings.Contains(formatted, symbol) {
-		return strings.Replace(formatted, symbol, currency.Code, 1)
-	}
-	return formatted
-}
-
-// removeCurrencySymbol removes currency symbol from formatted string
-func (nv *NumberValue) removeCurrencySymbol(formatted string, currency *money.Currency) string {
-	// Remove the symbol
-	symbol := currency.Grapheme
-	if symbol != "" {
-		formatted = strings.Replace(formatted, symbol, "", 1)
-		// Clean up any extra spaces
-		formatted = strings.TrimSpace(formatted)
-	}
-	return formatted
-}
-
-// formatPercent formats the number as percentage
-// TypeScript original code: similar to formatCurrency but for percentage
-func (nv *NumberValue) formatPercent(num float64, tag language.Tag, minFractionDigits, maxFractionDigits int) (string, error) {
-	// Convert to percentage (multiply by 100)
-	percentNum := num * 100
-
-	// Format the number with appropriate fraction digits for percentage
-	// Default behavior: if the percentage has meaningful decimal places, show them
-	if maxFractionDigits == -1 {
-		// Check if the percentage has meaningful decimal places
-		if percentNum == float64(int64(percentNum)) {
-			maxFractionDigits = 0 // Integer percentage
-		} else {
-			maxFractionDigits = 1 // Show one decimal place for non-integer percentages
-		}
-	}
-	// Format the number part
-	formatted := strconv.FormatFloat(percentNum, 'f', maxFractionDigits, 64)
-
-	// Adjust fraction digits
-	formatted = nv.adjustFractionDigits(formatted, minFractionDigits, maxFractionDigits)
-
-	// Handle signDisplay option
-	if val, ok := nv.options["signDisplay"]; ok {
-		if signDisplay, ok := val.(string); ok {
-			formatted = nv.applySignDisplay(formatted, percentNum, signDisplay)
-		}
-	}
-
-	// Add percentage symbol
-	formatted += "%"
-
-	return formatted, nil
-}
-
-// formatUnit formats the number as unit
-func (nv *NumberValue) formatUnit(num float64, tag language.Tag, minFractionDigits, maxFractionDigits int) (string, error) {
-	// Get unit identifier
-	unit, ok := nv.options["unit"]
-	if !ok {
-		return fmt.Sprintf("%v", num), nil // Fallback if no unit
-	}
-
-	unitCode, ok := unit.(string)
-	if !ok {
-		return fmt.Sprintf("%v", num), nil // Fallback if unit is not string
-	}
-
-	// Format the number with appropriate fraction digits
-	if maxFractionDigits == -1 {
-		maxFractionDigits = 2 // Default for units
-	}
-
-	// Format the number part
-	formatted := strconv.FormatFloat(num, 'f', maxFractionDigits, 64)
-
-	// Adjust fraction digits
-	formatted = nv.adjustFractionDigits(formatted, minFractionDigits, maxFractionDigits)
-
-	// Handle signDisplay option
-	if val, ok := nv.options["signDisplay"]; ok {
-		if signDisplay, ok := val.(string); ok {
-			formatted = nv.applySignDisplay(formatted, num, signDisplay)
-		}
-	}
-
-	// Add unit symbol
-	symbol := nv.getUnitSymbol(unitCode, tag)
-
-	// For most units, symbol comes after the number with a space
-	formatted = formatted + " " + symbol
-
-	return formatted, nil
-}
-
-// getUnitSymbol returns the unit symbol for the given unit code
-func (nv *NumberValue) getUnitSymbol(unitCode string, tag language.Tag) string {
-	// Check unitDisplay option
-	if display, ok := nv.options["unitDisplay"]; ok {
-		switch display {
-		case "long":
-			// Return full unit name
-			switch unitCode {
-			case "meter":
-				return "meters"
-			case "kilometer":
-				return "kilometers"
-			case "gram":
-				return "grams"
-			case "kilogram":
-				return "kilograms"
-			case "second":
-				return "seconds"
-			case "minute":
-				return "minutes"
-			case "hour":
-				return "hours"
-			default:
-				return unitCode
-			}
-		case "narrow":
-			// Use narrow symbols
-			switch unitCode {
-			case "meter":
-				return "m"
-			case "kilometer":
-				return "km"
-			case "gram":
-				return "g"
-			case "kilogram":
-				return "kg"
-			case "second":
-				return "s"
-			case "minute":
-				return "min"
-			case "hour":
-				return "h"
-			default:
-				return unitCode
-			}
-		case "short":
-			fallthrough
-		default:
-			// Use short symbols (default)
-			switch unitCode {
-			case "meter":
-				return "m"
-			case "kilometer":
-				return "km"
-			case "gram":
-				return "g"
-			case "kilogram":
-				return "kg"
-			case "second":
-				return "s"
-			case "minute":
-				return "min"
-			case "hour":
-				return "h"
-			default:
-				return unitCode
-			}
-		}
-	}
-
-	// Default to short symbols
-	switch unitCode {
-	case "meter":
-		return "m"
-	case "kilometer":
-		return "km"
-	case "gram":
-		return "g"
-	case "kilogram":
-		return "kg"
-	case "second":
-		return "s"
-	case "minute":
-		return "min"
-	case "hour":
-		return "h"
-	default:
-		return unitCode
-	}
-}
-
-// adjustFractionDigits adjusts the number of fraction digits in a formatted number string
-func (nv *NumberValue) adjustFractionDigits(formatted string, minFractionDigits, maxFractionDigits int) string {
-	// For currency formatting, we need to be very careful about distinguishing
-	// between thousands separators and decimal separators
-
-	// Strategy: Look for the rightmost separator that has 1-2 digits after it
-	// (typical for decimal places). Separators with exactly 3 digits after them
-	// are likely thousands separators.
-
-	decimalIndex := -1
-
-	// Search from right to left
-	for i := len(formatted) - 1; i >= 0; i-- {
-		ch := rune(formatted[i])
-		if ch == '.' || ch == ',' {
-			remaining := formatted[i+1:]
-
-			// Check if this looks like a decimal separator:
-			// 1. Should have digits after it
-			// 2. Should be 1-2 digits for currency (not exactly 3, which suggests thousands)
-			// 3. Should be the rightmost such separator
-			if len(remaining) > 0 && isAllDigits(remaining) {
-				// Check if this is the rightmost separator
-				hasOtherSeparator := false
-				for j := i + 1; j < len(formatted); j++ {
-					if formatted[j] == '.' || formatted[j] == ',' {
-						hasOtherSeparator = true
-						break
-					}
-				}
-
-				if !hasOtherSeparator {
-					// For currency formatting, decimal separators typically have 1-2 digits
-					// If it has exactly 3 digits, it's likely a thousands separator
-					if len(remaining) == 3 {
-						// This is likely a thousands separator, skip it
-						continue
-					}
-
-					// This looks like a decimal separator
-					decimalIndex = i
-					break
-				}
-			}
-		}
-	}
-
-	if decimalIndex == -1 {
-		// No decimal point found
-		if minFractionDigits > 0 {
-			// Add decimal point and required digits
-			formatted += "."
-			for range minFractionDigits {
-				formatted += "0"
-			}
-		}
-		return formatted
-	}
-
-	// Count existing fraction digits
-	fractionPart := formatted[decimalIndex+1:]
-	existingFractionDigits := len(fractionPart)
-
-	if existingFractionDigits < minFractionDigits {
-		// Add more zeros
-		for range minFractionDigits - existingFractionDigits {
-			formatted += "0"
-		}
-	} else if existingFractionDigits > maxFractionDigits && maxFractionDigits >= 0 {
-		// Truncate excess digits
-		formatted = formatted[:decimalIndex+1+maxFractionDigits]
-	}
-
-	return formatted
-}
-
-// isAllDigits checks if a string contains only digits
-func isAllDigits(s string) bool {
-	for _, ch := range s {
-		if ch < '0' || ch > '9' {
-			return false
-		}
-	}
-	return true
-}
-
-// applySignDisplay applies the signDisplay option to the formatted number
-// TypeScript original code: signDisplay option handling in Intl.NumberFormat
-func (nv *NumberValue) applySignDisplay(formatted string, num float64, signDisplay string) string {
-	switch signDisplay {
-	case "always":
-		// Always display sign, even for positive numbers
-		if num > 0 && !strings.HasPrefix(formatted, "+") && !strings.HasPrefix(formatted, "-") {
-			return "+" + formatted
-		}
-		return formatted
-	case "exceptZero":
-		// Display sign for positive and negative numbers, but not zero
-		if num == 0 {
-			// Remove any existing sign for zero
-			if strings.HasPrefix(formatted, "+") || strings.HasPrefix(formatted, "-") {
-				return formatted[1:]
-			}
-			return formatted
-		}
-		// For non-zero numbers, apply "always" logic
-		if num > 0 && !strings.HasPrefix(formatted, "+") && !strings.HasPrefix(formatted, "-") {
-			return "+" + formatted
-		}
-		return formatted
-	case "negative":
-		// Only display sign for negative numbers, excluding negative zero
-		if num == 0 && strings.HasPrefix(formatted, "-") {
-			// Remove sign from negative zero
-			return formatted[1:]
-		}
-		return formatted
-	case "never":
-		// Never display sign
-		if strings.HasPrefix(formatted, "+") || strings.HasPrefix(formatted, "-") {
-			return formatted[1:]
-		}
-		return formatted
-	case "auto":
-		fallthrough
-	default:
-		// Default behavior: sign for negative numbers only (including negative zero)
-		return formatted
-	}
+	return 0, false
 }
 
 func (nv *NumberValue) ToParts() ([]MessagePart, error) {
-	// Format the number to get the string representation
-	formattedValue, err := nv.formatNumber()
+	formatter, num, ok, err := nv.newFormatter()
 	if err != nil {
 		return nil, err
 	}
-
-	// Check the style to determine how to parse parts
-	style := "decimal"
-	if styleVal, ok := nv.options["style"]; ok {
-		if styleStr, ok := styleVal.(string); ok {
-			style = styleStr
-		}
-	}
-
-	switch style {
-	case "currency":
-		return nv.parseCurrencyParts(formattedValue)
-	case "percent":
-		return nv.parsePercentParts(formattedValue)
-	case "unit":
-		return nv.parseUnitParts(formattedValue)
-	default:
-		return nv.parseDecimalParts(formattedValue)
-	}
-}
-
-// parseCurrencyParts parses currency formatted string into detailed parts
-func (nv *NumberValue) parseCurrencyParts(formatted string) ([]MessagePart, error) {
-	var parts []MessagePart
-
-	// Get currency code for symbol detection
-	currencyCode := "USD"
-	if currency, ok := nv.options["currency"]; ok {
-		if currencyStr, ok := currency.(string); ok {
-			currencyCode = currencyStr
-		}
-	}
-
-	// Get currency symbol
-	var currencySymbol string
-	if currencyObj := money.GetCurrency(strings.ToUpper(currencyCode)); currencyObj != nil {
-		currencySymbol = currencyObj.Grapheme
-	} else {
-		currencySymbol = currencyCode // fallback
-	}
-
-	// Parse the formatted string
-	remaining := formatted
-
-	// Handle accounting format (parentheses for negative)
-	isNegative := false
-	if strings.HasPrefix(remaining, "(") && strings.HasSuffix(remaining, ")") {
-		isNegative = true
-		remaining = remaining[1 : len(remaining)-1]
-		parts = append(parts, &NumberSubPart{
-			partType: "literal",
-			value:    "(",
-			source:   nv.source,
-			locale:   nv.locale,
-			dir:      nv.dir,
-		})
-	}
-
-	// Find currency symbol position
-	currencyIndex := strings.Index(remaining, currencySymbol)
-	if currencyIndex == -1 {
-		// Fallback: look for common currency symbols
-		for _, symbol := range []string{"$", "€", "£", "¥", "₹"} {
-			if idx := strings.Index(remaining, symbol); idx != -1 {
-				currencyIndex = idx
-				currencySymbol = symbol
-				break
-			}
-		}
-	}
-
-	if currencyIndex != -1 {
-		// Currency symbol at the beginning
-		if currencyIndex == 0 {
-			parts = append(parts, &NumberSubPart{
-				partType: "currency",
-				value:    currencySymbol,
-				source:   nv.source,
-				locale:   nv.locale,
-				dir:      nv.dir,
-			})
-			// Parse the numeric part after the currency symbol
-			numericPart := remaining[len(currencySymbol):]
-			numericParts := nv.parseNumericParts(numericPart)
-			parts = append(parts, numericParts...)
-		} else {
-			// Currency symbol at the end
-			// Parse the numeric part before the currency symbol
-			numericPart := remaining[:currencyIndex]
-			numericParts := nv.parseNumericParts(numericPart)
-			parts = append(parts, numericParts...)
-
-			parts = append(parts, &NumberSubPart{
-				partType: "currency",
-				value:    currencySymbol,
-				source:   nv.source,
-				locale:   nv.locale,
-				dir:      nv.dir,
-			})
-		}
-	} else {
-		// No currency symbol found, parse as numeric
-		numericParts := nv.parseNumericParts(remaining)
-		parts = append(parts, numericParts...)
-	}
-
-	// Close parenthesis for accounting format
-	if isNegative {
-		parts = append(parts, &NumberSubPart{
-			partType: "literal",
-			value:    ")",
-			source:   nv.source,
-			locale:   nv.locale,
-			dir:      nv.dir,
-		})
-	}
-
-	return []MessagePart{
-		&NumberPart{
-			value:  formatted,
-			source: nv.source,
-			locale: nv.locale,
-			dir:    nv.dir,
-			parts:  parts,
-		},
-	}, nil
-}
-
-// parsePercentParts parses percentage formatted string into detailed parts
-func (nv *NumberValue) parsePercentParts(formatted string) ([]MessagePart, error) {
-	var parts []MessagePart
-
-	// Remove the % symbol and parse the numeric part
-	remaining := formatted
-	if trimmed, ok := strings.CutSuffix(remaining, "%"); ok {
-		remaining = trimmed
-
-		// Parse numeric parts
-		numericParts := nv.parseNumericParts(remaining)
-		parts = append(parts, numericParts...)
-
-		// Add percent symbol
-		parts = append(parts, &NumberSubPart{
-			partType: "percentSign",
-			value:    "%",
-			source:   nv.source,
-			locale:   nv.locale,
-			dir:      nv.dir,
-		})
-	} else {
-		// No percent symbol, parse as numeric
-		numericParts := nv.parseNumericParts(remaining)
-		parts = append(parts, numericParts...)
-	}
-
-	return []MessagePart{
-		&NumberPart{
-			value:  formatted,
-			source: nv.source,
-			locale: nv.locale,
-			dir:    nv.dir,
-			parts:  parts,
-		},
-	}, nil
-}
-
-// parseUnitParts parses unit formatted string into detailed parts
-func (nv *NumberValue) parseUnitParts(formatted string) ([]MessagePart, error) {
-	var parts []MessagePart
-
-	// Find the space that separates number from unit
-	spaceIndex := strings.LastIndex(formatted, " ")
-	if spaceIndex != -1 {
-		// Parse numeric part
-		numericPart := formatted[:spaceIndex]
-		unitPart := formatted[spaceIndex+1:]
-
-		numericParts := nv.parseNumericParts(numericPart)
-		parts = append(parts, numericParts...)
-
-		// Add literal space and unit
-		parts = append(parts,
-			&NumberSubPart{
-				partType: "literal",
-				value:    " ",
-				source:   nv.source,
-				locale:   nv.locale,
-				dir:      nv.dir,
+	if !ok {
+		return []MessagePart{
+			&NumberPart{
+				value:  fmt.Sprintf("%v", nv.value),
+				source: nv.source,
+				locale: nv.locale,
+				dir:    nv.dir,
 			},
-			&NumberSubPart{
-				partType: "unit",
-				value:    unitPart,
-				source:   nv.source,
-				locale:   nv.locale,
-				dir:      nv.dir,
-			},
-		)
-	} else {
-		// No space found, parse as numeric
-		numericParts := nv.parseNumericParts(formatted)
-		parts = append(parts, numericParts...)
+		}, nil
 	}
-
+	value := numberformat.Float(num)
+	intlParts := formatter.FormatToParts(value)
+	formatted := formatter.Format(value)
+	sub := make([]MessagePart, 0, len(intlParts))
+	for _, p := range intlParts {
+		sub = append(sub, &NumberSubPart{
+			partType: string(p.Type),
+			value:    p.Value,
+			source:   nv.source,
+			locale:   nv.locale,
+			dir:      nv.dir,
+		})
+	}
 	return []MessagePart{
 		&NumberPart{
 			value:  formatted,
 			source: nv.source,
 			locale: nv.locale,
 			dir:    nv.dir,
-			parts:  parts,
+			parts:  sub,
 		},
 	}, nil
-}
-
-// parseDecimalParts parses decimal formatted string into detailed parts
-func (nv *NumberValue) parseDecimalParts(formatted string) ([]MessagePart, error) {
-	numericParts := nv.parseNumericParts(formatted)
-	parts := make([]MessagePart, 0, len(numericParts))
-	parts = append(parts, numericParts...)
-
-	return []MessagePart{
-		&NumberPart{
-			value:  formatted,
-			source: nv.source,
-			locale: nv.locale,
-			dir:    nv.dir,
-			parts:  parts,
-		},
-	}, nil
-}
-
-// parseNumericParts parses a numeric string into integer, decimal, fraction parts
-func (nv *NumberValue) parseNumericParts(numeric string) []MessagePart {
-	var parts []MessagePart
-
-	// Handle sign
-	remaining := numeric
-	if strings.HasPrefix(remaining, "+") || strings.HasPrefix(remaining, "-") {
-		signType := "plusSign"
-		if remaining[0] == '-' {
-			signType = "minusSign"
-		}
-		parts = append(parts, &NumberSubPart{
-			partType: signType,
-			value:    remaining[:1],
-			source:   nv.source,
-			locale:   nv.locale,
-			dir:      nv.dir,
-		})
-		remaining = remaining[1:]
-	}
-
-	// Find decimal separator (rightmost . or , that looks like decimal)
-	decimalIndex := -1
-
-	// For currency formatting, we need to be more careful about decimal detection
-	// Look for the rightmost separator that has 1-2 digits after it (typical for currency)
-	for i := len(remaining) - 1; i >= 0; i-- {
-		ch := remaining[i]
-		if ch == '.' || ch == ',' {
-			afterDecimal := remaining[i+1:]
-			// Check if this looks like a decimal separator:
-			// 1. Should have digits after it
-			// 2. Should be 1-3 digits (typical for decimal places)
-			// 3. Should be the rightmost such separator
-			if len(afterDecimal) > 0 && len(afterDecimal) <= 3 && isAllDigits(afterDecimal) {
-				// Check if there are any other separators after this one
-				hasOtherSeparator := false
-				for j := i + 1; j < len(remaining); j++ {
-					if remaining[j] == '.' || remaining[j] == ',' {
-						hasOtherSeparator = true
-						break
-					}
-				}
-
-				if !hasOtherSeparator {
-					// This is likely the decimal separator
-					decimalIndex = i
-					break
-				}
-			}
-		}
-	}
-
-	if decimalIndex != -1 {
-		// Split into integer and fraction parts
-		integerPart := remaining[:decimalIndex]
-		decimalSeparator := remaining[decimalIndex : decimalIndex+1]
-		fractionPart := remaining[decimalIndex+1:]
-
-		// Parse integer part (may contain group separators)
-		if integerPart != "" {
-			integerParts := nv.parseIntegerWithGroups(integerPart)
-			parts = append(parts, integerParts...)
-		}
-
-		// Add decimal separator
-		parts = append(parts, &NumberSubPart{
-			partType: "decimal",
-			value:    decimalSeparator,
-			source:   nv.source,
-			locale:   nv.locale,
-			dir:      nv.dir,
-		})
-
-		// Add fraction part
-		if fractionPart != "" {
-			parts = append(parts, &NumberSubPart{
-				partType: "fraction",
-				value:    fractionPart,
-				source:   nv.source,
-				locale:   nv.locale,
-				dir:      nv.dir,
-			})
-		}
-	} else {
-		// No decimal separator, parse as integer
-		integerParts := nv.parseIntegerWithGroups(remaining)
-		parts = append(parts, integerParts...)
-	}
-
-	return parts
-}
-
-// parseIntegerWithGroups parses integer part with potential group separators
-func (nv *NumberValue) parseIntegerWithGroups(integer string) []MessagePart {
-	parts := make([]MessagePart, 0, 1)
-
-	// The integer string already contains formatted group separators from formatNumber()
-	// We return it as a single integer part for ToParts() output
-	parts = append(parts, &NumberSubPart{
-		partType: "integer",
-		value:    integer,
-		source:   nv.source,
-		locale:   nv.locale,
-		dir:      nv.dir,
-	})
-
-	return parts
 }
 
 func (nv *NumberValue) ValueOf() (any, error) {
 	return nv.value, nil
+}
+
+func (nv *NumberValue) Number() any {
+	return nv.value
 }
 
 // SelectKeys performs selection for the number value
@@ -1071,25 +211,12 @@ func (nv *NumberValue) SelectKeys(keys []string) ([]string, error) {
 		return nil, ErrNumberNotSelectable
 	}
 
-	// Convert value to float64 for consistent comparison
-	var num float64
-	switch v := nv.value.(type) {
-	case int:
-		num = float64(v)
-	case int32:
-		num = float64(v)
-	case int64:
-		num = float64(v)
-	case float32:
-		num = float64(v)
-	case float64:
-		num = v
-	default:
+	num, ok := numberAsFloat(nv.value)
+	if !ok {
 		return []string{}, nil
 	}
 
 	// TypeScript: if (options.style === 'percent') { numVal *= 100; }
-	// For percent style, multiply by 100 for selection (number.ts:119-122)
 	numVal := num
 	if style, hasStyle := nv.options["style"]; hasStyle {
 		if styleStr, ok := style.(string); ok && styleStr == "percent" {
@@ -1115,14 +242,14 @@ func (nv *NumberValue) SelectKeys(keys []string) ([]string, error) {
 		}
 	}
 
-	// 3. Check if select option is set to 'exact' only (TypeScript: if (options.select === 'exact') return null)
+	// 3. Check if select option is set to 'exact' only
 	if selectOpt, hasSelect := nv.options["select"]; hasSelect {
 		if selectStr, ok := selectOpt.(string); ok && selectStr == "exact" {
 			return []string{}, nil
 		}
 	}
 
-	// 4. Apply plural rules (TypeScript: new Intl.PluralRules(...).select(Number(numVal)))
+	// 4. Apply plural rules
 	pluralCategory := getPluralCategory(numVal, nv.options, nv.locale)
 	for _, key := range keys {
 		if key == pluralCategory {
@@ -1141,41 +268,48 @@ func formatNumberForSelection(num float64) string {
 	return strconv.FormatFloat(num, 'g', -1, 64)
 }
 
-// getPluralCategory determines the plural category for a number
+// getPluralCategory determines the plural category for a number using
+// go-intl's pluralrules (CLDR-backed, ECMA-402 compliant).
+//
 // TypeScript reference: new Intl.PluralRules(locales, pluralOpt).select(Number(numVal))
-// Note: The percent multiplication (*100) is now handled by the caller (SelectKeys)
-func getPluralCategory(num float64, options map[string]any, locale string) string {
-	// Check select option type (cardinal, ordinal, or default to cardinal)
-	selectType := "cardinal"
-	if selectOpt, hasSelect := options["select"]; hasSelect {
-		if selectStr, ok := selectOpt.(string); ok && (selectStr == "ordinal" || selectStr == "cardinal") {
-			selectType = selectStr
-		}
+// Note: The percent multiplication (*100) is handled by the caller (SelectKeys).
+func getPluralCategory(num float64, options map[string]any, loc string) string {
+	ruleType := pluralrules.Cardinal
+	if selectOpt, ok := options["select"].(string); ok && selectOpt == "ordinal" {
+		ruleType = pluralrules.Ordinal
+	}
+	// select=cardinal and select=exact both keep Cardinal; exact selection has
+	// already been handled by SelectKeys before plural rules are reached.
+
+	parsed := intlbridge.ParseLocale(loc)
+
+	rules, err := pluralrules.New(parsed, pluralrules.Options{Type: ruleType})
+	if err != nil || rules == nil {
+		return "other"
 	}
 
-	if selectType == "ordinal" {
-		// Ordinal rules for English: 1st, 2nd, 3rd, 4th, etc.
-		switch int(num) % 100 {
-		case 11, 12, 13:
-			return "other"
-		default:
-			switch int(num) % 10 {
-			case 1:
-				return "one"
-			case 2:
-				return "two"
-			case 3:
-				return "few"
-			default:
-				return "other"
-			}
-		}
+	cat, err := rules.Select(pluralrules.Float(num))
+	if err != nil {
+		return "other"
 	}
-	// Cardinal rules for English: simplified implementation
-	if num == 1 {
+	return mapPluralForm(cat)
+}
+
+func mapPluralForm(c pluralrules.Category) string {
+	switch c {
+	case pluralrules.Zero:
+		return "zero"
+	case pluralrules.One:
 		return "one"
+	case pluralrules.Two:
+		return "two"
+	case pluralrules.Few:
+		return "few"
+	case pluralrules.Many:
+		return "many"
+	default:
+		return "other"
 	}
-	return "other"
 }
 
 // NumberSubPart represents a sub-part of a number (like integer, decimal, etc.)
@@ -1195,6 +329,10 @@ func (nsp *NumberSubPart) Value() any {
 	return nsp.value
 }
 
+func (nsp *NumberSubPart) Text() string {
+	return fmt.Sprintf("%v", nsp.value)
+}
+
 func (nsp *NumberSubPart) Source() string {
 	return nsp.source
 }
@@ -1208,7 +346,6 @@ func (nsp *NumberSubPart) Dir() bidi.Direction {
 }
 
 // NumberPart implements MessagePart for number parts
-// TypeScript original code: number part implementation
 type NumberPart struct {
 	value  any
 	source string
@@ -1223,6 +360,10 @@ func (np *NumberPart) Type() string {
 
 func (np *NumberPart) Value() any {
 	return np.value
+}
+
+func (np *NumberPart) Text() string {
+	return fmt.Sprintf("%v", np.value)
 }
 
 func (np *NumberPart) Source() string {

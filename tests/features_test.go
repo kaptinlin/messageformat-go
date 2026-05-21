@@ -77,7 +77,7 @@ func TestInputDeclarations(t *testing.T) {
 	}{
 		{
 			name: "currency_input",
-			message: `.input {$amount :number style=currency currency=EUR}
+			message: `.input {$amount :currency currency=EUR}
 {{Your balance is {$amount}}}`,
 			values:   map[string]any{"amount": 42.50},
 			expected: "Your balance is €42.50",
@@ -115,8 +115,8 @@ func TestLocalVariables(t *testing.T) {
 			name: "tax_calculation",
 			message: `.input {$price :number}
 .input {$taxRate :number}
-.local $tax = {$taxRate :number style=percent}
-.local $total = {$price :number style=currency currency=USD}
+.local $tax = {$taxRate :percent}
+.local $total = {$price :currency currency=USD}
 {{Item: {$total} (includes {$tax} tax)}}`,
 			values: map[string]any{
 				"price":   100.0,
@@ -166,7 +166,7 @@ func TestCurrencyFormatting(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			message := fmt.Sprintf("Price: {$amount :number style=currency currency=%s}", tc.currency)
+			message := fmt.Sprintf("Price: {$amount :currency currency=%s}", tc.currency)
 			mf, err := messageformat.Parse([]string{tc.locale}, message)
 			require.NoError(t, err)
 
@@ -185,16 +185,17 @@ func TestPercentageFormatting(t *testing.T) {
 		expected string
 	}{
 		{"three_quarters", 0.75, "Progress: 75%"},
-		{"with_decimals", 0.123, "Completion: 12.3%"},
+		// ECMA-402 default percent maximumFractionDigits=0, so 12.3 rounds to 12.
+		{"with_decimals", 0.123, "Completion: 12%"},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			var message string
 			if tc.name == "three_quarters" {
-				message = "Progress: {$rate :number style=percent}"
+				message = "Progress: {$rate :percent}"
 			} else {
-				message = "Completion: {$rate :number style=percent}"
+				message = "Completion: {$rate :percent}"
 			}
 
 			mf, err := messageformat.Parse([]string{"en"}, message)
@@ -333,7 +334,7 @@ func TestCustomFunctions(t *testing.T) {
 	createUppercaseFunc := func() functions.MessageFunction {
 		return func(
 			ctx functions.MessageFunctionContext,
-			options map[string]any,
+			options functions.Options,
 			input any,
 		) messagevalue.MessageValue {
 			inputStr := fmt.Sprintf("%v", input)
@@ -350,7 +351,7 @@ func TestCustomFunctions(t *testing.T) {
 	createReverseFunc := func() functions.MessageFunction {
 		return func(
 			ctx functions.MessageFunctionContext,
-			options map[string]any,
+			options functions.Options,
 			input any,
 		) messagevalue.MessageValue {
 			inputStr := fmt.Sprintf("%v", input)
@@ -986,7 +987,7 @@ func TestFormatToParts(t *testing.T) {
 		},
 		{
 			name:     "currency_formatting",
-			message:  "Price: {$amount :number style=currency currency=USD}",
+			message:  "Price: {$amount :currency currency=USD}",
 			values:   map[string]any{"amount": 42.50},
 			expected: 2, // "Price: ", "$42.50"
 		},
@@ -1206,7 +1207,7 @@ func TestComplexScenarios(t *testing.T) {
 	createUppercaseFunc := func() functions.MessageFunction {
 		return func(
 			ctx functions.MessageFunctionContext,
-			options map[string]any,
+			options functions.Options,
 			input any,
 		) messagevalue.MessageValue {
 			inputStr := fmt.Sprintf("%v", input)
@@ -1222,7 +1223,7 @@ func TestComplexScenarios(t *testing.T) {
 	createReverseFunc := func() functions.MessageFunction {
 		return func(
 			ctx functions.MessageFunctionContext,
-			options map[string]any,
+			options functions.Options,
 			input any,
 		) messagevalue.MessageValue {
 			inputStr := fmt.Sprintf("%v", input)
@@ -1258,19 +1259,19 @@ func TestComplexScenarios(t *testing.T) {
 		},
 		{
 			name:     "currency_with_markup",
-			message:  "Price: {#b}{$amount :number style=currency currency=USD}{/b}",
+			message:  "Price: {#b}{$amount :currency currency=USD}{/b}",
 			values:   map[string]any{"amount": 99.99},
 			expected: "Price: $99.99",
 		},
 		{
 			name:     "multiple_currencies",
-			message:  "USD: {$usd :number style=currency currency=USD}, EUR: {$eur :number style=currency currency=EUR}",
+			message:  "USD: {$usd :currency currency=USD}, EUR: {$eur :currency currency=EUR}",
 			values:   map[string]any{"usd": 100.50, "eur": 85.75},
 			expected: "USD: $100.50, EUR: €85.75",
 		},
 		{
 			name:     "percentage_with_custom_function",
-			message:  "Progress: {$rate :number style=percent} - Status: {$status :uppercase}",
+			message:  "Progress: {$rate :percent} - Status: {$status :uppercase}",
 			values:   map[string]any{"rate": 0.75, "status": "completed"},
 			expected: "Progress: 75% - Status: COMPLETED",
 			functions: map[string]functions.MessageFunction{
@@ -1285,7 +1286,7 @@ func TestComplexScenarios(t *testing.T) {
 		},
 		{
 			name:     "mixed_content_with_formatToParts",
-			message:  "Order #{$id}: {$amount :number style=currency currency=USD} for {$items :number} items",
+			message:  "Order #{$id}: {$amount :currency currency=USD} for {$items :number} items",
 			values:   map[string]any{"id": "12345", "amount": 299.99, "items": 3},
 			expected: "Order #12345: $299.99 for 3 items",
 		},
@@ -1297,7 +1298,7 @@ func TestComplexScenarios(t *testing.T) {
 		},
 		{
 			name:     "complex_number_formatting",
-			message:  "Stats: {$big :number}, {$decimal :number}, {$percent :number style=percent}",
+			message:  "Stats: {$big :number}, {$decimal :number}, {$percent :percent}",
 			values:   map[string]any{"big": 1234567, "decimal": 123.456, "percent": 0.85},
 			expected: "Stats: 1,234,567, 123.456, 85%",
 		},

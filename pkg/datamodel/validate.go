@@ -7,7 +7,6 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/kaptinlin/messageformat-go/internal/cst"
 	pkgerrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 	"golang.org/x/text/unicode/norm"
 )
@@ -131,7 +130,7 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 		}
 
 		// Check for self-reference in local declarations
-		if decl.Type() == "local" {
+		if IsLocalDeclaration(decl) {
 			if localDecl, ok := decl.(*LocalDeclaration); ok && localDecl.value != nil {
 				// Check for direct self-reference: .local $foo = {$foo}
 				if localDecl.value.Arg() != nil {
@@ -152,7 +151,7 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 						foundLater := false
 						for j := i + 1; j < len(msg.Declarations()); j++ {
 							laterDecl := msg.Declarations()[j]
-							if laterDecl.Name() == varRef.Name() && laterDecl.Type() == "local" {
+							if laterDecl.Name() == varRef.Name() && IsLocalDeclaration(laterDecl) {
 								foundLater = true
 								break
 							}
@@ -173,7 +172,7 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 							foundLater := false
 							for j := i + 1; j < len(msg.Declarations()); j++ {
 								laterDecl := msg.Declarations()[j]
-								if laterDecl.Name() == varRef.Name() && laterDecl.Type() == "local" {
+								if laterDecl.Name() == varRef.Name() && IsLocalDeclaration(laterDecl) {
 									foundLater = true
 									break
 								}
@@ -190,13 +189,13 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 		}
 
 		// TypeScript: if (decl.value.functionRef || (decl.type === 'local' && ...))
-		if (decl.Type() == "input" && hasFunction(decl)) ||
-			(decl.Type() == "local" && (hasFunction(decl) || referencesAnnotatedVariable(decl, annotated))) {
+		if (IsInputDeclaration(decl) && hasFunction(decl)) ||
+			(IsLocalDeclaration(decl) && (hasFunction(decl) || referencesAnnotatedVariable(decl, annotated))) {
 			annotated[decl.Name()] = true
 		}
 
 		// TypeScript: if (decl.type === 'local') localVars.add(decl.name);
-		if decl.Type() == "local" {
+		if IsLocalDeclaration(decl) {
 			localVars[decl.Name()] = true
 		}
 
@@ -223,27 +222,18 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 			missingFallback = selector
 			variables[selector.Name()] = true
 
-			// Check if selector has annotation from its source expression
-			// A selector is annotated if it comes from an expression with a function call
-			hasAnnotation := annotated[selector.Name()]
-
-			// Special handling for selectors: they can have inline annotations
-			// Check if this selector was derived from an annotated expression
-			// This happens when selector comes from {variable :function} syntax
-			if !hasAnnotation && selectorHasFunction(selector) {
+			// A selector is annotated if it comes from an annotated declaration or
+			// from an inline `{variable :function}` expression in the .match clause.
+			if !annotated[selector.Name()] && selectorHasFunction(selector) {
 				annotated[selector.Name()] = true
-				hasAnnotation = true
 			}
-
-			// Lenient interpretation: allow selectors without explicit annotation
-			// This supports basic usage patterns like {$count :integer} in .match
-			// Note: Strict mode would require onError("missing-selector-annotation", selector)
-			_ = hasAnnotation // Suppress staticcheck SA9003 warning
+			if !annotated[selector.Name()] {
+				onError("missing-selector-annotation", selector)
+			}
 		}
 
 		// Visit variants
 		// TypeScript: variant(variant) { ... }
-		hasFallback := false
 		for _, variant := range m.Variants() {
 			keys := variant.Keys()
 
@@ -272,10 +262,6 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 				}
 			}
 
-			if allCatchall {
-				hasFallback = true
-			}
-
 			keyHash := hashVariantKeys(variantHashSeed, keyStrs)
 			if existing, ok := variants[keyHash]; ok {
 				if variantKeysContain(existing, keyStrs) {
@@ -289,17 +275,10 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 			}
 
 			// TypeScript: missingFallback &&= keys.every(key => key.type === '*') ? null : variant;
-			hasOtherFallback := slices.ContainsFunc(keys, func(key VariantKey) bool {
-				return IsLiteral(key) && key.(*Literal).Value() == "other"
-			})
-			if hasOtherFallback {
-				hasFallback = true
-			}
-
-			if !allCatchall && !hasOtherFallback {
-				missingFallback = variant
-			} else {
+			if allCatchall {
 				missingFallback = nil
+			} else if missingFallback != nil {
+				missingFallback = variant
 			}
 
 			// Visit variant pattern
@@ -308,7 +287,7 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 
 		// Check for missing fallback
 		// TypeScript: if (missingFallback) onError('missing-fallback', missingFallback);
-		if !hasFallback && missingFallback != nil {
+		if missingFallback != nil {
 			onError("missing-fallback", missingFallback)
 		}
 	}
@@ -341,10 +320,6 @@ func hasFunction(decl Declaration) bool {
 
 // referencesAnnotatedVariable checks if a local declaration references an annotated variable
 func referencesAnnotatedVariable(decl Declaration, annotated map[string]bool) bool {
-	if decl.Type() != "local" {
-		return false
-	}
-
 	localDecl, ok := decl.(*LocalDeclaration)
 	if !ok || localDecl.value == nil || localDecl.value.Arg() == nil {
 		return false
@@ -415,16 +390,7 @@ func visitFunctionOptions(funcRef *FunctionRef, variables map[string]bool) {
 	}
 }
 
-// selectorHasFunction checks if a selector variable reference comes from an annotated expression
-// This is determined by examining the CST source to see if it had a function call
 func selectorHasFunction(selector VariableRef) bool {
-	// Check the CST source of the selector to see if it came from an expression with function
-	if cstNode := selector.CST(); cstNode != nil {
-		// If the selector came from an expression, check if that expression had a function
-		if expr, ok := cstNode.(*cst.Expression); ok {
-			return expr.FunctionRef() != nil
-		}
-	}
 	return false
 }
 

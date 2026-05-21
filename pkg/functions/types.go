@@ -17,7 +17,7 @@ import (
 // ) => MessageValue;
 type MessageFunction func(
 	ctx MessageFunctionContext,
-	options map[string]any,
+	options Options,
 	operand any,
 ) messagevalue.MessageValue
 

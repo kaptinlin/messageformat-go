@@ -2,6 +2,7 @@ package messagevalue
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -71,6 +72,32 @@ func TestNumberValue(t *testing.T) {
 	require.Len(t, parts, 1)
 	assert.Equal(t, "number", parts[0].Type())
 	assert.Equal(t, "42", parts[0].Value())
+}
+
+func TestMessageValueConstructorsCloneOptions(t *testing.T) {
+	options := map[string]any{"style": "currency", "currency": "USD"}
+	numberValue := NewNumberValue(42, "en", "test", options)
+	options["currency"] = "EUR"
+
+	assert.Equal(t, "USD", numberValue.Options()["currency"])
+
+	dirOptions := map[string]any{"style": "percent"}
+	numberWithDir := NewNumberValueWithDir(0.42, "en", "test", bidi.DirLTR, dirOptions)
+	dirOptions["style"] = "unit"
+
+	assert.Equal(t, "percent", numberWithDir.Options()["style"])
+
+	selectionOptions := map[string]any{"select": "ordinal"}
+	numberWithSelection := NewNumberValueWithSelection(1, "en", "test", bidi.DirLTR, selectionOptions, true)
+	selectionOptions["select"] = "cardinal"
+
+	assert.Equal(t, "ordinal", numberWithSelection.Options()["select"])
+
+	timeOptions := map[string]any{"dateStyle": "short"}
+	dateTimeValue := NewDateTimeValue(time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC), "en", "test", timeOptions)
+	timeOptions["dateStyle"] = "full"
+
+	assert.Equal(t, "short", dateTimeValue.Options()["dateStyle"])
 }
 
 func TestNumberValueTypes(t *testing.T) {
@@ -146,9 +173,8 @@ func TestFallbackValue(t *testing.T) {
 	assert.Equal(t, "fallback", parts[0].Type())
 	assert.Equal(t, "{$name}", parts[0].Value())
 
-	keys, err := fv.SelectKeys([]string{"zero", "one", "other"})
-	require.NoError(t, err)
-	assert.Empty(t, keys)
+	_, ok := any(fv).(Selector)
+	assert.False(t, ok)
 }
 
 func TestTextPart(t *testing.T) {

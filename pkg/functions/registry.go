@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-// DefaultFunctions provides the built-in REQUIRED functions as defined in
+// defaultFunctions stores the built-in REQUIRED functions as defined in
 // LDML 48 MessageFormat specification.
 // Reference: https://www.unicode.org/reports/tr35/tr35-76/tr35-messageFormat.html#contents-of-part-9-messageformat
 //
@@ -26,14 +26,26 @@ import (
 //	Object.assign(Object.create(null), DefaultFunctions)
 //
 // );
-var DefaultFunctions = map[string]MessageFunction{
+var defaultFunctions = map[string]MessageFunction{
 	"integer": IntegerFunction,
 	"number":  NumberFunction,
 	"string":  StringFunction,
 	"offset":  OffsetFunction,
 }
 
-// DraftFunctions provides functions classified as DRAFT by the
+// DefaultFunctionMap returns a snapshot of the built-in REQUIRED functions.
+//
+// TypeScript original code:
+// DefaultFunctions = Object.freeze(
+//
+//	Object.assign(Object.create(null), DefaultFunctions)
+//
+// );
+func DefaultFunctionMap() map[string]MessageFunction {
+	return maps.Clone(defaultFunctions)
+}
+
+// draftFunctions stores functions classified as DRAFT by the
 // LDML 48 MessageFormat specification.
 // Reference: https://www.unicode.org/reports/tr35/tr35-76/tr35-messageFormat.html#contents-of-part-9-messageformat
 //
@@ -42,6 +54,12 @@ var DefaultFunctions = map[string]MessageFunction{
 // Note: As of LDML 48, :currency and :percent have been finalized and are now stable.
 // However, they remain in this collection for backward compatibility.
 // The :unit function is still in DRAFT status.
+//
+// `:math` is NOT part of the MF2 spec function set
+// (tests/messageformat-wg/spec/functions/README.md). It is included here
+// solely for parity with the TypeScript reference implementation, which
+// ships it as an extension. Downstream users should not rely on it being
+// available across other MF2 implementations.
 //
 // TypeScript original code:
 //
@@ -59,14 +77,26 @@ var DefaultFunctions = map[string]MessageFunction{
 //	Object.assign(Object.create(null), DraftFunctions)
 //
 // );
-var DraftFunctions = map[string]MessageFunction{
+var draftFunctions = map[string]MessageFunction{
 	"currency": CurrencyFunction,
 	"date":     DateFunction,
 	"datetime": DatetimeFunction,
-	"math":     MathFunction,
+	"math":     MathFunction, // TypeScript-compat extension, not in MF2 spec
 	"percent":  PercentFunction,
 	"time":     TimeFunction,
 	"unit":     UnitFunction,
+}
+
+// DraftFunctionMap returns a snapshot of the draft function set.
+//
+// TypeScript original code:
+// DraftFunctions = Object.freeze(
+//
+//	Object.assign(Object.create(null), DraftFunctions)
+//
+// );
+func DraftFunctionMap() map[string]MessageFunction {
+	return maps.Clone(draftFunctions)
 }
 
 // FunctionRegistry manages function registration and lookup
@@ -78,17 +108,17 @@ type FunctionRegistry struct {
 // NewFunctionRegistry creates a new function registry
 func NewFunctionRegistry() *FunctionRegistry {
 	return &FunctionRegistry{
-		functions: maps.Clone(DefaultFunctions),
+		functions: maps.Clone(defaultFunctions),
 	}
 }
 
 // NewFunctionRegistryWithDraft creates a new function registry including draft functions
 func NewFunctionRegistryWithDraft() *FunctionRegistry {
 	registry := &FunctionRegistry{
-		functions: maps.Clone(DefaultFunctions),
+		functions: maps.Clone(defaultFunctions),
 	}
 
-	maps.Copy(registry.functions, DraftFunctions)
+	maps.Copy(registry.functions, draftFunctions)
 
 	return registry
 }

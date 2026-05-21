@@ -27,7 +27,7 @@ With multiple locales:
 ```go
 mf, err := messageformat.Parse(
 	[]string{"zh-CN", "en"},
-	"Price: {$amount :number style=currency currency=USD}",
+	"Price: {$amount :currency currency=USD}",
 )
 ```
 

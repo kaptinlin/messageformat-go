@@ -27,12 +27,12 @@ import (
 func TestSimpleOpenClose(t *testing.T) {
 	t.Run("no options, literal body", func(t *testing.T) {
 		// Create markup elements directly for testing
-		openMarkup := datamodel.NewMarkup("open", "b", nil, nil)
+		openMarkup := mustMarkup(t, "open", "b", nil, nil)
 		textElement := datamodel.NewTextElement("foo")
-		closeMarkup := datamodel.NewMarkup("close", "b", nil, nil)
+		closeMarkup := mustMarkup(t, "close", "b", nil, nil)
 
 		// Create a basic context
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctions, nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
 
 		// Test open markup
 		openPart := FormatMarkup(ctx, openMarkup)
@@ -62,13 +62,13 @@ func TestSimpleOpenClose(t *testing.T) {
 			"foo": datamodel.NewLiteral("42"),
 		}
 
-		openMarkup := datamodel.NewMarkup("open", "b", options, nil)
+		openMarkup := mustMarkup(t, "open", "b", options, nil)
 
 		// Create a basic context with variables
 		values := map[string]any{
 			"foo": "foo bar",
 		}
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctions, values, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), values, nil)
 
 		// Test markup with options
 		openPart := FormatMarkup(ctx, openMarkup)
@@ -101,7 +101,7 @@ func TestMultipleOpenClose(t *testing.T) {
 	t.Run("adjacent", func(t *testing.T) {
 		// Create adjacent markup elements
 		elements := []struct {
-			kind string
+			kind datamodel.MarkupKind
 			name string
 			text string
 		}{
@@ -114,12 +114,12 @@ func TestMultipleOpenClose(t *testing.T) {
 		}
 
 		// Create a basic context
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctions, nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
 
 		var parts []messagevalue.MessagePart
 		for _, elem := range elements {
 			if elem.kind != "" {
-				markup := datamodel.NewMarkup(elem.kind, elem.name, nil, nil)
+				markup := mustMarkup(t, elem.kind, elem.name, nil, nil)
 				part := FormatMarkup(ctx, markup)
 				parts = append(parts, part)
 			} else if elem.text != "" {
@@ -143,7 +143,7 @@ func TestMultipleOpenClose(t *testing.T) {
 	t.Run("nested", func(t *testing.T) {
 		// Create nested markup elements
 		elements := []struct {
-			kind string
+			kind datamodel.MarkupKind
 			name string
 			text string
 		}{
@@ -156,12 +156,12 @@ func TestMultipleOpenClose(t *testing.T) {
 		}
 
 		// Create a basic context
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctions, nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
 
 		var parts []messagevalue.MessagePart
 		for _, elem := range elements {
 			if elem.kind != "" {
-				markup := datamodel.NewMarkup(elem.kind, elem.name, nil, nil)
+				markup := mustMarkup(t, elem.kind, elem.name, nil, nil)
 				part := FormatMarkup(ctx, markup)
 				parts = append(parts, part)
 			} else if elem.text != "" {
@@ -185,7 +185,7 @@ func TestMultipleOpenClose(t *testing.T) {
 	t.Run("overlapping", func(t *testing.T) {
 		// Create overlapping markup elements
 		elements := []struct {
-			kind string
+			kind datamodel.MarkupKind
 			name string
 			text string
 		}{
@@ -199,12 +199,12 @@ func TestMultipleOpenClose(t *testing.T) {
 		}
 
 		// Create a basic context
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctions, nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
 
 		var parts []messagevalue.MessagePart
 		for _, elem := range elements {
 			if elem.kind != "" {
-				markup := datamodel.NewMarkup(elem.kind, elem.name, nil, nil)
+				markup := mustMarkup(t, elem.kind, elem.name, nil, nil)
 				part := FormatMarkup(ctx, markup)
 				parts = append(parts, part)
 			} else if elem.text != "" {
@@ -231,8 +231,8 @@ func TestMultipleOpenClose(t *testing.T) {
 // TestFormatMarkup tests the FormatMarkup function directly
 func TestFormatMarkup(t *testing.T) {
 	t.Run("open markup", func(t *testing.T) {
-		markup := datamodel.NewMarkup("open", "div", nil, nil)
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctions, nil, nil)
+		markup := mustMarkup(t, "open", "div", nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
 
 		part := FormatMarkup(ctx, markup)
 		assert.Equal(t, "markup", part.Type())
@@ -244,8 +244,8 @@ func TestFormatMarkup(t *testing.T) {
 	})
 
 	t.Run("close markup", func(t *testing.T) {
-		markup := datamodel.NewMarkup("close", "div", nil, nil)
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctions, nil, nil)
+		markup := mustMarkup(t, "close", "div", nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
 
 		part := FormatMarkup(ctx, markup)
 		assert.Equal(t, "markup", part.Type())
@@ -257,8 +257,8 @@ func TestFormatMarkup(t *testing.T) {
 	})
 
 	t.Run("standalone markup", func(t *testing.T) {
-		markup := datamodel.NewMarkup("standalone", "br", nil, nil)
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctions, nil, nil)
+		markup := mustMarkup(t, "standalone", "br", nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
 
 		part := FormatMarkup(ctx, markup)
 		assert.Equal(t, "markup", part.Type())
@@ -275,8 +275,8 @@ func TestFormatMarkup(t *testing.T) {
 			"id":    datamodel.NewLiteral("main"),
 		}
 
-		markup := datamodel.NewMarkup("open", "span", options, nil)
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctions, nil, nil)
+		markup := mustMarkup(t, "open", "span", options, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
 
 		part := FormatMarkup(ctx, markup)
 		assert.Equal(t, "markup", part.Type())

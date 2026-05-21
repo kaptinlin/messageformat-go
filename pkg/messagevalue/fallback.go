@@ -82,8 +82,3 @@ func (fv *FallbackValue) ToParts() ([]MessagePart, error) {
 func (fv *FallbackValue) ValueOf() (any, error) {
 	return fv.source, nil
 }
-
-func (fv *FallbackValue) SelectKeys(keys []string) ([]string, error) {
-	// Fallback values don't participate in selection
-	return []string{}, nil
-}

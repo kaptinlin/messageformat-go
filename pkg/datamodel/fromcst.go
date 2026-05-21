@@ -38,7 +38,13 @@ import (
 //	    };
 //	  }
 //	}
-func FromCST(msg cst.Message) (Message, error) {
+func FromCST(input any) (Message, error) {
+	msg, ok := input.(cst.Message)
+	if !ok {
+		end := 1
+		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
+	}
+
 	// Check for CST errors first
 	if len(msg.Errors()) > 0 {
 		// Return the first error
@@ -75,7 +81,7 @@ func FromCST(msg cst.Message) (Message, error) {
 			variants[i] = *converted
 		}
 
-		return NewSelectMessage(declarations, selectors, variants, ""), nil
+		return newSelectMessageWithCST(declarations, selectors, variants, "", nil), nil
 
 	case *cst.SimpleMessage, *cst.ComplexMessage:
 		// Get pattern from either simple or complex message
@@ -92,7 +98,7 @@ func FromCST(msg cst.Message) (Message, error) {
 			return nil, err
 		}
 
-		return NewPatternMessage(declarations, *convertedPattern, ""), nil
+		return newPatternMessageWithCST(declarations, *convertedPattern, "", nil), nil
 
 	default:
 		end := 1
@@ -154,7 +160,7 @@ func asDeclaration(decl cst.Declaration) (Declaration, error) {
 			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, d.Start(), &end, nil)
 		}
 
-		return NewInputDeclaration(varName, ConvertExpressionToVariableRefExpression(expression)), nil
+		return newInputDeclarationWithCST(varName, ConvertExpressionToVariableRefExpression(expression), decl), nil
 
 	case *cst.LocalDeclaration:
 		// Convert target variable
@@ -176,7 +182,7 @@ func asDeclaration(decl cst.Declaration) (Declaration, error) {
 			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, d.Start(), &end, nil)
 		}
 
-		return NewLocalDeclaration(target.Name(), expression), nil
+		return newLocalDeclarationWithCST(target.Name(), expression, decl), nil
 
 	default:
 		end := decl.End()
@@ -191,7 +197,7 @@ func asPattern(pattern cst.Pattern) (*Pattern, error) {
 	for i, elem := range pattern.Body() {
 		switch e := elem.(type) {
 		case *cst.Text:
-			elements[i] = NewTextElement(e.Value())
+			elements[i] = newTextElementWithCST(e.Value(), e)
 		case *cst.Expression:
 			// Convert expression, allowing markup
 			converted, err := asExpression(e, true)
@@ -219,7 +225,7 @@ func asExpression(exp cst.Node, allowMarkup bool) (PatternElement, error) {
 		}
 
 		// Convert argument
-		var arg any
+		var arg ExpressionArg
 		if e.Arg() != nil {
 			converted, err := asValue(e.Arg())
 			if err != nil {
@@ -261,7 +267,7 @@ func asExpression(exp cst.Node, allowMarkup bool) (PatternElement, error) {
 			}
 		}
 
-		return NewExpression(arg, functionRef, ConvertMapToAttributes(attributes)), nil
+		return newExpressionWithCST(arg, functionRef, ConvertMapToAttributes(attributes), e), nil
 
 	case *cst.Junk:
 		end := e.End()
@@ -284,20 +290,20 @@ func asMarkup(exp *cst.Expression) (*Markup, error) {
 	name := asName(markup.Name())
 
 	// Determine markup kind
-	var kind string
+	var kind MarkupKind
 	openSyntax := markup.Open()
 	openValue := openSyntax.Value()
 	switch openValue {
 	case "/":
-		kind = "close"
+		kind = MarkupClose
 	case "#":
 		if markup.Close() != nil {
-			kind = "standalone"
+			kind = MarkupStandalone
 		} else {
-			kind = "open"
+			kind = MarkupOpen
 		}
 	default:
-		kind = "open"
+		kind = MarkupOpen
 	}
 
 	// Convert options
@@ -332,7 +338,7 @@ func asMarkup(exp *cst.Expression) (*Markup, error) {
 		}
 	}
 
-	return NewMarkup(kind, name, ConvertMapToOptions(options), ConvertMapToAttributes(attributes)), nil
+	return newMarkupWithCST(kind, name, ConvertMapToOptions(options), ConvertMapToAttributes(attributes), exp)
 }
 
 // asFunctionRef converts a CST function reference to a data model function reference
@@ -353,7 +359,7 @@ func asFunctionRef(funcRef *cst.FunctionRef) (*FunctionRef, error) {
 		}
 	}
 
-	return NewFunctionRef(name, ConvertMapToOptions(options)), nil
+	return newFunctionRefWithCST(name, ConvertMapToOptions(options), funcRef), nil
 }
 
 // asVariant converts a CST variant to a data model variant
@@ -363,7 +369,7 @@ func asVariant(variant cst.Variant) (*Variant, error) {
 	for i, key := range variant.Keys() {
 		switch k := key.(type) {
 		case *cst.CatchallKey:
-			keys[i] = NewCatchallKey("*")
+			keys[i] = newCatchallKeyWithCST("*", k)
 		case *cst.Literal:
 			literal, err := asLiteral(k)
 			if err != nil {
@@ -382,11 +388,11 @@ func asVariant(variant cst.Variant) (*Variant, error) {
 		return nil, err
 	}
 
-	return NewVariant(keys, *pattern), nil
+	return newVariantWithCST(keys, *pattern, nil), nil
 }
 
 // asValue converts a CST value to a data model value
-func asValue(value cst.Node) (any, error) {
+func asValue(value cst.Node) (ExpressionArg, error) {
 	switch v := value.(type) {
 	case *cst.Literal:
 		return asLiteral(v)
@@ -400,14 +406,14 @@ func asValue(value cst.Node) (any, error) {
 
 // asLiteral converts a CST literal to a data model literal
 func asLiteral(literal *cst.Literal) (*Literal, error) {
-	return NewLiteral(literal.Value()), nil
+	return newLiteralWithCST(literal.Value(), literal), nil
 }
 
 // asVariableRef converts a CST variable reference to a data model variable reference
 func asVariableRef(varRef cst.Node) (*VariableRef, error) {
 	switch v := varRef.(type) {
 	case *cst.VariableRef:
-		return NewVariableRef(v.Name()), nil
+		return newVariableRefWithCST(v.Name(), v), nil
 	default:
 		end := varRef.End()
 		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, varRef.Start(), &end, nil)

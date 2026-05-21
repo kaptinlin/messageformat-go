@@ -66,7 +66,7 @@ import (
 //	}
 func UnitFunction(
 	ctx MessageFunctionContext,
-	options map[string]any,
+	options Options,
 	operand any,
 ) messagevalue.MessageValue {
 	source := ctx.Source()

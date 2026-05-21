@@ -84,11 +84,6 @@ func (uv *UnknownValue) ValueOf() (any, error) {
 	return uv.value, nil // TypeScript: valueOf: () => input
 }
 
-func (uv *UnknownValue) SelectKeys(keys []string) ([]string, error) {
-	// Unknown values don't participate in selection
-	return []string{}, nil
-}
-
 // UnknownPart implements MessagePart for unknown function results
 // TypeScript original code:
 //
@@ -116,6 +111,10 @@ func (up *UnknownPart) Type() string {
 }
 
 func (up *UnknownPart) Value() any {
+	return up.value
+}
+
+func (up *UnknownPart) Any() any {
 	return up.value
 }
 

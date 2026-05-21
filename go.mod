@@ -1,17 +1,17 @@
 module github.com/kaptinlin/messageformat-go
 
-go 1.26.2
+go 1.26.3
 
 require (
-	github.com/Rhymond/go-money v1.0.15
-	github.com/dromara/carbon/v2 v2.6.16
-	github.com/go-json-experiment/json v0.0.0-20260504200034-64a0a05799db
+	github.com/agentable/go-intl v0.1.0
+	github.com/go-json-experiment/json v0.0.0-20260520185125-572e7c383686
 	github.com/google/go-cmp v0.7.0
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/text v0.36.0
+	golang.org/x/text v0.37.0
 )
 
 require (
+	github.com/cockroachdb/apd/v3 v3.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

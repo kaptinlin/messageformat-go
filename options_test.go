@@ -13,10 +13,10 @@ import (
 func TestFunctionalOptions(t *testing.T) {
 	t.Parallel()
 
-	custom := func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+	custom := func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 		return messagevalue.NewStringValue("custom", ctx.Locales()[0], ctx.Source())
 	}
-	alsoCustom := func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+	alsoCustom := func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 		return messagevalue.NewStringValue("also-custom", ctx.Locales()[0], ctx.Source())
 	}
 

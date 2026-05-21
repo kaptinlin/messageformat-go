@@ -36,19 +36,19 @@ func TestVisit_PatternMessageTraversal(t *testing.T) {
 			events = append(events, fmt.Sprintf("declaration:%s", declaration.Name()))
 			return func() { events = append(events, fmt.Sprintf("end-declaration:%s", declaration.Name())) }
 		},
-		Expression: func(expression *Expression, context string) func() {
+		Expression: func(expression *Expression, context VisitContext) func() {
 			events = append(events, fmt.Sprintf("expression:%s", context))
 			return func() { events = append(events, fmt.Sprintf("end-expression:%s", context)) }
 		},
-		FunctionRef: func(functionRef *FunctionRef, context string, argument any) func() {
+		FunctionRef: func(functionRef *FunctionRef, context VisitContext, argument ExpressionArg) func() {
 			events = append(events, fmt.Sprintf("function:%s:%s:%T", context, functionRef.Name(), argument))
 			return func() { events = append(events, fmt.Sprintf("end-function:%s:%s", context, functionRef.Name())) }
 		},
-		Options: func(options map[string]any, context string) func() {
+		Options: func(options Options, context VisitContext) func() {
 			events = append(events, fmt.Sprintf("options:%s:%d", context, len(options)))
 			return func() { events = append(events, fmt.Sprintf("end-options:%s", context)) }
 		},
-		Attributes: func(attributes map[string]any, context string) func() {
+		Attributes: func(attributes Attributes, context VisitContext) func() {
 			events = append(events, fmt.Sprintf("attributes:%s:%d", context, len(attributes)))
 			return func() { events = append(events, fmt.Sprintf("end-attributes:%s", context)) }
 		},
@@ -56,7 +56,7 @@ func TestVisit_PatternMessageTraversal(t *testing.T) {
 			events = append(events, fmt.Sprintf("pattern:%d", pattern.Len()))
 			return func() { events = append(events, "end-pattern") }
 		},
-		Value: func(value any, context string, position string) {
+		Value: func(value ExpressionArg, context VisitContext, position ValuePosition) {
 			events = append(events, fmt.Sprintf("value:%s:%s:%T", context, position, value))
 		},
 	})
@@ -80,7 +80,7 @@ func TestVisit_SelectMessageTraversal(t *testing.T) {
 	)
 	fallback := NewVariant(
 		[]VariantKey{NewCatchallKey("")},
-		NewPattern([]PatternElement{NewMarkup("standalone", "br", ConvertMapToOptions(map[string]any{"id": "line"}), nil)}),
+		NewPattern([]PatternElement{mustMarkup(t, "standalone", "br", ConvertMapToOptions(map[string]any{"id": "line"}), nil)}),
 	)
 	message := NewSelectMessage(nil, []VariableRef{*selector}, []Variant{*one, *fallback}, "items")
 
@@ -89,7 +89,7 @@ func TestVisit_SelectMessageTraversal(t *testing.T) {
 	var variants int
 	var markupContexts []string
 	Visit(message, &Visitor{
-		Value: func(value any, context string, position string) {
+		Value: func(value ExpressionArg, context VisitContext, position ValuePosition) {
 			if context == "selector" {
 				selectors = append(selectors, fmt.Sprintf("%s:%T", position, value))
 			}
@@ -101,14 +101,14 @@ func TestVisit_SelectMessageTraversal(t *testing.T) {
 			variants++
 			return nil
 		},
-		Markup: func(markup *Markup, context string) func() {
+		Markup: func(markup *Markup, context VisitContext) func() {
 			markupContexts = append(markupContexts, fmt.Sprintf("%s:%s", context, markup.Name()))
 			return nil
 		},
 	})
 
 	require.Len(t, selectors, 1)
-	assert.Equal(t, "arg:datamodel.VariableRef", selectors[0])
+	assert.Equal(t, "arg:*datamodel.VariableRef", selectors[0])
 	assert.Equal(t, []string{"0/1:one", "0/1:*"}, keys)
 	assert.Equal(t, 2, variants)
 	assert.Equal(t, []string{"placeholder:br"}, markupContexts)
@@ -120,8 +120,8 @@ func TestVisit_MarkupAttributeValues(t *testing.T) {
 	message := NewPatternMessage(
 		nil,
 		NewPattern([]PatternElement{
-			NewMarkup("open", "button", nil, Attributes{
-				"ariaLabel": NewVariableRef("label"),
+			mustMarkup(t, "open", "button", nil, Attributes{
+				"ariaLabel": NewLiteral("label"),
 				"disabled":  NewBooleanAttribute(),
 			}),
 		}),
@@ -130,12 +130,12 @@ func TestVisit_MarkupAttributeValues(t *testing.T) {
 
 	var values []string
 	Visit(message, &Visitor{
-		Value: func(value any, context string, position string) {
+		Value: func(value ExpressionArg, context VisitContext, position ValuePosition) {
 			values = append(values, fmt.Sprintf("%s:%s:%T", context, position, value))
 		},
 	})
 
-	assert.Equal(t, []string{"placeholder:attribute:*datamodel.VariableRef"}, values)
+	assert.Equal(t, []string{"placeholder:attribute:*datamodel.Literal"}, values)
 }
 
 func TestVisit_NilVisitor(t *testing.T) {

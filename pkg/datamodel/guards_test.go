@@ -97,9 +97,9 @@ func TestIsMarkup(t *testing.T) {
 		input    any
 		expected bool
 	}{
-		{"valid markup", NewMarkup("open", "b", nil, nil), true},
-		{"standalone markup", NewMarkup("standalone", "br", nil, nil), true},
-		{"close markup", NewMarkup("close", "b", nil, nil), true},
+		{"valid markup", mustMarkup(t, "open", "b", nil, nil), true},
+		{"standalone markup", mustMarkup(t, "standalone", "br", nil, nil), true},
+		{"close markup", mustMarkup(t, "close", "b", nil, nil), true},
 		{"literal", NewLiteral("test"), false},
 		{"nil", nil, false},
 		{"string", "test", false},
@@ -320,7 +320,7 @@ func TestIsVariantKey(t *testing.T) {
 func TestIsPatternElement(t *testing.T) {
 	textElem := NewTextElement("Hello")
 	expr := NewExpression(NewLiteral("test"), nil, nil)
-	markup := NewMarkup("open", "b", nil, nil)
+	markup := mustMarkup(t, "open", "b", nil, nil)
 
 	tests := []struct {
 		name     string
@@ -348,7 +348,7 @@ func TestIsNode(t *testing.T) {
 	varRef := NewVariableRef("test")
 	funcRef := NewFunctionRef("number", nil)
 	expr := NewExpression(literal, nil, nil)
-	markup := NewMarkup("open", "b", nil, nil)
+	markup := mustMarkup(t, "open", "b", nil, nil)
 	catchall := NewCatchallKey("")
 	inputDecl := NewInputDeclaration("input1", ConvertExpressionToVariableRefExpression(NewExpression(varRef, nil, nil)))
 	localDecl := NewLocalDeclaration("local1", expr)

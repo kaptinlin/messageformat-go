@@ -21,16 +21,16 @@ package datamodel
 //
 // )
 type Visitor struct {
-	Attributes  func(attributes map[string]any, context string) func()
+	Attributes  func(attributes Attributes, context VisitContext) func()
 	Declaration func(declaration Declaration) func()
-	Expression  func(expression *Expression, context string) func()
-	FunctionRef func(functionRef *FunctionRef, context string, argument any) func()
+	Expression  func(expression *Expression, context VisitContext) func()
+	FunctionRef func(functionRef *FunctionRef, context VisitContext, argument ExpressionArg) func()
 	Key         func(key VariantKey, index int, keys []VariantKey)
-	Markup      func(markup *Markup, context string) func()
+	Markup      func(markup *Markup, context VisitContext) func()
 	Node        func(node any, rest ...any)
-	Options     func(options map[string]any, context string) func()
+	Options     func(options Options, context VisitContext) func()
 	Pattern     func(pattern Pattern) func()
-	Value       func(value any, context string, position string)
+	Value       func(value ExpressionArg, context VisitContext, position ValuePosition)
 	Variant     func(variant *Variant) func()
 }
 
@@ -48,9 +48,7 @@ func Visit(msg Message, visitor *Visitor) {
 			visitor.Node(decl)
 		}
 
-		if decl.Value() != nil {
-			handleElement(decl.Value(), "declaration", visitor)
-		}
+		handleDeclarationValue(decl, visitor)
 
 		if end != nil {
 			end()
@@ -63,7 +61,7 @@ func Visit(msg Message, visitor *Visitor) {
 	case *SelectMessage:
 		if visitor.Value != nil {
 			for _, selector := range m.Selectors() {
-				visitor.Value(selector, "selector", "arg")
+				visitor.Value(&selector, VisitSelector, ValueArg)
 			}
 		}
 
@@ -90,7 +88,20 @@ func Visit(msg Message, visitor *Visitor) {
 	}
 }
 
-func handleElement(elem any, context string, visitor *Visitor) {
+func handleDeclarationValue(decl Declaration, visitor *Visitor) {
+	switch d := decl.(type) {
+	case *InputDeclaration:
+		if d.Value() != nil {
+			handleElement(d.Value(), VisitDeclaration, visitor)
+		}
+	case *LocalDeclaration:
+		if d.Value() != nil {
+			handleElement(d.Value(), VisitDeclaration, visitor)
+		}
+	}
+}
+
+func handleElement(elem any, context VisitContext, visitor *Visitor) {
 	switch e := elem.(type) {
 	case *Expression:
 		var end func()
@@ -101,7 +112,7 @@ func handleElement(elem any, context string, visitor *Visitor) {
 		}
 
 		if e.Arg() != nil && visitor.Value != nil {
-			visitor.Value(e.Arg(), context, "arg")
+			visitor.Value(e.Arg(), context, ValueArg)
 		}
 
 		if e.FunctionRef() != nil {
@@ -158,9 +169,9 @@ func handlePattern(pattern Pattern, visitor *Visitor) {
 				visitor.Node(e)
 			}
 		case *Expression:
-			handleElement(e, "placeholder", visitor)
+			handleElement(e, VisitPlaceholder, visitor)
 		case *Markup:
-			handleElement(e, "placeholder", visitor)
+			handleElement(e, VisitPlaceholder, visitor)
 		}
 	}
 
@@ -169,20 +180,20 @@ func handlePattern(pattern Pattern, visitor *Visitor) {
 	}
 }
 
-func handleOptions(options Options, context string, visitor *Visitor) {
+func handleOptions(options Options, context VisitContext, visitor *Visitor) {
 	if options == nil {
 		return
 	}
 
 	var end func()
 	if visitor.Options != nil {
-		end = visitor.Options(convertOptionsToMap(options), context)
+		end = visitor.Options(options, context)
 	}
 
 	if visitor.Value != nil {
 		for _, value := range options {
-			if IsLiteral(value) || IsVariableRef(value) {
-				visitor.Value(value, context, "option")
+			if value, ok := value.(ExpressionArg); ok {
+				visitor.Value(value, context, ValueOption)
 			}
 		}
 	}
@@ -192,23 +203,20 @@ func handleOptions(options Options, context string, visitor *Visitor) {
 	}
 }
 
-func handleAttributes(attributes Attributes, context string, visitor *Visitor) {
+func handleAttributes(attributes Attributes, context VisitContext, visitor *Visitor) {
 	if attributes == nil {
 		return
 	}
 
 	var end func()
 	if visitor.Attributes != nil {
-		end = visitor.Attributes(convertAttributesToMap(attributes), context)
+		end = visitor.Attributes(attributes, context)
 	}
 
 	if visitor.Value != nil {
 		for _, value := range attributes {
-			if _, ok := value.(*BooleanAttribute); ok {
-				continue
-			}
-			if IsLiteral(value) || IsVariableRef(value) {
-				visitor.Value(value, context, "attribute")
+			if value, ok := value.(ExpressionArg); ok {
+				visitor.Value(value, context, ValueAttribute)
 			}
 		}
 	}
@@ -216,31 +224,4 @@ func handleAttributes(attributes Attributes, context string, visitor *Visitor) {
 	if end != nil {
 		end()
 	}
-}
-
-func convertOptionsToMap(options Options) map[string]any {
-	if options == nil {
-		return nil
-	}
-
-	result := make(map[string]any)
-	for k, v := range options {
-		result[k] = v
-	}
-	return result
-}
-
-func convertAttributesToMap(attributes Attributes) map[string]any {
-	if attributes == nil {
-		return nil
-	}
-
-	result := make(map[string]any)
-	for k, v := range attributes {
-		result[k] = v
-		if _, ok := v.(*BooleanAttribute); ok {
-			result[k] = true
-		}
-	}
-	return result
 }

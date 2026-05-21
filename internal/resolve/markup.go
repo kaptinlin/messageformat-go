@@ -41,7 +41,7 @@ import (
 //	}
 func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePart {
 	part := messagevalue.NewMarkupPart(
-		markup.Kind(),
+		string(markup.Kind()),
 		markup.Name(),
 		"", // source will be set if needed
 		make(map[string]any),
@@ -101,7 +101,7 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 	}
 
 	return messagevalue.NewMarkupPart(
-		markup.Kind(),
+		string(markup.Kind()),
 		markup.Name(),
 		"", // source
 		partOptions,

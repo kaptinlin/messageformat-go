@@ -7,6 +7,8 @@ This directory is organized for two use cases:
 - learn the Unicode MessageFormat 2.0 model and this package's defaults
 - look up API, syntax, formatting, custom functions, and error handling
 
+Design contracts and architecture rules live in [`SPECS/`](../SPECS/); this directory stays focused on user guides.
+
 ## Reading Order
 
 If you are new to the package, read the guides in this order:
@@ -28,6 +30,7 @@ If you are new to the package, read the guides in this order:
 | [Custom Functions](custom-functions.md) | Registering custom functions and returning message values |
 | [Error Handling](error-handling.md) | Syntax, resolution, and selection error behavior |
 | [API Reference](api-reference.md) | Constructor, formatting methods, options, and exported helpers |
+| [SPECS](../SPECS/) | Design contracts and architecture boundaries |
 
 ## Defaults That Matter
 
@@ -75,6 +78,10 @@ Run them with:
 ```bash
 task examples
 ```
+
+## Conformance
+
+The package is verified against the official Unicode MessageFormat Working Group test suite vendored at `tests/messageformat-wg/`. All 477 subtests pass — covering bidi, data-model errors, fallback, pattern selection, syntax, `u:` options, and every REQUIRED/RECOMMENDED function (`:currency`, `:date`, `:datetime`, `:integer`, `:number`, `:offset`, `:percent`, `:string`, `:time`). Run `task test-official` to reproduce.
 
 ## Development and Verification
 

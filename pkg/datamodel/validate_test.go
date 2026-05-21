@@ -130,7 +130,16 @@ func TestValidateMessage(t *testing.T) {
 		{
 			name: "valid select message with catchall",
 			message: NewSelectMessage(
-				nil,
+				[]Declaration{
+					NewInputDeclaration(
+						"count",
+						NewVariableRefExpression(
+							NewVariableRef("count"),
+							NewFunctionRef("number", nil),
+							nil,
+						),
+					),
+				},
 				[]VariableRef{*NewVariableRef("count")},
 				[]Variant{
 					*NewVariant(
@@ -145,13 +154,22 @@ func TestValidateMessage(t *testing.T) {
 				"",
 			),
 			wantErrors: false,
-			wantFuncs:  []string{},
+			wantFuncs:  []string{"number"},
 			wantVars:   []string{"count"},
 		},
 		{
-			name: "valid select message with 'other' fallback",
+			name: "select message with 'other' literal as last variant requires catchall",
 			message: NewSelectMessage(
-				nil,
+				[]Declaration{
+					NewInputDeclaration(
+						"count",
+						NewVariableRefExpression(
+							NewVariableRef("count"),
+							NewFunctionRef("number", nil),
+							nil,
+						),
+					),
+				},
 				[]VariableRef{*NewVariableRef("count")},
 				[]Variant{
 					*NewVariant(
@@ -165,9 +183,10 @@ func TestValidateMessage(t *testing.T) {
 				},
 				"",
 			),
-			wantErrors: false,
-			wantFuncs:  []string{},
-			wantVars:   []string{"count"},
+			// Per MF2 spec only catchall (*) keys count as fallback; the
+			// literal "other" key does not satisfy missing-fallback.
+			wantErrors:    true,
+			errorContains: "missing-fallback",
 		},
 		{
 			name: "select message with key mismatch",
@@ -347,7 +366,16 @@ func TestValidateComplexSelectMessage(t *testing.T) {
 		{
 			name: "multi-selector with proper keys",
 			message: NewSelectMessage(
-				nil,
+				[]Declaration{
+					NewInputDeclaration(
+						"count",
+						NewVariableRefExpression(NewVariableRef("count"), NewFunctionRef("number", nil), nil),
+					),
+					NewInputDeclaration(
+						"gender",
+						NewVariableRefExpression(NewVariableRef("gender"), NewFunctionRef("string", nil), nil),
+					),
+				},
 				[]VariableRef{
 					*NewVariableRef("count"),
 					*NewVariableRef("gender"),
@@ -422,9 +450,9 @@ func TestValidateMarkup(t *testing.T) {
 			message: NewPatternMessage(
 				nil,
 				NewPattern([]PatternElement{
-					NewMarkup("open", "b", nil, nil),
+					mustMarkup(t, "open", "b", nil, nil),
 					NewTextElement("Bold text"),
-					NewMarkup("close", "b", nil, nil),
+					mustMarkup(t, "close", "b", nil, nil),
 				}),
 				"",
 			),
@@ -436,7 +464,7 @@ func TestValidateMarkup(t *testing.T) {
 				nil,
 				NewPattern([]PatternElement{
 					NewTextElement("Line 1"),
-					NewMarkup("standalone", "br", nil, nil),
+					mustMarkup(t, "standalone", "br", nil, nil),
 					NewTextElement("Line 2"),
 				}),
 				"",
@@ -448,11 +476,11 @@ func TestValidateMarkup(t *testing.T) {
 			message: NewPatternMessage(
 				nil,
 				NewPattern([]PatternElement{
-					NewMarkup("open", "link", ConvertMapToOptions(map[string]any{
+					mustMarkup(t, "open", "link", ConvertMapToOptions(map[string]any{
 						"href": NewLiteral("https://example.com"),
 					}), nil),
 					NewTextElement("Click here"),
-					NewMarkup("close", "link", nil, nil),
+					mustMarkup(t, "close", "link", nil, nil),
 				}),
 				"",
 			),
@@ -463,7 +491,7 @@ func TestValidateMarkup(t *testing.T) {
 			message: NewPatternMessage(
 				nil,
 				NewPattern([]PatternElement{
-					NewMarkup("open", "img", nil, ConvertMapToAttributes(map[string]any{
+					mustMarkup(t, "open", "img", nil, ConvertMapToAttributes(map[string]any{
 						"alt": NewLiteral("Image description"),
 					})),
 				}),
@@ -553,11 +581,19 @@ func TestValidateAnnotatedVariables(t *testing.T) {
 	}
 }
 
+// TestValidateSelectMessageOtherLiteralFallback asserts that a literal "other"
+// key does NOT satisfy the missing-fallback requirement — only a catchall (*)
+// key counts as a fallback variant per MF2 spec.
 func TestValidateSelectMessageOtherLiteralFallback(t *testing.T) {
 	t.Parallel()
 
 	message := NewSelectMessage(
-		nil,
+		[]Declaration{
+			NewInputDeclaration(
+				"count",
+				NewVariableRefExpression(NewVariableRef("count"), NewFunctionRef("integer", nil), nil),
+			),
+		},
 		[]VariableRef{*NewVariableRef("count")},
 		[]Variant{
 			*NewVariant(
@@ -574,11 +610,10 @@ func TestValidateSelectMessageOtherLiteralFallback(t *testing.T) {
 		"",
 	)
 
-	result, err := ValidateMessage(message, nil)
+	_, err := ValidateMessage(message, nil)
 
-	require.NoError(t, err)
-	assert.Contains(t, result.Functions, "integer")
-	assert.Contains(t, result.Variables, "count")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "missing-fallback")
 }
 
 func TestValidationResultStructure(t *testing.T) {
@@ -675,7 +710,12 @@ func TestEdgeCasesInValidation(t *testing.T) {
 		{
 			name: "select message with single variant",
 			message: NewSelectMessage(
-				nil,
+				[]Declaration{
+					NewInputDeclaration(
+						"count",
+						NewVariableRefExpression(NewVariableRef("count"), NewFunctionRef("number", nil), nil),
+					),
+				},
 				[]VariableRef{*NewVariableRef("count")},
 				[]Variant{
 					*NewVariant(
@@ -736,7 +776,12 @@ func TestValidateMessageErrorTypes(t *testing.T) {
 		{
 			name: "select without fallback",
 			message: NewSelectMessage(
-				nil,
+				[]Declaration{
+					NewInputDeclaration(
+						"count",
+						NewVariableRefExpression(NewVariableRef("count"), NewFunctionRef("number", nil), nil),
+					),
+				},
 				[]VariableRef{*NewVariableRef("count")},
 				[]Variant{
 					*NewVariant([]VariantKey{NewLiteral("one")}, NewPattern([]PatternElement{NewTextElement("one")})),

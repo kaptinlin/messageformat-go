@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
+	"github.com/agentable/go-intl/numberformat"
+	"github.com/kaptinlin/messageformat-go/internal/intlbridge"
 )
 
 // Safe integer range constants (JavaScript Number.MAX_SAFE_INTEGER/MIN_SAFE_INTEGER)
@@ -19,15 +19,10 @@ const (
 	minSafeInteger = -1e15
 )
 
-// Number formatters cache with sync.Map for better performance
-// TypeScript original code:
-// const _nf: Record<string, Intl.NumberFormat> = {};
+// Number formats a number with locale-specific formatting and offset using
+// go-intl's numberformat (ECMA-402). Integer values in the safe range bypass
+// the float64 path so they don't pick up spurious fraction digits.
 //
-//	function _nf(lc: string): Intl.NumberFormat {
-//	  return _nf[lc] || (_nf[lc] = new Intl.NumberFormat(lc));
-//	}
-
-// Number formats a number with locale-specific formatting and offset using golang.org/x/text/number
 // TypeScript original code:
 //
 //	export function number(lc: string, value: number, offset: number) {
@@ -36,17 +31,15 @@ const (
 func Number(lc string, value float64, offset float64) string {
 	result := value - offset
 
-	tag, err := language.Parse(lc)
+	loc := intlbridge.ParseLocale(lc)
+	nf, err := numberformat.New(loc, numberformat.Options{})
 	if err != nil {
-		tag = language.English
+		return strconv.FormatFloat(result, 'g', -1, 64)
 	}
-
-	// Use locale-specific formatting
-	printer := message.NewPrinter(tag)
 	if result == math.Trunc(result) && result >= minSafeInteger && result <= maxSafeInteger {
-		return printer.Sprintf("%.0f", result)
+		return nf.Format(numberformat.Int(int64(result)))
 	}
-	return printer.Sprintf("%.10g", result)
+	return nf.Format(numberformat.Float(result))
 }
 
 // StrictNumber provides strict number formatting with error checking

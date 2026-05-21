@@ -98,3 +98,35 @@ func TestDatetimeFunctionDefaultOptions(t *testing.T) {
 	assert.Equal(t, "year-month-day", options["dateFields"], "Expected default dateFields")
 	// Note: Default behavior now uses dateFields instead of dateStyle/timeStyle
 }
+
+func TestTimeFunctionPrecisionSecondParts(t *testing.T) {
+	t.Parallel()
+
+	var errors []error
+	result := TimeFunction(newTestContext(func(err error) {
+		errors = append(errors, err)
+	}), map[string]any{"precision": "second"}, "2006-01-02T15:04:06Z")
+
+	dtv, ok := result.(*messagevalue.DateTimeValue)
+	require.True(t, ok, "Expected DateTimeValue, got %T", result)
+	assert.Equal(t, "second", dtv.Options()["timePrecision"])
+
+	parts, err := dtv.ToParts()
+	require.NoError(t, err)
+	require.Len(t, parts, 1)
+	partWithChildren, ok := parts[0].(interface {
+		Parts() []messagevalue.MessagePart
+	})
+	require.True(t, ok, "Expected datetime part with children, got %T", parts[0])
+
+	subparts := partWithChildren.Parts()
+	require.NotEmpty(t, subparts)
+	valuesByType := make(map[string]any, len(subparts))
+	for _, part := range subparts {
+		valuesByType[part.Type()] = part.Value()
+	}
+	assert.Equal(t, "3", valuesByType["hour"])
+	assert.Equal(t, "04", valuesByType["minute"])
+	assert.Equal(t, "06", valuesByType["second"])
+	assert.Empty(t, errors)
+}

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/kaptinlin/messageformat-go/internal/cst"
 	"github.com/kaptinlin/messageformat-go/internal/resolve"
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
@@ -181,7 +180,6 @@ type unsupportedSelectorCoverageMessage struct{}
 func (unsupportedSelectorCoverageMessage) Type() string                          { return "unsupported" }
 func (unsupportedSelectorCoverageMessage) Declarations() []datamodel.Declaration { return nil }
 func (unsupportedSelectorCoverageMessage) Comment() string                       { return "" }
-func (unsupportedSelectorCoverageMessage) CST() cst.Node                         { return nil }
 
 type panickingSelectorValue struct{}
 

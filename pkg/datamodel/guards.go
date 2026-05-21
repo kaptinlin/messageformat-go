@@ -60,8 +60,12 @@ func IsMarkup(part any) bool {
 //	typeof msg === 'object' &&
 //	(msg.type === 'message' || msg.type === 'select');
 func IsMessage(msg any) bool {
-	m, ok := msg.(Message)
-	return ok && (m.Type() == "message" || m.Type() == "select")
+	switch msg.(type) {
+	case *PatternMessage, *SelectMessage:
+		return true
+	default:
+		return false
+	}
 }
 
 // IsPatternMessage checks if a message is a pattern message
@@ -70,7 +74,8 @@ func IsMessage(msg any) bool {
 //
 //	msg.type === 'message';
 func IsPatternMessage(msg Message) bool {
-	return msg != nil && msg.Type() == "message"
+	_, ok := msg.(*PatternMessage)
+	return ok
 }
 
 // IsSelectMessage checks if a message is a select message
@@ -79,7 +84,8 @@ func IsPatternMessage(msg Message) bool {
 //
 //	msg.type === 'select';
 func IsSelectMessage(msg Message) bool {
-	return msg != nil && msg.Type() == "select"
+	_, ok := msg.(*SelectMessage)
+	return ok
 }
 
 // IsVariableRef checks if a part is a variable reference
@@ -97,19 +103,22 @@ func IsVariableRef(part any) bool {
 // IsInputDeclaration checks if a declaration is an input declaration
 // TypeScript original code: Declaration type checking
 func IsInputDeclaration(decl Declaration) bool {
-	return decl != nil && decl.Type() == "input"
+	_, ok := decl.(*InputDeclaration)
+	return ok
 }
 
 // IsLocalDeclaration checks if a declaration is a local declaration
 // TypeScript original code: Declaration type checking
 func IsLocalDeclaration(decl Declaration) bool {
-	return decl != nil && decl.Type() == "local"
+	_, ok := decl.(*LocalDeclaration)
+	return ok
 }
 
 // IsTextElement checks if a pattern element is text
 // TypeScript original code: Pattern element type checking (string type)
 func IsTextElement(elem PatternElement) bool {
-	return elem != nil && elem.Type() == "text"
+	_, ok := elem.(*TextElement)
+	return ok
 }
 
 // IsVariantKey checks if an object is a valid variant key
@@ -121,12 +130,12 @@ func IsVariantKey(key any) bool {
 // IsPatternElement checks if an object is a valid pattern element
 // TypeScript original code: Array<string | Expression | Markup> element checking
 func IsPatternElement(elem any) bool {
-	pe, ok := elem.(PatternElement)
-	if !ok {
+	switch elem.(type) {
+	case *TextElement, *Expression, *Markup:
+		return true
+	default:
 		return false
 	}
-	elemType := pe.Type()
-	return elemType == "text" || elemType == "expression" || elemType == "markup"
 }
 
 // IsNode checks if an object is a valid data model node
@@ -142,18 +151,12 @@ func IsPatternElement(elem any) bool {
 //	| FunctionRef
 //	| Markup;
 func IsNode(obj any) bool {
-	node, ok := obj.(Node)
-	if !ok {
+	switch obj.(type) {
+	case *InputDeclaration, *LocalDeclaration, *CatchallKey, *Expression, *Literal, *VariableRef, *FunctionRef, *Markup, *BooleanAttribute:
+		return true
+	default:
 		return false
 	}
-	nodeType := node.Type()
-	return nodeType == "input" || nodeType == "local" || // Declaration types
-		nodeType == "*" || // CatchallKey
-		nodeType == "expression" ||
-		nodeType == "literal" ||
-		nodeType == "variable" ||
-		nodeType == "function" ||
-		nodeType == "markup"
 }
 
 // IsBooleanAttribute checks if an attribute value is a boolean attribute

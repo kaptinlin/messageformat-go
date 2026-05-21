@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/kaptinlin/messageformat-go/internal/cst"
 	"github.com/kaptinlin/messageformat-go/internal/resolve"
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
@@ -98,4 +97,3 @@ type mockUnsupportedMessage struct{}
 func (m *mockUnsupportedMessage) Type() string                          { return "unsupported" }
 func (m *mockUnsupportedMessage) Declarations() []datamodel.Declaration { return nil }
 func (m *mockUnsupportedMessage) Comment() string                       { return "" }
-func (m *mockUnsupportedMessage) CST() cst.Node                         { return nil }

@@ -2,49 +2,72 @@ package tests
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
+	pkgerrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
-// Static error variables to avoid dynamic error creation
+// Static error variables for non-typed failure modes.
 var (
-	ErrInvalidNumeric       = errors.New("invalid numeric input")
-	ErrNotPositiveInt       = errors.New("not a positive integer")
-	ErrNotString            = errors.New("not a string")
-	ErrInvalidDecimalPlaces = errors.New("invalid option decimalPlaces")
-	ErrInvalidFailsOption   = errors.New("invalid option fails")
-	ErrNotSelectable        = errors.New("not selectable")
 	ErrBadOption            = errors.New("bad option")
-	ErrSelectionFailed      = errors.New("selection failed")
-	ErrNotFormattable       = errors.New("not formattable")
 	ErrFormattingFailed     = errors.New("formatting failed")
+	ErrInvalidDecimalPlaces = errors.New("invalid decimalPlaces option")
+	ErrInvalidFailsOption   = errors.New("invalid fails option")
+	ErrInvalidNumeric       = errors.New("invalid numeric input")
+	ErrNotFormattable       = errors.New("not formattable")
+	ErrNotPositiveInt       = errors.New("not a positive integer")
+	ErrNotSelectable        = errors.New("not selectable")
+	ErrNotString            = errors.New("not a string")
+	ErrSelectionFailed      = errors.New("selection failed")
 )
 
-// TestFunctions returns a map of test functions for MessageFormat testing
+func newFunctionError(errorType string, cause error, format string, args ...any) error {
+	err := pkgerrors.NewMessageFunctionError(errorType, fmt.Sprintf(format, args...))
+	err.SetCause(cause)
+	return err
+}
+
+// newBadOptionError constructs a spec-typed bad-option MessageFunctionError
+// matching the TS reference test-functions, which throws/emits a
+// MessageFunctionError('bad-option', ...) for invalid option values.
+func newBadOptionError(format string, args ...any) error {
+	return newFunctionError(pkgerrors.ErrorTypeBadOption, ErrBadOption, format, args...)
+}
+
+func newOptionError(cause error, format string, args ...any) error {
+	return newFunctionError(pkgerrors.ErrorTypeBadOption, errors.Join(cause, ErrBadOption), format, args...)
+}
+
+// TestFunctions returns a map of test functions for MessageFormat testing.
+// The naming mirrors the TS reference's test-functions: a value tagged
+// "function" can both format and select, "format" can only format, and
+// "select" can only select.
 func TestFunctions() map[string]functions.MessageFunction {
 	return map[string]functions.MessageFunction{
-		"test":        testFunction,
-		"test:select": testSelectFunction,
-		"test:format": testFormatFunction,
-		"placeholder": placeholderFunction,
+		"test":          testFunction,
+		"test:function": testFunction,
+		"test:select":   testSelectFunction,
+		"test:format":   testFormatFunction,
+		"placeholder":   placeholderFunction,
 	}
 }
 
-// testValue represents a test function result with specific capabilities
+// testValue represents a test function result with specific capabilities.
 type testValue struct {
 	source        string
 	input         float64
 	canFormat     bool
 	selectable    bool
 	decimalPlaces int
+	badOption     bool
 	failsFormat   bool
 	failsSelect   bool
-	badOption     bool
 	locale        string
 	dir           bidi.Direction
 }
@@ -82,15 +105,13 @@ func (tv *testValue) ValueOf() (any, error) {
 // SelectKeys performs selection for the test value
 func (tv *testValue) SelectKeys(keys []string) ([]string, error) {
 	if !tv.selectable {
-		return nil, ErrNotSelectable
+		return nil, newFunctionError(pkgerrors.ErrorTypeUnsupportedOperation, ErrNotSelectable, "not selectable")
 	}
 	if tv.badOption {
-		// When there's a bad option, return an error that will cause fallback selection
-		// This is critical for proper error handling - bad options should fail selection
-		return nil, ErrBadOption
+		return nil, newBadOptionError("bad option")
 	}
 	if tv.failsSelect {
-		return nil, ErrSelectionFailed
+		return nil, newFunctionError(pkgerrors.ErrorTypeBadOption, ErrSelectionFailed, "Selection failed")
 	}
 
 	// Follow TypeScript logic: if value === 1
@@ -114,14 +135,11 @@ func (tv *testValue) SelectKeys(keys []string) ([]string, error) {
 // ToString formats the test value as a string
 func (tv *testValue) ToString() (string, error) {
 	if !tv.canFormat {
-		return "", ErrNotFormattable
+		return "", newFunctionError(pkgerrors.ErrorTypeNotFormattable, ErrNotFormattable, "not formattable")
 	}
 	if tv.failsFormat {
-		return "", ErrFormattingFailed
+		return "", newFunctionError(pkgerrors.ErrorTypeBadOption, ErrFormattingFailed, "Formatting failed")
 	}
-
-	// If there's a bad option, return special value
-	// This happens when formatting is attempted despite a bad option
 	if tv.badOption {
 		return "bad-option-value", nil
 	}
@@ -158,10 +176,10 @@ func (tv *testValue) ToString() (string, error) {
 // ToParts formats the test value as message parts
 func (tv *testValue) ToParts() ([]messagevalue.MessagePart, error) {
 	if !tv.canFormat {
-		return nil, ErrNotFormattable
+		return nil, newFunctionError(pkgerrors.ErrorTypeNotFormattable, ErrNotFormattable, "not formattable")
 	}
 	if tv.failsFormat {
-		return nil, ErrFormattingFailed
+		return nil, newFunctionError(pkgerrors.ErrorTypeBadOption, ErrFormattingFailed, "Formatting failed")
 	}
 
 	// Create a text part with the formatted value
@@ -176,22 +194,22 @@ func (tv *testValue) ToParts() ([]messagevalue.MessagePart, error) {
 }
 
 // testFunction implements the :test:function behavior
-func testFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+func testFunction(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 	return createTestValue(ctx, options, operand, true, true)
 }
 
 // testSelectFunction implements the :test:select behavior
-func testSelectFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+func testSelectFunction(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 	return createTestValue(ctx, options, operand, false, true)
 }
 
 // testFormatFunction implements the :test:format behavior
-func testFormatFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+func testFormatFunction(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 	return createTestValue(ctx, options, operand, true, false)
 }
 
 // createTestValue creates a test value with the specified capabilities
-func createTestValue(ctx functions.MessageFunctionContext, options map[string]any, operand any, canFormat, selectable bool) messagevalue.MessageValue {
+func createTestValue(ctx functions.MessageFunctionContext, options functions.Options, operand any, canFormat, selectable bool) messagevalue.MessageValue {
 	// Get locale from context
 	locale := "en"
 	if locales := ctx.Locales(); len(locales) > 0 {
@@ -199,95 +217,74 @@ func createTestValue(ctx functions.MessageFunctionContext, options map[string]an
 	}
 
 	tv := &testValue{
-		source:        ctx.Source(),
-		canFormat:     canFormat,
-		selectable:    selectable,
-		decimalPlaces: 0,
-		failsFormat:   false,
-		failsSelect:   false,
-		badOption:     false,
-		locale:        locale,
-		dir:           bidi.DirAuto,
+		source:     ctx.Source(),
+		canFormat:  canFormat,
+		selectable: selectable,
+		locale:     locale,
+		dir:        bidi.DirAuto,
 	}
 
-	// Handle operand that might be another test value (like TypeScript valueOf)
-	// We need to check both direct *testValue and MessageValue interface wrapping
+	// Handle operand that might be another test value (mirrors TS valueOf
+	// handling). Non-numeric input is a bad-operand error, including the case
+	// where the operand resolved to a fallback value upstream — matching the
+	// TS reference, which throws MessageFunctionError('bad-operand', ...).
 	var inheritedTestValue *testValue
 
-	// First try to get test value from MessageValue interface (most common case)
 	if msgVal, ok := operand.(messagevalue.MessageValue); ok {
-		// Check if it's a test value wrapped in MessageValue interface
 		if msgVal.Type() == "test" {
 			if testVal, ok := msgVal.(*testValue); ok {
 				inheritedTestValue = testVal
 				tv.input = testVal.input
 			}
-		} else if msgVal.Type() == "fallback" {
-			// For fallback operands, return fallback immediately
-			return messagevalue.NewFallbackValue(ctx.Source(), locale)
+		} else {
+			input, err := parseNumericInputStrict(operand)
+			if err != nil {
+				ctx.OnError(pkgerrors.NewMessageFunctionError(pkgerrors.ErrorTypeBadOperand, "Input is not numeric"))
+				return messagevalue.NewFallbackValue(ctx.Source(), locale)
+			}
+			tv.input = input
 		}
 	} else if testVal, ok := operand.(*testValue); ok {
-		// Direct test value (less common)
 		inheritedTestValue = testVal
 		tv.input = testVal.input
 	} else {
-		// Check if operand is a fallback value
-		if fallbackVal, ok := operand.(messagevalue.MessageValue); ok && fallbackVal.Type() == "fallback" {
-			// For fallback operands, return fallback immediately
-			return messagevalue.NewFallbackValue(ctx.Source(), locale)
-		}
-
-		// Try to parse numeric input - be more strict like TypeScript
 		input, err := parseNumericInputStrict(operand)
 		if err != nil {
-			// For non-numeric input, use 0 as default but continue processing
-			// This allows the fails option to be processed and take effect
-			tv.input = 0
-		} else {
-			tv.input = input
+			ctx.OnError(pkgerrors.NewMessageFunctionError(pkgerrors.ErrorTypeBadOperand, "Input is not numeric"))
+			return messagevalue.NewFallbackValue(ctx.Source(), locale)
 		}
+		tv.input = input
 	}
 
-	// If we have an inherited test value, inherit its properties
+	// Inherit fails* state from the upstream test value (matches the TS
+	// reference's Object.assign over opt). decimalPlaces is only inherited if
+	// not explicitly set in current options.
 	if inheritedTestValue != nil {
-		// Always inherit the badOption state - this is critical for error propagation
-		tv.badOption = inheritedTestValue.badOption
 		tv.failsFormat = inheritedTestValue.failsFormat
 		tv.failsSelect = inheritedTestValue.failsSelect
-
-		// Only inherit decimalPlaces if not explicitly set in current options
+		tv.badOption = inheritedTestValue.badOption
+		if tv.badOption {
+			ctx.OnError(newFunctionError(pkgerrors.ErrorTypeBadOperand, ErrBadOption, "bad operand"))
+		}
 		if _, hasDecimalPlaces := options["decimalPlaces"]; !hasDecimalPlaces {
 			tv.decimalPlaces = inheritedTestValue.decimalPlaces
 		}
 	}
 
-	// Process decimalPlaces option with strict validation like TypeScript
+	// Process decimalPlaces option with strict validation like TypeScript.
+	// The TS reference throws MessageFunctionError('bad-option', ...) on
+	// invalid values; the runtime catches that and replaces the value with a
+	// fallback. We mirror that here by emitting the error and returning a
+	// fallback so downstream consumers (selectors, other functions) see the
+	// fallback and emit their own cascade errors.
 	if decimalPlaces, exists := options["decimalPlaces"]; exists {
-		if dp, err := asPositiveInteger(decimalPlaces); err == nil {
-			if dp == 0 || dp == 1 {
-				tv.decimalPlaces = dp
-				// Important: If we're setting a valid decimalPlaces, it overrides inherited badOption
-				// This allows fixing a bad option by providing a valid one
-				if inheritedTestValue != nil && inheritedTestValue.badOption {
-					// We still have the badOption from inheritance but apply the new valid option
-					tv.decimalPlaces = dp
-				}
-			} else {
-				// Invalid decimalPlaces value - TypeScript throws bad-option error
-				tv.badOption = true
-				// In TypeScript, this would call onError with MessageResolutionError
-				ctx.OnError(ErrInvalidDecimalPlaces)
-			}
+		if dp, err := asPositiveInteger(decimalPlaces); err == nil && (dp == 0 || dp == 1) {
+			tv.decimalPlaces = dp
 		} else {
-			// Invalid decimalPlaces format
 			tv.badOption = true
-			ctx.OnError(ErrInvalidDecimalPlaces)
+			ctx.OnError(newOptionError(ErrInvalidDecimalPlaces, "Invalid option decimalPlaces=%v", decimalPlaces))
+			return tv
 		}
-	}
-
-	// If we have a badOption state (either inherited or from current options), propagate the error
-	if tv.badOption {
-		ctx.OnError(ErrBadOption)
 	}
 
 	// Process fails option with exact TypeScript logic
@@ -304,12 +301,10 @@ func createTestValue(ctx functions.MessageFunctionContext, options map[string]an
 				tv.failsSelect = true
 				tv.failsFormat = true
 			default:
-				// Invalid fails value - TypeScript calls onError
-				ctx.OnError(ErrInvalidFailsOption)
+				ctx.OnError(newOptionError(ErrInvalidFailsOption, "Invalid option fails=%v", fails))
 			}
 		} else {
-			// Invalid fails format
-			ctx.OnError(ErrInvalidFailsOption)
+			ctx.OnError(newOptionError(ErrInvalidFailsOption, "Invalid option fails=%v", fails))
 		}
 	}
 
@@ -380,7 +375,7 @@ func asString(value any) (string, error) {
 }
 
 // placeholderFunction implements a simple placeholder function for testing
-func placeholderFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+func placeholderFunction(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 	locale := "en"
 	if locales := ctx.Locales(); len(locales) > 0 {
 		locale = locales[0]

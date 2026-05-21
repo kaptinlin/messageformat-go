@@ -3,10 +3,22 @@
 package messagevalue
 
 import (
+	"errors"
+	"maps"
+
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 )
 
-// MessageValue represents the base interface for all resolved message values
+var ErrNotSelectable = errors.New("message value is not selectable")
+
+func cloneOptions(options map[string]any) map[string]any {
+	if options == nil {
+		return make(map[string]any)
+	}
+	return maps.Clone(options)
+}
+
+// Value represents the base interface for all resolved message values.
 // TypeScript original code:
 //
 //	export interface MessageValue<T extends string = string, P extends string = string> {
@@ -18,20 +30,43 @@ import (
 //	  toParts?(): MessagePart<P>[];
 //	  selectKeys?(keys: string[]): string[];
 //	}
-type MessageValue interface {
-	Type() string            // Type identifier for the value
-	Source() string          // Source text that produced this value
-	Dir() bidi.Direction     // Text direction
-	Locale() string          // Locale for formatting
-	Options() map[string]any // Formatting options
+type Value interface {
+	Type() string              // Type identifier for the value
+	Source() string            // Source text that produced this value
+	Dir() bidi.Direction       // Text direction
+	Locale() string            // Locale for formatting
+	ToString() (string, error) // Convert to string representation
+}
 
-	// Core formatting methods
-	ToString() (string, error)       // Convert to string representation
-	ToParts() ([]MessagePart, error) // Convert to formatted parts
-	ValueOf() (any, error)           // Extract underlying value
+// PartsFormatter represents values that can emit structured parts.
+// TypeScript original code: toParts?(): MessagePart<P>[];
+type PartsFormatter interface {
+	ToParts() ([]MessagePart, error)
+}
 
-	// Selection method for plural/select functions
+// Valuer represents values that expose an underlying Go value.
+// TypeScript original code: valueOf(): unknown;
+type Valuer interface {
+	ValueOf() (any, error)
+}
+
+// Selector represents values that participate in pattern selection.
+// TypeScript original code: selectKeys?(keys: string[]): string[];
+type Selector interface {
 	SelectKeys(keys []string) ([]string, error) // Select matching keys
+}
+
+// OptionedValue represents values that carry formatting options.
+// TypeScript original code: options?: Record<string, unknown>;
+type OptionedValue interface {
+	Options() map[string]any
+}
+
+// MessageValue is the common formatted value interface.
+type MessageValue interface {
+	Value
+	PartsFormatter
+	Valuer
 }
 
 // MessagePart represents a formatted part of a message
@@ -73,6 +108,7 @@ func NewTextPart(value, source, locale string) *TextPart {
 
 func (tp *TextPart) Type() string        { return "text" }
 func (tp *TextPart) Value() any          { return tp.value }
+func (tp *TextPart) Text() string        { return tp.value }
 func (tp *TextPart) Source() string      { return tp.source }
 func (tp *TextPart) Locale() string      { return tp.locale }
 func (tp *TextPart) Dir() bidi.Direction { return tp.dir }
@@ -89,6 +125,7 @@ func NewBidiIsolationPart(value string) *BidiIsolationPart {
 
 func (bip *BidiIsolationPart) Type() string        { return "bidiIsolation" }
 func (bip *BidiIsolationPart) Value() any          { return bip.value }
+func (bip *BidiIsolationPart) Text() string        { return bip.value }
 func (bip *BidiIsolationPart) Source() string      { return "" }
 func (bip *BidiIsolationPart) Locale() string      { return "" }
 func (bip *BidiIsolationPart) Dir() bidi.Direction { return bidi.DirAuto }
@@ -103,19 +140,17 @@ type MarkupPart struct {
 
 // NewMarkupPart creates a new markup part
 func NewMarkupPart(kind, name, source string, options map[string]any) *MarkupPart {
-	if options == nil {
-		options = make(map[string]any)
-	}
 	return &MarkupPart{
 		kind:    kind,
 		name:    name,
 		source:  source,
-		options: options,
+		options: cloneOptions(options),
 	}
 }
 
 func (mp *MarkupPart) Type() string            { return "markup" }
 func (mp *MarkupPart) Value() any              { return mp.name }
+func (mp *MarkupPart) Text() string            { return mp.name }
 func (mp *MarkupPart) Source() string          { return mp.source }
 func (mp *MarkupPart) Locale() string          { return "" }
 func (mp *MarkupPart) Dir() bidi.Direction     { return bidi.DirAuto }
@@ -141,6 +176,7 @@ func NewFallbackPart(source, locale string) *FallbackPart {
 
 func (fp *FallbackPart) Type() string        { return "fallback" }
 func (fp *FallbackPart) Value() any          { return "{" + fp.source + "}" }
+func (fp *FallbackPart) Text() string        { return "{" + fp.source + "}" }
 func (fp *FallbackPart) Source() string      { return fp.source }
 func (fp *FallbackPart) Locale() string      { return fp.locale }
 func (fp *FallbackPart) Dir() bidi.Direction { return fp.dir }

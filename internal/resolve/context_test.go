@@ -12,7 +12,7 @@ import (
 func TestNewContext(t *testing.T) {
 	locales := []string{"en", "fr"}
 	funcs := map[string]functions.MessageFunction{
-		"test": func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+		"test": func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 			return messagevalue.NewStringValue("test", "en", "test")
 		},
 	}
@@ -50,7 +50,7 @@ func TestNewContextWithNils(t *testing.T) {
 func TestContextClone(t *testing.T) {
 	original := NewContext(
 		[]string{"en"},
-		map[string]functions.MessageFunction{"test": func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+		map[string]functions.MessageFunction{"test": func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 			return messagevalue.NewStringValue("test", "en", "test")
 		}},
 		map[string]any{"name": "Alice"},

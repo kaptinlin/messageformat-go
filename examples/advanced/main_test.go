@@ -16,14 +16,14 @@ func TestHighlightFunction(t *testing.T) {
 	tests := []struct {
 		name    string
 		operand any
-		options map[string]any
+		options functions.Options
 		want    string
 	}{
 		{name: "default bold", operand: "Active", options: nil, want: "**Active**"},
-		{name: "italic", operand: "High", options: map[string]any{"style": "italic"}, want: "*High*"},
-		{name: "underline", operand: "Low", options: map[string]any{"style": "underline"}, want: "_Low_"},
-		{name: "code", operand: 12, options: map[string]any{"style": "code"}, want: "`12`"},
-		{name: "unknown style", operand: "plain", options: map[string]any{"style": "none"}, want: "plain"},
+		{name: "italic", operand: "High", options: functions.Options{"style": "italic"}, want: "*High*"},
+		{name: "underline", operand: "Low", options: functions.Options{"style": "underline"}, want: "_Low_"},
+		{name: "code", operand: 12, options: functions.Options{"style": "code"}, want: "`12`"},
+		{name: "unknown style", operand: "plain", options: functions.Options{"style": "none"}, want: "plain"},
 	}
 
 	for _, tc := range tests {

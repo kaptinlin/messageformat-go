@@ -12,7 +12,7 @@ import (
 
 // Custom function: uppercase
 // Converts input to uppercase
-func uppercaseFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+func uppercaseFunction(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 	var str string
 	if operand == nil {
 		str = ""
@@ -28,7 +28,7 @@ func uppercaseFunction(ctx functions.MessageFunctionContext, options map[string]
 
 // Custom function: reverse
 // Reverses the input string
-func reverseFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+func reverseFunction(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 	var str string
 	if operand == nil {
 		str = ""
@@ -50,7 +50,7 @@ func reverseFunction(ctx functions.MessageFunctionContext, options map[string]an
 
 // Custom function: emoji
 // Adds emoji based on the type option
-func emojiFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+func emojiFunction(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 	var str string
 	if operand == nil {
 		str = ""
@@ -62,7 +62,7 @@ func emojiFunction(ctx functions.MessageFunctionContext, options map[string]any,
 
 	// Get emoji type from options
 	emojiType := "default"
-	if t, ok := options["type"].(string); ok {
+	if t, ok := options.String("type"); ok {
 		emojiType = t
 	}
 
@@ -88,7 +88,7 @@ func emojiFunction(ctx functions.MessageFunctionContext, options map[string]any,
 
 // Custom function: timeago
 // Formats time relative to now
-func timeAgoFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+func timeAgoFunction(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 	var hours int
 	if operand == nil {
 		hours = 0
@@ -126,7 +126,7 @@ func timeAgoFunction(ctx functions.MessageFunctionContext, options map[string]an
 
 // Custom function: format
 // Formats strings with padding and alignment
-func formatFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+func formatFunction(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 	var str string
 	if operand == nil {
 		str = ""
@@ -138,19 +138,17 @@ func formatFunction(ctx functions.MessageFunctionContext, options map[string]any
 
 	// Get formatting options
 	width := 0
-	if w, ok := options["width"].(int); ok {
+	if w, ok := options.Int("width"); ok {
 		width = w
-	} else if w, ok := options["width"].(float64); ok {
-		width = int(w)
 	}
 
 	align := "left"
-	if a, ok := options["align"].(string); ok {
+	if a, ok := options.String("align"); ok {
 		align = a
 	}
 
 	pad := " "
-	if p, ok := options["pad"].(string); ok {
+	if p, ok := options.String("pad"); ok {
 		pad = p
 	}
 

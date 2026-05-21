@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/kaptinlin/messageformat-go/internal/cst"
 )
@@ -109,10 +110,10 @@ func TestMarkup(t *testing.T) {
 	options := ConvertMapToOptions(map[string]any{"href": "https://example.com"})
 	attrs := ConvertMapToAttributes(map[string]any{"target": "_blank"})
 
-	markup := NewMarkup("open", "link", options, attrs)
+	markup := mustMarkup(t, "open", "link", options, attrs)
 
 	assert.Equal(t, "markup", markup.Type())
-	assert.Equal(t, "open", markup.Kind())
+	assert.Equal(t, MarkupOpen, markup.Kind())
 	assert.Equal(t, "link", markup.Name())
 	assert.Equal(t, options, markup.Options())
 	assert.Equal(t, attrs, markup.Attributes())
@@ -167,6 +168,74 @@ func TestVariant(t *testing.T) {
 	assert.Equal(t, literal, variant.Keys()[0])
 	assert.Equal(t, catchall, variant.Keys()[1])
 	assert.Equal(t, pattern, variant.Value())
+}
+
+func TestConstructorsCloneInputCollections(t *testing.T) {
+	firstDecl := NewLocalDeclaration("first", NewExpression(NewLiteral("one"), nil, nil))
+	secondDecl := NewLocalDeclaration("second", NewExpression(NewLiteral("two"), nil, nil))
+	declarations := []Declaration{firstDecl}
+	pattern := NewPattern([]PatternElement{NewTextElement("initial")})
+	message := NewPatternMessage(declarations, pattern, "")
+	declarations[0] = secondDecl
+
+	assert.Same(t, firstDecl, message.Declarations()[0])
+
+	selector := NewVariableRef("count")
+	otherSelector := NewVariableRef("other")
+	variant := NewVariant([]VariantKey{NewCatchallKey("")}, NewPattern([]PatternElement{NewTextElement("fallback")}))
+	otherVariant := NewVariant([]VariantKey{NewLiteral("one")}, NewPattern([]PatternElement{NewTextElement("one")}))
+	selectors := []VariableRef{*selector}
+	variants := []Variant{*variant}
+	selectMessage := NewSelectMessage(nil, selectors, variants, "")
+	selectors[0] = *otherSelector
+	variants[0] = *otherVariant
+
+	assert.Equal(t, "count", selectMessage.Selectors()[0].Name())
+	assert.True(t, IsCatchallKey(selectMessage.Variants()[0].Keys()[0]))
+
+	elements := []PatternElement{NewTextElement("before")}
+	clonedPattern := NewPattern(elements)
+	elements[0] = NewTextElement("after")
+
+	requireTextValue(t, "before", clonedPattern.Elements()[0])
+
+	keys := []VariantKey{NewLiteral("one")}
+	variantWithKeys := NewVariant(keys, NewPattern(nil))
+	keys[0] = NewCatchallKey("")
+
+	assert.Equal(t, "one", variantWithKeys.Keys()[0].String())
+
+	options := ConvertMapToOptions(map[string]any{"style": "currency"})
+	functionRef := NewFunctionRef("number", options)
+	options["style"] = NewLiteral("decimal")
+
+	assert.Equal(t, "currency", functionRef.Options()["style"].String())
+
+	attributes := ConvertMapToAttributes(map[string]any{"id": "original"})
+	expression := NewExpression(NewLiteral("value"), nil, attributes)
+	variableExpression := NewVariableRefExpression(NewVariableRef("name"), nil, attributes)
+	attributes["id"] = NewLiteral("changed")
+
+	assert.Equal(t, "original", expression.Attributes()["id"].String())
+	assert.Equal(t, "original", variableExpression.Attributes()["id"].String())
+
+	markupOptions := ConvertMapToOptions(map[string]any{"href": "before"})
+	markupAttributes := ConvertMapToAttributes(map[string]any{"title": "before"})
+	markup := mustMarkup(t, "open", "a", markupOptions, markupAttributes)
+	markupOptions["href"] = NewLiteral("after")
+	markupAttributes["title"] = NewLiteral("after")
+
+	assert.Equal(t, "before", markup.Options()["href"].String())
+	assert.Equal(t, "before", markup.Attributes()["title"].String())
+}
+
+func requireTextValue(t *testing.T, want string, element PatternElement) {
+	t.Helper()
+
+	text, ok := element.(*TextElement)
+	if assert.True(t, ok) {
+		assert.Equal(t, want, text.Value())
+	}
 }
 
 func TestNilHandling(t *testing.T) {
@@ -235,42 +304,43 @@ func TestWithCSTConstructorsPreserveReference(t *testing.T) {
 	catchallCST := cst.NewText(156, 171, "catchall-source")
 	booleanCST := cst.NewText(172, 186, "boolean-source")
 
-	literal := NewLiteralWithCST("hello", literalCST)
-	variable := NewVariableRefWithCST("name", variableCST)
-	functionRef := NewFunctionRefWithCST("string", ConvertMapToOptions(map[string]any{"case": "title"}), functionCST)
+	literal := newLiteralWithCST("hello", literalCST)
+	variable := newVariableRefWithCST("name", variableCST)
+	functionRef := newFunctionRefWithCST("string", ConvertMapToOptions(map[string]any{"case": "title"}), functionCST)
 	attrs := ConvertMapToAttributes(map[string]any{"required": true})
-	expression := NewExpressionWithCST(variable, functionRef, attrs, expressionCST)
-	variableExpression := NewVariableRefExpressionWithCST(variable, functionRef, attrs, expressionCST)
-	input := NewInputDeclarationWithCST("name", variableExpression, inputCST)
-	local := NewLocalDeclarationWithCST("title", expression, localCST)
-	text := NewTextElementWithCST("Hello ", textCST)
+	expression := newExpressionWithCST(variable, functionRef, attrs, expressionCST)
+	variableExpression := newVariableRefExpressionWithCST(variable, functionRef, attrs, expressionCST)
+	input := newInputDeclarationWithCST("name", variableExpression, inputCST)
+	local := newLocalDeclarationWithCST("title", expression, localCST)
+	text := newTextElementWithCST("Hello ", textCST)
 	pattern := NewPattern([]PatternElement{text, expression})
-	message := NewPatternMessageWithCST([]Declaration{input, local}, pattern, "comment", messageCST)
-	catchall := NewCatchallKeyWithCST("", catchallCST)
-	variant := NewVariantWithCST([]VariantKey{literal, catchall}, pattern, variantCST)
-	selectMessage := NewSelectMessageWithCST([]Declaration{input}, []VariableRef{*variable}, []Variant{*variant}, "select comment", selectCST)
-	markup := NewMarkupWithCST("open", "strong", nil, attrs, markupCST)
-	booleanAttr := NewBooleanAttributeWithCST(booleanCST)
+	message := newPatternMessageWithCST([]Declaration{input, local}, pattern, "comment", messageCST)
+	catchall := newCatchallKeyWithCST("", catchallCST)
+	variant := newVariantWithCST([]VariantKey{literal, catchall}, pattern, variantCST)
+	selectMessage := newSelectMessageWithCST([]Declaration{input}, []VariableRef{*variable}, []Variant{*variant}, "select comment", selectCST)
+	markup, err := newMarkupWithCST("open", "strong", nil, attrs, markupCST)
+	require.NoError(t, err)
+	booleanAttr := newBooleanAttributeWithCST(booleanCST)
 
-	assert.Same(t, literalCST, literal.CST())
+	assert.Same(t, literalCST, literal.cstNode())
 	assert.Equal(t, "hello", literal.String())
-	assert.Same(t, variableCST, variable.CST())
+	assert.Same(t, variableCST, variable.cstNode())
 	assert.Equal(t, "name", variable.String())
-	assert.Same(t, functionCST, functionRef.CST())
-	assert.Same(t, expressionCST, expression.CST())
-	assert.Same(t, expressionCST, variableExpression.CST())
-	assert.Same(t, inputCST, input.CST())
-	assert.Same(t, localCST, local.CST())
-	assert.Same(t, textCST, text.CST())
-	assert.Same(t, messageCST, message.CST())
+	assert.Same(t, functionCST, functionRef.cstNode())
+	assert.Same(t, expressionCST, expression.cstNode())
+	assert.Same(t, expressionCST, variableExpression.cstNode())
+	assert.Same(t, inputCST, input.cstNode())
+	assert.Same(t, localCST, local.cstNode())
+	assert.Same(t, textCST, text.cstNode())
+	assert.Same(t, messageCST, message.cstNode())
 	assert.Equal(t, "comment", message.Comment())
-	assert.Same(t, selectCST, selectMessage.CST())
+	assert.Same(t, selectCST, selectMessage.cstNode())
 	assert.Equal(t, "select comment", selectMessage.Comment())
-	assert.Same(t, variantCST, variant.CST())
-	assert.Same(t, catchallCST, catchall.CST())
+	assert.Same(t, variantCST, variant.cstNode())
+	assert.Same(t, catchallCST, catchall.cstNode())
 	assert.Equal(t, "*", catchall.String())
-	assert.Same(t, markupCST, markup.CST())
-	assert.Same(t, booleanCST, booleanAttr.CST())
+	assert.Same(t, markupCST, markup.cstNode())
+	assert.Same(t, booleanCST, booleanAttr.cstNode())
 	assert.Equal(t, "boolean", booleanAttr.Type())
 	assert.Equal(t, "true", booleanAttr.String())
 }

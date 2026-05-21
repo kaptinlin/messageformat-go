@@ -18,7 +18,7 @@ func TestCustomFunctionHelpers(t *testing.T) {
 		name         string
 		fn           functions.MessageFunction
 		operand      any
-		options      map[string]any
+		options      functions.Options
 		want         string
 		wantContains string
 	}{
@@ -26,7 +26,7 @@ func TestCustomFunctionHelpers(t *testing.T) {
 		{name: "uppercase non-string", fn: uppercaseFunction, operand: 123, want: "123"},
 		{name: "uppercase nil", fn: uppercaseFunction, operand: nil, want: ""},
 		{name: "reverse runes", fn: reverseFunction, operand: "hé", want: "éh"},
-		{name: "emoji happy", fn: emojiFunction, operand: "done", options: map[string]any{"type": "happy"}, wantContains: "done"},
+		{name: "emoji happy", fn: emojiFunction, operand: "done", options: functions.Options{"type": "happy"}, wantContains: "done"},
 		{name: "emoji default", fn: emojiFunction, operand: "plain", wantContains: "plain"},
 		{name: "time now", fn: timeAgoFunction, operand: 0, want: "just now"},
 		{name: "time one hour", fn: timeAgoFunction, operand: 1, want: "1 hour ago"},
@@ -35,9 +35,9 @@ func TestCustomFunctionHelpers(t *testing.T) {
 		{name: "time days", fn: timeAgoFunction, operand: 72, want: "3 days ago"},
 		{name: "time weeks", fn: timeAgoFunction, operand: 24 * 14, want: "2 weeks ago"},
 		{name: "time months", fn: timeAgoFunction, operand: float64(24 * 60), want: "2 months ago"},
-		{name: "format left", fn: formatFunction, operand: "Go", options: map[string]any{"width": 4, "align": "left", "pad": "."}, want: "Go.."},
-		{name: "format right", fn: formatFunction, operand: "Go", options: map[string]any{"width": float64(4), "align": "right", "pad": "."}, want: "..Go"},
-		{name: "format center", fn: formatFunction, operand: "Go", options: map[string]any{"width": 5, "align": "center", "pad": "."}, want: ".Go.."},
+		{name: "format left", fn: formatFunction, operand: "Go", options: functions.Options{"width": 4, "align": "left", "pad": "."}, want: "Go.."},
+		{name: "format right", fn: formatFunction, operand: "Go", options: functions.Options{"width": float64(4), "align": "right", "pad": "."}, want: "..Go"},
+		{name: "format center", fn: formatFunction, operand: "Go", options: functions.Options{"width": 5, "align": "center", "pad": "."}, want: ".Go.."},
 	}
 
 	for _, tc := range tests {

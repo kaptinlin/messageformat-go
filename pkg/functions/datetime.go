@@ -42,11 +42,11 @@ var (
 // TypeScript reference: datetime.ts:244-261
 func readStringOption(
 	ctx MessageFunctionContext,
-	options map[string]any,
+	options Options,
 	name string,
 	allowed map[string]bool,
 ) string {
-	value, ok := options[name]
+	value, ok := options.Value(name)
 	if !ok || value == nil {
 		return ""
 	}
@@ -71,7 +71,7 @@ func readStringOption(
 func dateTimeImplementation(
 	functionName string, // 'datetime' | 'date' | 'time'
 	ctx MessageFunctionContext,
-	exprOpt map[string]any,
+	exprOpt Options,
 	operand any,
 ) messagevalue.MessageValue {
 	source := ctx.Source()
@@ -108,7 +108,7 @@ func dateTimeImplementation(
 	}
 
 	// Override calendar option from expression (TS: lines 115-124)
-	if cal, ok := exprOpt["calendar"]; ok && cal != nil {
+	if cal, ok := exprOpt.Value("calendar"); ok && cal != nil {
 		if strVal, err := asString(cal); err == nil {
 			dtOptions["calendar"] = strVal
 		} else {
@@ -119,7 +119,7 @@ func dateTimeImplementation(
 
 	// Override hour12 option from expression (TS: lines 125-131)
 	// Only applies to datetime and time, not date
-	if h12, ok := exprOpt["hour12"]; ok && h12 != nil && functionName != "date" {
+	if h12, ok := exprOpt.Value("hour12"); ok && h12 != nil && functionName != "date" {
 		if boolVal, err := asBoolean(h12); err == nil {
 			dtOptions["hour12"] = boolVal
 		} else {
@@ -129,7 +129,7 @@ func dateTimeImplementation(
 	}
 
 	// Override timeZone option from expression (TS: lines 132-159)
-	if tz, ok := exprOpt["timeZone"]; ok && tz != nil {
+	if tz, ok := exprOpt.Value("timeZone"); ok && tz != nil {
 		if tzStr, err := asString(tz); err == nil {
 			if tzStr == "input" {
 				// Validate input timezone exists (TS: lines 142-148)
@@ -236,7 +236,7 @@ func parseDateTimeValue(operand any) (time.Time, error) {
 // TypeScript reference: datetime.ts:55-59
 func DatetimeFunction(
 	ctx MessageFunctionContext,
-	options map[string]any,
+	options Options,
 	operand any,
 ) messagevalue.MessageValue {
 	return dateTimeImplementation("datetime", ctx, options, operand)
@@ -247,7 +247,7 @@ func DatetimeFunction(
 // TypeScript reference: datetime.ts:66-70
 func DateFunction(
 	ctx MessageFunctionContext,
-	options map[string]any,
+	options Options,
 	operand any,
 ) messagevalue.MessageValue {
 	return dateTimeImplementation("date", ctx, options, operand)
@@ -258,7 +258,7 @@ func DateFunction(
 // TypeScript reference: datetime.ts:78-82
 func TimeFunction(
 	ctx MessageFunctionContext,
-	options map[string]any,
+	options Options,
 	operand any,
 ) messagevalue.MessageValue {
 	return dateTimeImplementation("time", ctx, options, operand)

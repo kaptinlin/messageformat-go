@@ -72,6 +72,10 @@ func (sv *StringValue) ToString() (string, error) {
 	return sv.value, nil
 }
 
+func (sv *StringValue) String() string {
+	return sv.value
+}
+
 func (sv *StringValue) ToParts() ([]MessagePart, error) {
 	return []MessagePart{
 		&StringPart{
@@ -113,6 +117,10 @@ func (sp *StringPart) Type() string {
 }
 
 func (sp *StringPart) Value() any {
+	return sp.value
+}
+
+func (sp *StringPart) Text() string {
 	return sp.value
 }
 

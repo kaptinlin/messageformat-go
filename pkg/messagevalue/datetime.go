@@ -1,14 +1,18 @@
 package messagevalue
 
 import (
-	"strings"
 	"time"
 
-	"github.com/dromara/carbon/v2"
+	"github.com/agentable/go-intl/datetimeformat"
+	"github.com/kaptinlin/messageformat-go/internal/intlbridge"
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 )
 
-// DateTimeValue implements MessageValue for date/time values
+// DateTimeValue implements MessageValue for date/time values.
+// Formatting is delegated to go-intl's datetimeformat (ECMA-402 compliant);
+// MF2's option shape is normalised by intlbridge.DateTimeOptions before being
+// handed off.
+//
 // TypeScript original code:
 //
 //	export interface MessageDateTime extends MessageValue<'datetime'> {
@@ -35,16 +39,12 @@ func NewDateTimeValue(value time.Time, locale, source string, options map[string
 
 // NewDateTimeValueWithDir creates a new datetime value with explicit direction
 func NewDateTimeValueWithDir(value time.Time, locale, source string, dir bidi.Direction, options map[string]any) *DateTimeValue {
-	if options == nil {
-		options = make(map[string]any)
-	}
-
 	return &DateTimeValue{
 		value:   value,
 		locale:  locale,
 		dir:     dir,
 		source:  source,
-		options: options,
+		options: cloneOptions(options),
 	}
 }
 
@@ -69,24 +69,44 @@ func (dtv *DateTimeValue) Options() map[string]any {
 }
 
 func (dtv *DateTimeValue) ToString() (string, error) {
-	// Format the datetime using the options
-	return dtv.formatDateTime()
+	formatter, ok := dtv.newFormatter()
+	if !ok {
+		return dtv.value.Format(time.RFC3339), nil
+	}
+	return formatter.Format(dtv.value), nil
 }
 
 func (dtv *DateTimeValue) ToParts() ([]MessagePart, error) {
-	// Format the datetime to get the string representation
-	formattedValue, err := dtv.formatDateTime()
-	if err != nil {
-		return nil, err
+	formatter, ok := dtv.newFormatter()
+	if !ok {
+		return []MessagePart{
+			&DateTimePart{
+				value:  dtv.value.Format(time.RFC3339),
+				source: dtv.source,
+				locale: dtv.locale,
+				dir:    dtv.dir,
+			},
+		}, nil
 	}
-
-	// Create a datetime part
+	intlParts := formatter.FormatToParts(dtv.value)
+	formatted := formatter.Format(dtv.value)
+	sub := make([]MessagePart, 0, len(intlParts))
+	for _, p := range intlParts {
+		sub = append(sub, &DateTimeSubPart{
+			partType: string(p.Type),
+			value:    p.Value,
+			source:   dtv.source,
+			locale:   dtv.locale,
+			dir:      dtv.dir,
+		})
+	}
 	return []MessagePart{
 		&DateTimePart{
-			value:  formattedValue,
+			value:  formatted,
 			source: dtv.source,
 			locale: dtv.locale,
 			dir:    dtv.dir,
+			parts:  sub,
 		},
 	}, nil
 }
@@ -95,143 +115,65 @@ func (dtv *DateTimeValue) ValueOf() (any, error) {
 	return dtv.value, nil
 }
 
-func (dtv *DateTimeValue) SelectKeys(keys []string) ([]string, error) {
-	// DateTime values typically don't support selection
-	return []string{}, nil
+func (dtv *DateTimeValue) Time() time.Time {
+	return dtv.value
 }
 
-// formatDateTime formats the datetime according to the options
-// Supports both old (dateStyle/timeStyle) and new (dateFields/timePrecision) options
-func (dtv *DateTimeValue) formatDateTime() (string, error) {
-	// Create carbon instance
-	c := carbon.CreateFromStdTime(dtv.value)
-
-	// Set locale if available, with fallback for unsupported locales
-	if dtv.locale != "" {
-		normalizedLocale := normalizeLocaleForCarbon(dtv.locale)
-		if normalizedLocale != "" {
-			c = c.SetLocale(normalizedLocale)
-		}
+// newFormatter builds a datetimeformat.DateTimeFormat from the MF2 options.
+// Falls back to a no-options formatter if go-intl rejects the typed options
+// (mirrors the graceful fallback behavior used by NumberValue).
+//
+// When no explicit timeZone option is provided, the formatter uses the input
+// value's own location. ECMA-402 defaults to the runtime time zone, which would
+// surprise callers that intentionally constructed UTC- or fixed-offset times;
+// MF2 senders typically expect the wall-clock the value was created with.
+func (dtv *DateTimeValue) newFormatter() (*datetimeformat.DateTimeFormat, bool) {
+	loc := intlbridge.ParseLocale(dtv.locale)
+	opts := intlbridge.DateTimeOptions(dtv.options)
+	if opts.TimeZone == "" {
+		opts.TimeZone = timeZoneFromValue(dtv.value)
 	}
-
-	// Check for new-style options (dateFields, timePrecision)
-	_, hasDateFields := dtv.options["dateFields"]
-	_, hasTimePrecision := dtv.options["timePrecision"]
-
-	// Use new formatting if new options are present
-	if hasDateFields || hasTimePrecision {
-		formatStr := buildDateTimeFormat(dtv.options)
-		return c.Format(formatStr), nil
+	if f, err := datetimeformat.New(loc, opts); err == nil {
+		return f, true
 	}
-
-	// Fall back to old style (dateStyle/timeStyle) for backward compatibility
-	dateStyle, hasDateStyle := dtv.options["dateStyle"].(string)
-	timeStyle, hasTimeStyle := dtv.options["timeStyle"].(string)
-
-	// Format based on options
-	switch {
-	case hasDateStyle && hasTimeStyle:
-		return FormatDateTimeWithStyle(*c, dateStyle, timeStyle), nil
-	case hasDateStyle:
-		return FormatDateWithStyle(*c, dateStyle), nil
-	case hasTimeStyle:
-		return FormatTimeWithStyle(*c, timeStyle), nil
-	default:
-		// Default formatting
-		return c.ToDateTimeString(), nil
+	if f, err := datetimeformat.New(loc, datetimeformat.Options{}); err == nil {
+		return f, true
 	}
+	return nil, false
 }
 
-// buildDateTimeFormat builds Carbon format string from new LDML 48 options
-func buildDateTimeFormat(options map[string]any) string {
-	var parts []string
-
-	// Date part (if dateFields is specified)
-	if dateFields, ok := options["dateFields"].(string); ok {
-		dateLength := "medium" // default
-		if dl, ok := options["dateLength"].(string); ok {
-			dateLength = dl
-		}
-		datePart := buildDateFormat(dateFields, dateLength)
-		if datePart != "" {
-			parts = append(parts, datePart)
-		}
+// timeZoneFromValue derives a datetimeformat-compatible time zone string from
+// a time.Time. Returns "" for the system-local location so the formatter falls
+// back to its own default; named locations and fixed-offset zones are passed
+// through directly.
+func timeZoneFromValue(t time.Time) string {
+	loc := t.Location()
+	if loc == nil || loc == time.Local {
+		return ""
 	}
-
-	// Time part (if timePrecision is specified)
-	if timePrecision, ok := options["timePrecision"].(string); ok {
-		timePart := buildTimeFormat(timePrecision)
-		if timePart != "" {
-			parts = append(parts, timePart)
-		}
+	name := loc.String()
+	if name == "" || name == "Local" {
+		return ""
 	}
-
-	// Timezone (if timeZoneStyle is specified)
-	if timeZoneStyle, ok := options["timeZoneStyle"].(string); ok {
-		switch timeZoneStyle {
-		case "long", "short":
-			parts = append(parts, "T") // Carbon: MST
-		}
-	}
-
-	if len(parts) == 0 {
-		return "Y-m-d H:i:s" // Default
-	}
-
-	return strings.Join(parts, " ")
+	return name
 }
 
-// buildDateFormat creates Carbon format string for date portion
-func buildDateFormat(fields string, length string) string {
-	fieldSet := make(map[string]bool)
-	for f := range strings.SplitSeq(fields, "-") {
-		fieldSet[f] = true
-	}
-
-	var parts []string
-
-	if fieldSet["weekday"] {
-		if length == "long" {
-			parts = append(parts, "l") // Monday
-		} else {
-			parts = append(parts, "D") // Mon
-		}
-		parts = append(parts, ",")
-	}
-
-	if fieldSet["year"] {
-		parts = append(parts, "Y") // 2006
-	}
-
-	if fieldSet["month"] {
-		switch length {
-		case "long":
-			parts = append(parts, "F") // January
-		case "short":
-			parts = append(parts, "n") // 1
-		default: // medium
-			parts = append(parts, "M") // Jan
-		}
-	}
-
-	if fieldSet["day"] {
-		parts = append(parts, "j") // 2
-	}
-
-	return strings.Join(parts, " ")
+// DateTimeSubPart represents a sub-part of a formatted datetime (year, month,
+// hour, literal, etc.), matching the parts emitted by go-intl.
+type DateTimeSubPart struct {
+	partType string
+	value    string
+	source   string
+	locale   string
+	dir      bidi.Direction
 }
 
-// buildTimeFormat creates Carbon format string for time portion
-func buildTimeFormat(precision string) string {
-	switch precision {
-	case "hour":
-		return "g A" // 3 PM
-	case "second":
-		return "g:i:s A" // 3:04:05 PM
-	default: // minute
-		return "g:i A" // 3:04 PM
-	}
-}
+func (dsp *DateTimeSubPart) Type() string        { return dsp.partType }
+func (dsp *DateTimeSubPart) Value() any          { return dsp.value }
+func (dsp *DateTimeSubPart) Text() string        { return dsp.value }
+func (dsp *DateTimeSubPart) Source() string      { return dsp.source }
+func (dsp *DateTimeSubPart) Locale() string      { return dsp.locale }
+func (dsp *DateTimeSubPart) Dir() bidi.Direction { return dsp.dir }
 
 // DateTimePart implements MessagePart for datetime parts
 type DateTimePart struct {
@@ -239,6 +181,7 @@ type DateTimePart struct {
 	source string
 	locale string
 	dir    bidi.Direction
+	parts  []MessagePart
 }
 
 func (dtp *DateTimePart) Type() string {
@@ -246,6 +189,10 @@ func (dtp *DateTimePart) Type() string {
 }
 
 func (dtp *DateTimePart) Value() any {
+	return dtp.value
+}
+
+func (dtp *DateTimePart) Text() string {
 	return dtp.value
 }
 
@@ -261,88 +208,6 @@ func (dtp *DateTimePart) Dir() bidi.Direction {
 	return dtp.dir
 }
 
-// Helper functions for formatting (these should be moved to a shared location)
-func FormatDateTimeWithStyle(c carbon.Carbon, dateStyle, timeStyle string) string {
-	dateFormat := GetDateFormat(dateStyle)
-	timeFormat := GetTimeFormat(timeStyle)
-	return c.Format(dateFormat + " " + timeFormat)
-}
-
-func FormatDateWithStyle(c carbon.Carbon, style string) string {
-	format := GetDateFormat(style)
-	return c.Format(format)
-}
-
-func FormatTimeWithStyle(c carbon.Carbon, style string) string {
-	format := GetTimeFormat(style)
-	return c.Format(format)
-}
-
-func GetDateFormat(style string) string {
-	switch style {
-	case "full":
-		return "l, F j, Y" // Monday, January 2, 2006
-	case "long":
-		return "F j, Y" // January 2, 2006
-	case "medium":
-		return "M j, Y" // Jan 2, 2006
-	case "short":
-		return "n/j/y" // 1/2/06
-	default:
-		return "M j, Y" // default to medium
-	}
-}
-
-func GetTimeFormat(style string) string {
-	switch style {
-	case "full":
-		return "g:i:s A T" // 3:04:05 PM MST
-	case "long":
-		return "g:i:s A T" // 3:04:05 PM MST
-	case "medium":
-		return "g:i:s A" // 3:04:05 PM
-	case "short":
-		return "g:i A" // 3:04 PM
-	default:
-		return "g:i A" // default to short
-	}
-}
-
-// normalizeLocaleForCarbon normalizes locale strings for Carbon compatibility
-// Carbon doesn't support all locale formats, so we need to normalize them
-func normalizeLocaleForCarbon(locale string) string {
-	// Handle common locale patterns
-	switch locale {
-	case "en-US", "en_US":
-		return "en"
-	case "zh-CN", "zh_CN":
-		return "zh"
-	case "zh-TW", "zh_TW":
-		return "zh"
-	case "es-ES", "es_ES":
-		return "es"
-	case "fr-FR", "fr_FR":
-		return "fr"
-	case "de-DE", "de_DE":
-		return "de"
-	case "ja-JP", "ja_JP":
-		return "ja"
-	case "ko-KR", "ko_KR":
-		return "ko"
-	case "pt-BR", "pt_BR":
-		return "pt"
-	case "ru-RU", "ru_RU":
-		return "ru"
-	case "ar-SA", "ar_SA":
-		return "ar"
-	default:
-		// For other locales, try to extract the language part
-		if len(locale) >= 3 {
-			if locale[2] == '-' || locale[2] == '_' {
-				return locale[:2]
-			}
-		}
-		// Return as-is if it's already a simple language code
-		return locale
-	}
+func (dtp *DateTimePart) Parts() []MessagePart {
+	return dtp.parts
 }

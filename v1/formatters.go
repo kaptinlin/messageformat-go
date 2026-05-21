@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
+	"github.com/agentable/go-intl/datetimeformat"
+	"github.com/agentable/go-intl/numberformat"
+	"github.com/kaptinlin/messageformat-go/internal/intlbridge"
 )
 
 // NumberFmt formats numbers with specified parameters
@@ -62,13 +63,14 @@ func NumberFmt(value any, lc string, arg string, defaultCurrency string) (string
 	case "currency":
 		return NumberCurrency(numValue, lc, currency), nil
 	default:
-		tag, _ := language.Parse(lc)
-		printer := message.NewPrinter(tag)
-		return printer.Sprintf("%.10g", numValue), nil
+		return formatNumberDefault(numValue, lc), nil
 	}
 }
 
-// NumberCurrency formats a number as currency
+// NumberCurrency formats a number as currency. Mirrors the TypeScript reference,
+// which pins fraction digits at 2 regardless of CLDR's per-currency default
+// (e.g. JPY's CLDR default of 0). Tests rely on "¥9.50" rather than "¥10".
+//
 // TypeScript original code:
 // export const numberCurrency = (
 //
@@ -90,27 +92,17 @@ func NumberCurrency(value any, lc string, currencyCode string) string {
 		return fmt.Sprintf("%v", value)
 	}
 
-	tag, err := language.Parse(lc)
+	loc := intlbridge.ParseLocale(lc)
+	nf, err := numberformat.New(loc, numberformat.Options{
+		Style:                 numberformat.CurrencyStyle,
+		Currency:              numberformat.CurrencyCode(currencyCode),
+		MinimumFractionDigits: intPtr(2),
+		MaximumFractionDigits: intPtr(2),
+	})
 	if err != nil {
-		tag = language.English
+		return fmt.Sprintf("%v", value)
 	}
-
-	printer := message.NewPrinter(tag)
-
-	// Simple currency symbol mapping - this should be enhanced for full locale support
-	symbol := "$" // default USD
-	switch strings.ToUpper(currencyCode) {
-	case "EUR":
-		symbol = "€"
-	case "GBP":
-		symbol = "£"
-	case "JPY":
-		symbol = "¥"
-	case "USD":
-		symbol = "$"
-	}
-
-	return printer.Sprintf("%s%.2f", symbol, numValue)
+	return nf.Format(numberformat.Float(numValue))
 }
 
 // NumberInteger formats a number as integer
@@ -124,17 +116,19 @@ func NumberInteger(value any, lc string) string {
 		return fmt.Sprintf("%v", value)
 	}
 
-	tag, err := language.Parse(lc)
+	loc := intlbridge.ParseLocale(lc)
+	nf, err := numberformat.New(loc, numberformat.Options{
+		MaximumFractionDigits: intPtr(0),
+	})
 	if err != nil {
-		tag = language.English
+		return fmt.Sprintf("%v", value)
 	}
-
-	// Use locale-specific integer formatting
-	printer := message.NewPrinter(tag)
-	return printer.Sprintf("%.0f", numValue)
+	return nf.Format(numberformat.Float(numValue))
 }
 
-// NumberPercent formats a number as percentage
+// NumberPercent formats a number as percentage. The input is the fractional
+// proportion (0.5 → "50%") to match Intl.NumberFormat's percent style.
+//
 // TypeScript original code:
 // export const numberPercent = (value: number, lc: string | string[]) =>
 //
@@ -145,18 +139,40 @@ func NumberPercent(value any, lc string) string {
 		return fmt.Sprintf("%v", value)
 	}
 
-	tag, err := language.Parse(lc)
+	loc := intlbridge.ParseLocale(lc)
+	nf, err := numberformat.New(loc, numberformat.Options{
+		Style: numberformat.PercentStyle,
+	})
 	if err != nil {
-		tag = language.English
+		return fmt.Sprintf("%v", value)
 	}
-
-	// Convert to percentage (multiply by 100)
-	percentage := numValue * 100
-	printer := message.NewPrinter(tag)
-	return printer.Sprintf("%.0f%%", percentage)
+	return nf.Format(numberformat.Float(numValue))
 }
 
-// DateFormatter formats dates with locale-specific formatting
+// formatNumberDefault formats with numberformat's default ECMA-402 options
+// (locale-aware grouping, up to 3 fraction digits). Mirrors Intl.NumberFormat
+// with no overrides — the TS reference for NumberFmt's default branch.
+func formatNumberDefault(value float64, lc string) string {
+	loc := intlbridge.ParseLocale(lc)
+	nf, err := numberformat.New(loc, numberformat.Options{})
+	if err != nil {
+		return strconv.FormatFloat(value, 'g', -1, 64)
+	}
+	return nf.Format(numberformat.Float(value))
+}
+
+func intPtr(v int) *int {
+	return &v
+}
+
+// DateFormatter formats dates with locale-specific formatting using go-intl's
+// datetimeformat. Maps the v1 size enum onto ECMA-402 DateStyle:
+//
+//	"short"  → numeric Y/M/D (e.g. "5/4/2026" in en-US, preserving 4-digit year)
+//	""       → DateStyle=medium (default)
+//	"long"   → DateStyle=long
+//	"full"   → DateStyle=full
+//
 // TypeScript original code:
 // export function date(
 //
@@ -182,111 +198,21 @@ func NumberPercent(value any, lc string) string {
 //	  return new Date(value).toLocaleDateString(lc, o);
 //	}
 func DateFormatter(value any, lc string, size string) (string, error) {
-	var t time.Time
-
-	switch v := value.(type) {
-	case int64:
-		// Unix timestamp in milliseconds
-		t = time.Unix(v/1000, (v%1000)*1000000)
-	case int:
-		t = time.Unix(int64(v)/1000, (int64(v)%1000)*1000000)
-	case float64:
-		t = time.Unix(int64(v)/1000, (int64(v)%1000)*1000000)
-	case string:
-		// Parse string as date - try multiple common formats
-		var err error
-		formats := []string{
-			time.RFC3339,  // "2006-01-02T15:04:05Z07:00"
-			time.DateOnly, // "2023-12-25"
-			"01/02/2006",  // "12/25/2023"
-			time.DateTime, // "2023-12-25 00:00:00"
-		}
-
-		for _, format := range formats {
-			if t, err = time.Parse(format, v); err == nil {
-				break
-			}
-		}
-
-		if err != nil {
-			// Try parsing as Unix timestamp
-			if timestamp, parseErr := strconv.ParseInt(v, 10, 64); parseErr == nil {
-				t = time.Unix(timestamp/1000, (timestamp%1000)*1000000)
-			} else {
-				return "", WrapInvalidDateValue(v)
-			}
-		}
-	case time.Time:
-		t = v
-	default:
-		return "", WrapInvalidType(fmt.Sprintf("%T", value))
+	t, err := coerceDateInput(value)
+	if err != nil {
+		return "", err
 	}
-
-	// Format based on size parameter - matching TypeScript behavior
-	switch size {
-	case "short":
-		return t.Format("1/2/2006"), nil
-	case "long":
-		return t.Format("January 2, 2006"), nil
-	case "full":
-		return t.Format("Monday, January 2, 2006"), nil
-	default: // "default"
-		return t.Format("Jan 2, 2006"), nil
-	}
+	return formatDateTimeWithSize(t, lc, size, false)
 }
 
 // TimeFormatter formats time values
 // TypeScript original code: Similar to date formatter but for time
 func TimeFormatter(value any, lc string, size string) (string, error) {
-	var t time.Time
-
-	switch v := value.(type) {
-	case int64:
-		t = time.Unix(v/1000, (v%1000)*1000000)
-	case int:
-		t = time.Unix(int64(v)/1000, (int64(v)%1000)*1000000)
-	case float64:
-		t = time.Unix(int64(v)/1000, (int64(v)%1000)*1000000)
-	case string:
-		// Parse string as time - try multiple common formats
-		var err error
-		formats := []string{
-			time.RFC3339,  // "2006-01-02T15:04:05Z07:00"
-			time.DateOnly, // "2023-12-25"
-			"01/02/2006",  // "12/25/2023"
-			time.DateTime, // "2023-12-25 00:00:00"
-		}
-
-		for _, format := range formats {
-			if t, err = time.Parse(format, v); err == nil {
-				break
-			}
-		}
-
-		if err != nil {
-			if timestamp, parseErr := strconv.ParseInt(v, 10, 64); parseErr == nil {
-				t = time.Unix(timestamp/1000, (timestamp%1000)*1000000)
-			} else {
-				return "", WrapInvalidTimeValue(v)
-			}
-		}
-	case time.Time:
-		t = v
-	default:
-		return "", WrapInvalidType(fmt.Sprintf("%T", value))
+	t, err := coerceTimeInput(value)
+	if err != nil {
+		return "", err
 	}
-
-	// Format based on size parameter
-	switch size {
-	case "short":
-		return t.Format("3:04 PM"), nil
-	case "long":
-		return t.Format("3:04:05 PM MST"), nil
-	case "full":
-		return t.Format("3:04:05 PM MST"), nil
-	default: // "default"
-		return t.Format("3:04:05 PM"), nil
-	}
+	return formatDateTimeWithSize(t, lc, size, true)
 }
 
 // GetFormatter returns a formatter function by name
@@ -303,4 +229,124 @@ func GetFormatter(name string) func(any, string, string) (string, error) {
 	default:
 		return nil
 	}
+}
+
+// coerceDateInput parses a v1 date input (string, milliseconds-since-epoch, or
+// time.Time) into a time.Time. WrapInvalidDateValue is returned for strings the
+// known formats can't parse.
+func coerceDateInput(value any) (time.Time, error) {
+	return coerceDateTimeInput(value, WrapInvalidDateValue)
+}
+
+// coerceTimeInput is like coerceDateInput but returns ErrInvalidTimeValue.
+func coerceTimeInput(value any) (time.Time, error) {
+	return coerceDateTimeInput(value, WrapInvalidTimeValue)
+}
+
+func coerceDateTimeInput(value any, wrapInvalid func(any) error) (time.Time, error) {
+	switch v := value.(type) {
+	case int64:
+		return time.UnixMilli(v), nil
+	case int:
+		return time.UnixMilli(int64(v)), nil
+	case float64:
+		return time.UnixMilli(int64(v)), nil
+	case string:
+		formats := []string{
+			time.RFC3339,
+			time.DateOnly,
+			"01/02/2006",
+			time.DateTime,
+		}
+		for _, format := range formats {
+			if t, err := time.Parse(format, v); err == nil {
+				return t, nil
+			}
+		}
+		if ts, err := strconv.ParseInt(v, 10, 64); err == nil {
+			return time.UnixMilli(ts), nil
+		}
+		return time.Time{}, wrapInvalid(v)
+	case time.Time:
+		return v, nil
+	default:
+		return time.Time{}, WrapInvalidType(fmt.Sprintf("%T", value))
+	}
+}
+
+// formatDateTimeWithSize maps the v1 size enum to datetimeformat options and
+// invokes go-intl. The isTime flag toggles between date and time field sets.
+func formatDateTimeWithSize(t time.Time, lc, size string, isTime bool) (string, error) {
+	loc := intlbridge.ParseLocale(lc)
+	opts := dateTimeOptionsForSize(size, isTime)
+	if opts.TimeZone == "" {
+		// Preserve the input time's location so date-only formatting doesn't
+		// slide a day in non-UTC runtimes, and time-only formatting reflects
+		// the caller's intended wall clock.
+		opts.TimeZone = timeZoneName(t.Location())
+	}
+	f, err := datetimeformat.New(loc, opts)
+	if err != nil {
+		return "", err
+	}
+	return f.Format(t), nil
+}
+
+// dateTimeOptionsForSize encodes the v1 size→ECMA-402 mapping. Time formats are
+// built from explicit field styles so the test fixtures, which target Go's
+// `time.Format("3:04 PM")` shape, line up with CLDR's actual patterns.
+func dateTimeOptionsForSize(size string, isTime bool) datetimeformat.Options {
+	if isTime {
+		switch size {
+		case "short":
+			return datetimeformat.Options{
+				Hour:   datetimeformat.NumericFieldStyle,
+				Minute: datetimeformat.TwoDigitFieldStyle,
+			}
+		case "long", "full":
+			return datetimeformat.Options{
+				Hour:         datetimeformat.NumericFieldStyle,
+				Minute:       datetimeformat.TwoDigitFieldStyle,
+				Second:       datetimeformat.TwoDigitFieldStyle,
+				TimeZoneName: datetimeformat.ShortTimeZoneName,
+			}
+		default:
+			return datetimeformat.Options{
+				Hour:   datetimeformat.NumericFieldStyle,
+				Minute: datetimeformat.TwoDigitFieldStyle,
+				Second: datetimeformat.TwoDigitFieldStyle,
+			}
+		}
+	}
+	switch size {
+	case "short":
+		// Numeric Y/M/D mirrors the original Go behavior ("5/4/2026") rather
+		// than ECMA-402 DateStyle=short, which uses 2-digit years in en-US.
+		return datetimeformat.Options{
+			Year:  datetimeformat.NumericFieldStyle,
+			Month: datetimeformat.NumericMonthStyle,
+			Day:   datetimeformat.NumericFieldStyle,
+		}
+	case "long":
+		return datetimeformat.Options{DateStyle: datetimeformat.LongDateTimeStyle}
+	case "full":
+		return datetimeformat.Options{DateStyle: datetimeformat.FullDateTimeStyle}
+	default:
+		return datetimeformat.Options{DateStyle: datetimeformat.MediumDateTimeStyle}
+	}
+}
+
+// timeZoneName extracts a datetimeformat-compatible TimeZone string from a
+// time.Location. Returns "" for the system-local location so go-intl falls
+// back to its own default; named locations and fixed-offset zones are passed
+// through directly.
+func timeZoneName(loc *time.Location) string {
+	if loc == nil || loc == time.Local {
+		return ""
+	}
+	name := loc.String()
+	if name == "" || name == "Local" {
+		return ""
+	}
+	return name
 }

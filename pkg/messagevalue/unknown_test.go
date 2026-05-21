@@ -72,10 +72,8 @@ func TestUnknownValue(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedValueOf, value)
 
-			// Test SelectKeys (should return empty)
-			keys, err := uv.SelectKeys([]string{"one", "other"})
-			require.NoError(t, err)
-			assert.Empty(t, keys)
+			_, ok := any(uv).(Selector)
+			assert.False(t, ok)
 
 			// Test ToParts
 			parts, err := uv.ToParts()

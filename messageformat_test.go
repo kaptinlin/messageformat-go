@@ -230,6 +230,22 @@ func TestNewWithDataModelMessage(t *testing.T) {
 	assert.Equal(t, []string{"en"}, mf.locales)
 }
 
+func TestCompileSnapshotsDataModel(t *testing.T) {
+	pattern := datamodel.NewPattern([]datamodel.PatternElement{
+		datamodel.NewTextElement("before"),
+	})
+	message := datamodel.NewPatternMessage(nil, pattern, "")
+
+	mf, err := Compile([]string{"en"}, message)
+	require.NoError(t, err)
+
+	message.Pattern().Elements()[0] = datamodel.NewTextElement("after")
+
+	got, err := mf.Format(map[string]any{})
+	require.NoError(t, err)
+	assert.Equal(t, "before", got)
+}
+
 func TestNewLocalesDefensiveCopy(t *testing.T) {
 	locales := []string{"en", "fr"}
 	mf, err := Parse(locales, "Hello")
@@ -462,7 +478,7 @@ func TestFormatFocusedBehaviors(t *testing.T) {
 	t.Run("custom part non string value is formatted", func(t *testing.T) {
 		t.Parallel()
 
-		custom := func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+		custom := func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 			return customValue{part: testPart{typ: "custom", value: 42}}
 		}
 		mf, err := Parse([]string{"en"}, "Value {$value :custom}", WithFunction("custom", custom))
@@ -476,7 +492,7 @@ func TestFormatFocusedBehaviors(t *testing.T) {
 	t.Run("ToParts errors produce fallback part and callback", func(t *testing.T) {
 		t.Parallel()
 
-		custom := func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+		custom := func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 			return failingValue{}
 		}
 		mf, err := Parse([]string{"en"}, "Value {$value :custom}", WithFunction("custom", custom))
@@ -646,7 +662,7 @@ func TestDefaultFunctions(t *testing.T) {
 
 // TestCustomFunctionsAPI tests custom function integration
 func TestCustomFunctionsAPI(t *testing.T) {
-	customFunc := func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+	customFunc := func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 		return messagevalue.NewStringValue("custom", "en", "custom")
 	}
 
@@ -1001,7 +1017,7 @@ func TestTypeScriptCompatibility(t *testing.T) {
 	t.Run("function registry behavior", func(t *testing.T) {
 		// Test that function registry works like TypeScript
 		customFuncs := map[string]functions.MessageFunction{
-			"test": func(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+			"test": func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 				return messagevalue.NewStringValue("test-result", "", ctx.Locales()[0])
 			},
 		}
@@ -1046,15 +1062,16 @@ func TestIndexExports(t *testing.T) {
 		assert.True(t, IsLiteral(literal))
 	})
 
-	t.Run("DefaultFunctions export", func(t *testing.T) {
-		assert.NotNil(t, DefaultFunctions)
-		assert.Contains(t, DefaultFunctions, "string")
-		assert.Contains(t, DefaultFunctions, "number")
-		assert.Contains(t, DefaultFunctions, "integer")
+	t.Run("DefaultFunctionMap export", func(t *testing.T) {
+		defaults := DefaultFunctionMap()
+		assert.NotNil(t, defaults)
+		assert.Contains(t, defaults, "string")
+		assert.Contains(t, defaults, "number")
+		assert.Contains(t, defaults, "integer")
 	})
 
-	t.Run("DraftFunctions export", func(t *testing.T) {
-		assert.NotNil(t, DraftFunctions)
+	t.Run("DraftFunctionMap export", func(t *testing.T) {
+		assert.NotNil(t, DraftFunctionMap())
 	})
 }
 
@@ -1119,14 +1136,17 @@ func TestPatternSelectionFixes(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "simple variable selector without $",
-			source:   ".match $status\nactive {{User is active}}\ninactive {{User is inactive}}\n* {{Unknown status}}",
+			// MF2 spec requires an explicit selector annotation; the previous
+			// lenient form ".match $status ..." would now raise
+			// missing-selector-annotation, so we annotate via .input.
+			name:     "simple variable selector",
+			source:   ".input {$status :string}\n.match $status\nactive {{User is active}}\ninactive {{User is inactive}}\n* {{Unknown status}}",
 			values:   map[string]any{"status": "active"},
 			expected: "User is active",
 		},
 		{
 			name:     "simple variable selector with fallback",
-			source:   ".match $status\nactive {{User is active}}\ninactive {{User is inactive}}\n* {{Unknown status}}",
+			source:   ".input {$status :string}\n.match $status\nactive {{User is active}}\ninactive {{User is inactive}}\n* {{Unknown status}}",
 			values:   map[string]any{"status": "other"},
 			expected: "Unknown status",
 		},
@@ -1250,7 +1270,7 @@ func TestMissingVariableHandlingFixes(t *testing.T) {
 		},
 		{
 			name:     "missing variable in selector falls back to catchall",
-			source:   ".match $status\nactive {{User is active}}\n* {{Unknown status}}",
+			source:   ".input {$status :string}\n.match $status\nactive {{User is active}}\n* {{Unknown status}}",
 			values:   map[string]any{}, // missing 'status'
 			expected: "Unknown status",
 		},

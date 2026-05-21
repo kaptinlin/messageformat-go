@@ -7,7 +7,7 @@ These functions are used inside expressions such as:
 ```text
 {$value :number}
 {$date :datetime dateStyle=full}
-{$price :number style=currency currency=USD}
+{$price :currency currency=USD}
 ```
 
 ## Function Model
@@ -15,8 +15,8 @@ These functions are used inside expressions such as:
 A formatting expression has three parts:
 
 - operand: `$value` or a literal such as `|hello|`
-- annotation: `:number`, `:string`, `:datetime`
-- options: `style=currency`, `currency=USD`
+- annotation: `:number`, `:currency`, `:string`, `:datetime`
+- options: `currency=USD`
 
 General form:
 
@@ -155,7 +155,7 @@ Common options for numeric formatting:
 Example:
 
 ```text
-{$amount :number style=currency currency=USD minimumFractionDigits=2}
+{$amount :currency currency=USD fractionDigits=2}
 ```
 
 ## Date and Time Options
@@ -181,7 +181,7 @@ Formatting depends on the active locale list passed to `messageformat.Parse(...)
 ```go
 mf, err := messageformat.Parse(
 	[]string{"de-DE", "en"},
-	"Price: {$amount :number style=currency currency=EUR}",
+	"Price: {$amount :currency currency=EUR}",
 )
 if err != nil {
 	log.Fatal(err)

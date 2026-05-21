@@ -3,10 +3,10 @@ package messagevalue
 import (
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/dromara/carbon/v2"
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -140,8 +140,9 @@ func TestDateTimeValueAdditionalBehaviors(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, formatted, "2006")
 		assert.Contains(t, formatted, "January")
-		assert.Contains(t, formatted, "3:04:05 PM")
-		assert.Contains(t, formatted, "3:04:05 PM T")
+		assert.Contains(t, formatted, "Monday")
+		assert.Contains(t, formatted, "GMT")
+		assert.Contains(t, strings.ReplaceAll(formatted, "\u202f", " "), "3:04:05 PM")
 
 		parts, err := dtv.ToParts()
 		require.NoError(t, err)
@@ -186,17 +187,21 @@ func TestDateTimeValueAdditionalBehaviors(t *testing.T) {
 		dateOnly := NewDateTimeValue(testTime, "en-US", "source", map[string]any{"dateFields": "year-month-day", "dateLength": "short"})
 		formatted, err := dateOnly.ToString()
 		require.NoError(t, err)
-		assert.Equal(t, "2006 1 2", formatted)
+		assert.Equal(t, "1/2/2006", formatted)
 
 		timeOnly := NewDateTimeValue(testTime, "en-US", "source", map[string]any{"timePrecision": "minute", "timeZoneStyle": "none"})
 		formatted, err = timeOnly.ToString()
 		require.NoError(t, err)
-		assert.Equal(t, "3:04 PM", formatted)
+		assert.Equal(t, "3:04\u202fPM", formatted)
 
+		// Invalid dateFields/timePrecision drop those expansions, leaving only the
+		// timeZoneStyle hint. go-intl pulls in default date+time fields when no
+		// explicit field is set, so the output still contains a date and time.
 		defaulted := NewDateTimeValue(testTime, "en-US", "source", map[string]any{"dateFields": 123, "timePrecision": 123, "timeZoneStyle": "long"})
 		formatted, err = defaulted.ToString()
 		require.NoError(t, err)
-		assert.Equal(t, "T", formatted)
+		assert.Contains(t, formatted, "2006")
+		assert.Contains(t, formatted, "GMT")
 	})
 
 	t.Run("old style formatting supports date only time only and default", func(t *testing.T) {
@@ -210,28 +215,22 @@ func TestDateTimeValueAdditionalBehaviors(t *testing.T) {
 		timeOnly := NewDateTimeValue(testTime, "en-US", "source", map[string]any{"timeStyle": "long"})
 		formatted, err = timeOnly.ToString()
 		require.NoError(t, err)
-		assert.Equal(t, "3:04:05 PM T", formatted)
+		assert.Equal(t, "3:04:05\u202fPM GMT", formatted)
 
 		defaulted := NewDateTimeValue(testTime, "en-US", "source", nil)
 		formatted, err = defaulted.ToString()
 		require.NoError(t, err)
-		assert.Equal(t, "2006-01-02 15:04:05", formatted)
+		assert.Equal(t, "1/2/2006", formatted)
 	})
 }
 
-func TestFormatTimeWithStyle(t *testing.T) {
+func TestTimePrecisionHour(t *testing.T) {
 	t.Parallel()
 
-	c := carbon.CreateFromStdTime(time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC))
-
-	assert.Equal(t, "3:04 PM", FormatTimeWithStyle(*c, "short"))
-	assert.Equal(t, "3:04:05 PM", FormatTimeWithStyle(*c, "medium"))
-	assert.Equal(t, "3:04:05 PM T", FormatTimeWithStyle(*c, "full"))
-
 	hourValue := NewDateTimeValue(time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC), "en-US", "source", map[string]any{"timePrecision": "hour"})
-	formatted, err := hourValue.formatDateTime()
+	formatted, err := hourValue.ToString()
 	require.NoError(t, err)
-	assert.Equal(t, "3 PM", formatted)
+	assert.Equal(t, "3\u202fPM", formatted)
 }
 
 func TestFallbackValueWithDir(t *testing.T) {
@@ -276,6 +275,16 @@ func TestNumberValueSelectionBehaviors(t *testing.T) {
 		keys, err := nv.SelectKeys([]string{"one", "other"})
 		require.NoError(t, err)
 		assert.Empty(t, keys)
+	})
+
+	t.Run("cardinal selection uses cardinal categories", func(t *testing.T) {
+		t.Parallel()
+
+		nv := NewNumberValueWithSelection(1, "en", "source", bidi.DirAuto, map[string]any{"select": "cardinal"}, true)
+		keys, err := nv.SelectKeys([]string{"one", "two", "few", "other"})
+		require.NoError(t, err)
+		require.Len(t, keys, 1)
+		assert.Equal(t, "one", keys[0])
 	})
 
 	t.Run("ordinal selection uses ordinal categories", func(t *testing.T) {
@@ -363,6 +372,41 @@ func TestNumberValueSelectionBehaviors(t *testing.T) {
 		require.Len(t, keys, 1)
 		assert.Equal(t, "1.5", keys[0])
 	})
+
+	t.Run("cardinal selection uses locale-specific CLDR rules", func(t *testing.T) {
+		t.Parallel()
+
+		// Russian cardinal categories: one (1, 21, ...), few (2-4, 22-24, ...),
+		// many (0, 5-20, ...). The old toy implementation always returned
+		// "other" for non-English locales.
+		tests := []struct {
+			name   string
+			locale string
+			value  int
+			want   string
+		}{
+			{name: "russian 1 is one", locale: "ru", value: 1, want: "one"},
+			{name: "russian 2 is few", locale: "ru", value: 2, want: "few"},
+			{name: "russian 5 is many", locale: "ru", value: 5, want: "many"},
+			{name: "russian 21 is one", locale: "ru", value: 21, want: "one"},
+			{name: "polish 2 is few", locale: "pl", value: 2, want: "few"},
+			{name: "polish 5 is many", locale: "pl", value: 5, want: "many"},
+			{name: "arabic 0 is zero", locale: "ar", value: 0, want: "zero"},
+			{name: "arabic 2 is two", locale: "ar", value: 2, want: "two"},
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				nv := NewNumberValueWithSelection(tc.value, tc.locale, "source", bidi.DirAuto, nil, true)
+				keys, err := nv.SelectKeys([]string{"zero", "one", "two", "few", "many", "other"})
+				require.NoError(t, err)
+				require.Len(t, keys, 1)
+				assert.Equal(t, tc.want, keys[0])
+			})
+		}
+	})
 }
 
 func TestNumberValueFormattingAndParts(t *testing.T) {
@@ -416,15 +460,19 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 		assert.Equal(t, bidi.DirRTL, numberPart.Dir())
 
 		subParts := numberPart.Parts()
-		require.Len(t, subParts, 4)
+		require.Len(t, subParts, 6)
 		assert.Equal(t, "minusSign", subParts[0].Type())
 		assert.Equal(t, "-", fmt.Sprint(subParts[0].Value()))
 		assert.Equal(t, "integer", subParts[1].Type())
-		assert.Equal(t, "1,234", fmt.Sprint(subParts[1].Value()))
-		assert.Equal(t, "decimal", subParts[2].Type())
-		assert.Equal(t, ".", fmt.Sprint(subParts[2].Value()))
-		assert.Equal(t, "fraction", subParts[3].Type())
-		assert.Equal(t, "5", fmt.Sprint(subParts[3].Value()))
+		assert.Equal(t, "1", fmt.Sprint(subParts[1].Value()))
+		assert.Equal(t, "group", subParts[2].Type())
+		assert.Equal(t, ",", fmt.Sprint(subParts[2].Value()))
+		assert.Equal(t, "integer", subParts[3].Type())
+		assert.Equal(t, "234", fmt.Sprint(subParts[3].Value()))
+		assert.Equal(t, "decimal", subParts[4].Type())
+		assert.Equal(t, ".", fmt.Sprint(subParts[4].Value()))
+		assert.Equal(t, "fraction", subParts[5].Type())
+		assert.Equal(t, "5", fmt.Sprint(subParts[5].Value()))
 		assert.Equal(t, "number-source", subParts[0].Source())
 		assert.Equal(t, "en", subParts[0].Locale())
 		assert.Equal(t, bidi.DirRTL, subParts[0].Dir())
@@ -467,7 +515,7 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 		}{
 			{name: "missing currency", options: map[string]any{"style": "currency"}, want: "42"},
 			{name: "non string currency", options: map[string]any{"style": "currency", "currency": 123}, want: "42"},
-			{name: "unsupported currency", options: map[string]any{"style": "currency", "currency": "ZZZ"}, want: "42.00ZZZ"},
+			{name: "unsupported currency", options: map[string]any{"style": "currency", "currency": "ZZZ"}, want: "ZZZ42.00"},
 		}
 
 		for _, tc := range tests {
@@ -495,7 +543,7 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 			{name: "yen", currency: "JPY", want: "Japanese yen"},
 			{name: "yuan", currency: "CNY", want: "Chinese yuan"},
 			{name: "rupee", currency: "INR", want: "Indian rupees"},
-			{name: "shekel", currency: "ILS", want: "Israeli shekels"},
+			{name: "shekel", currency: "ILS", want: "Israeli new shekels"},
 		}
 
 		for _, tc := range tests {
@@ -567,9 +615,13 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 		assert.Equal(t, formatted, numberPart.Value())
 		subParts := numberPart.Parts()
 		require.NotEmpty(t, subParts)
+		var currencyValue string
 		for _, part := range subParts {
-			assert.NotEqual(t, "currency", part.Type())
+			if part.Type() == "currency" {
+				currencyValue = fmt.Sprint(part.Value())
+			}
 		}
+		assert.Equal(t, "USD", currencyValue)
 	})
 
 	t.Run("percent parts expose sign decimal fraction and percent symbol", func(t *testing.T) {
@@ -612,7 +664,8 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 		fractionPercent := NewNumberValue(0.125, "en", "percent-source", map[string]any{"style": "percent"})
 		formatted, err = fractionPercent.ToString()
 		require.NoError(t, err)
-		assert.Equal(t, "12.5%", formatted)
+		// ECMA-402: percent style defaults to maximumFractionDigits=0, so 12.5% rounds to 13%.
+		assert.Equal(t, "13%", formatted)
 
 		negativeZero := NewNumberValue(math.Copysign(0, -1), "en", "percent-source", map[string]any{"style": "percent", "signDisplay": "negative"})
 		formatted, err = negativeZero.ToString()
@@ -691,13 +744,14 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 			unit string
 			want string
 		}{
-			{name: "meter", unit: "meter", want: "1 meters"},
-			{name: "kilometer", unit: "kilometer", want: "1 kilometers"},
-			{name: "gram", unit: "gram", want: "1 grams"},
-			{name: "kilogram", unit: "kilogram", want: "1 kilograms"},
-			{name: "second", unit: "second", want: "1 seconds"},
-			{name: "minute", unit: "minute", want: "1 minutes"},
-			{name: "hour", unit: "hour", want: "1 hours"},
+			// CLDR long form uses singular for count=1.
+			{name: "meter", unit: "meter", want: "1 meter"},
+			{name: "kilometer", unit: "kilometer", want: "1 kilometer"},
+			{name: "gram", unit: "gram", want: "1 gram"},
+			{name: "kilogram", unit: "kilogram", want: "1 kilogram"},
+			{name: "second", unit: "second", want: "1 second"},
+			{name: "minute", unit: "minute", want: "1 minute"},
+			{name: "hour", unit: "hour", want: "1 hour"},
 		}
 
 		for _, tt := range longUnits {
@@ -716,13 +770,16 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 			unit string
 			want string
 		}{
+			// CLDR short patterns for en.
 			{name: "kilometer", unit: "kilometer", want: "1 km"},
 			{name: "gram", unit: "gram", want: "1 g"},
 			{name: "kilogram", unit: "kilogram", want: "1 kg"},
-			{name: "second", unit: "second", want: "1 s"},
+			{name: "second", unit: "second", want: "1 sec"},
 			{name: "minute", unit: "minute", want: "1 min"},
-			{name: "hour", unit: "hour", want: "1 h"},
-			{name: "unknown", unit: "lightyear", want: "1 lightyear"},
+			{name: "hour", unit: "hour", want: "1 hr"},
+			// ECMA-402's sanctioned unit list excludes "lightyear"; the formatter
+			// rejects the option and falls back to bare-number formatting.
+			{name: "unknown", unit: "lightyear", want: "1"},
 		}
 
 		for _, tt := range defaults {
@@ -739,12 +796,13 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 		narrow := NewNumberValue(1, "en", "unit-source", map[string]any{"style": "unit", "unit": "kilometer", "unitDisplay": "narrow"})
 		formatted, err := narrow.ToString()
 		require.NoError(t, err)
-		assert.Equal(t, "1 km", formatted)
+		// CLDR narrow pattern for length-kilometer (en) has no separator.
+		assert.Equal(t, "1km", formatted)
 
 		longUnknown := NewNumberValue(1, "en", "unit-source", map[string]any{"style": "unit", "unit": "lightyear", "unitDisplay": "long"})
 		formatted, err = longUnknown.ToString()
 		require.NoError(t, err)
-		assert.Equal(t, "1 lightyear", formatted)
+		assert.Equal(t, "1", formatted)
 	})
 
 	t.Run("unit parts expose literal separator and unit name", func(t *testing.T) {

@@ -135,7 +135,7 @@ func TestFormatterHelpers(t *testing.T) {
 
 		integer, err := NumberFmt(12.5, "en", "integer", "USD")
 		require.NoError(t, err)
-		assert.Equal(t, "12", integer)
+		assert.Equal(t, "13", integer)
 
 		percent, err := NumberFmt(0.25, "en", "percent", "USD")
 		require.NoError(t, err)
@@ -210,19 +210,29 @@ func TestFormatterHelpers(t *testing.T) {
 		localInstant := instant.Local()
 		millis := instant.UnixMilli()
 
+		// go-intl uses ECMA-402 / CLDR formatting: U+202F NARROW NO-BREAK SPACE
+		// between the time and the AM/PM designator, and CLDR-resolved timezone
+		// abbreviations (often "GMT+H" for non-US zones) for the "long"/"full" sizes.
+		localShort, err := TimeFormatter(localInstant, "en", "short")
+		require.NoError(t, err)
+		localLong, err := TimeFormatter(localInstant, "en", "long")
+		require.NoError(t, err)
+		localMedium, err := TimeFormatter(localInstant, "en", "")
+		require.NoError(t, err)
+
 		tests := []struct {
 			name  string
 			value any
 			size  string
 			want  string
 		}{
-			{name: "int64 short", value: millis, size: "short", want: localInstant.Format("3:04 PM")},
-			{name: "int long", value: int(millis), size: "long", want: localInstant.Format("3:04:05 PM MST")},
-			{name: "float full", value: float64(millis), size: "full", want: localInstant.Format("3:04:05 PM MST")},
-			{name: "date string", value: "2026-05-04", size: "", want: "12:00:00 AM"},
-			{name: "rfc3339", value: instant.Format(time.RFC3339), size: "", want: "3:30:45 PM"},
-			{name: "timestamp string", value: fmt.Sprint(millis), size: "", want: localInstant.Format("3:04:05 PM")},
-			{name: "time", value: instant, size: "", want: "3:30:45 PM"},
+			{name: "int64 short", value: millis, size: "short", want: localShort},
+			{name: "int long", value: int(millis), size: "long", want: localLong},
+			{name: "float full", value: float64(millis), size: "full", want: localLong},
+			{name: "date string", value: "2026-05-04", size: "", want: "12:00:00\u202fAM"},
+			{name: "rfc3339", value: instant.Format(time.RFC3339), size: "", want: "3:30:45\u202fPM"},
+			{name: "timestamp string", value: fmt.Sprint(millis), size: "", want: localMedium},
+			{name: "time", value: instant, size: "", want: "3:30:45\u202fPM"},
 		}
 
 		for _, tc := range tests {

@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,6 +62,32 @@ func TestNumberFunction(t *testing.T) {
 	assert.Equal(t, "test source", result.Source())
 }
 
+func TestNumberFunctionRejectsCurrencyOptions(t *testing.T) {
+	var errors []error
+	onError := func(err error) {
+		errors = append(errors, err)
+	}
+	ctx := NewMessageFunctionContext(
+		[]string{"en"},
+		"$x",
+		"best fit",
+		onError,
+		nil,
+		"",
+		"",
+	)
+
+	result := NumberFunction(ctx, map[string]any{"style": "currency", "currency": "USD"}, 42)
+
+	require.NotNil(t, result)
+	assert.Equal(t, "fallback", result.Type())
+	str, err := result.ToString()
+	require.NoError(t, err)
+	assert.Equal(t, "{$x}", str)
+	require.Len(t, errors, 1)
+	assert.Contains(t, errors[0].Error(), "bad-option")
+}
+
 func TestIntegerFunction(t *testing.T) {
 	ctx := NewMessageFunctionContext(
 		[]string{"en"},
@@ -87,6 +114,18 @@ func TestIntegerFunction(t *testing.T) {
 	t.Run("invalid input", func(t *testing.T) {
 		result := IntegerFunction(ctx, options, "invalid")
 		assert.Equal(t, "fallback", result.Type())
+	})
+
+	t.Run("clears inherited fraction digits", func(t *testing.T) {
+		operand := messagevalue.NewNumberValue(3, "en", "operand", map[string]any{
+			"minimumFractionDigits": 2,
+		})
+		result := IntegerFunction(ctx, options, operand)
+		require.NotNil(t, result)
+
+		str, err := result.ToString()
+		require.NoError(t, err)
+		assert.Equal(t, "3", str)
 	})
 }
 
@@ -407,7 +446,7 @@ func TestNumberTypeScriptCompatibility(t *testing.T) {
 			"",
 		)
 
-		result := NumberFunction(ctx, map[string]any{"style": "currency", "currency": "USD"}, 1234.56)
+		result := NumberFunction(ctx, map[string]any{"minimumFractionDigits": 2}, 1234.56)
 		require.NotNil(t, result)
 
 		// Should have toParts method like TypeScript

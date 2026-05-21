@@ -299,36 +299,36 @@ func TestStringifyMarkup(t *testing.T) {
 	}{
 		{
 			name:     "open markup",
-			markup:   NewMarkup("open", "b", nil, nil),
+			markup:   mustMarkup(t, "open", "b", nil, nil),
 			expected: "{#b}",
 		},
 		{
 			name:     "close markup",
-			markup:   NewMarkup("close", "b", nil, nil),
+			markup:   mustMarkup(t, "close", "b", nil, nil),
 			expected: "{/b}",
 		},
 		{
 			name:     "standalone markup",
-			markup:   NewMarkup("standalone", "br", nil, nil),
+			markup:   mustMarkup(t, "standalone", "br", nil, nil),
 			expected: "{#br /}",
 		},
 		{
 			name: "markup with options",
-			markup: NewMarkup("open", "link", ConvertMapToOptions(map[string]any{
+			markup: mustMarkup(t, "open", "link", ConvertMapToOptions(map[string]any{
 				"href": NewLiteral("https://example.com"),
 			}), nil),
 			expected: "{#link href=|https://example.com|}",
 		},
 		{
 			name: "markup with attributes",
-			markup: NewMarkup("open", "img", nil, ConvertMapToAttributes(map[string]any{
+			markup: mustMarkup(t, "open", "img", nil, ConvertMapToAttributes(map[string]any{
 				"alt": NewLiteral("Image"),
 			})),
 			expected: "{#img @alt=Image}",
 		},
 		{
 			name: "markup with boolean attribute",
-			markup: NewMarkup("open", "input", nil, ConvertMapToAttributes(map[string]any{
+			markup: mustMarkup(t, "open", "input", nil, ConvertMapToAttributes(map[string]any{
 				"required": true,
 			})),
 			expected: "{#input @required}",
@@ -402,9 +402,9 @@ func TestStringifyPattern(t *testing.T) {
 			name: "pattern with markup",
 			pattern: NewPattern([]PatternElement{
 				NewTextElement("Text with "),
-				NewMarkup("open", "b", nil, nil),
+				mustMarkup(t, "open", "b", nil, nil),
 				NewTextElement("bold"),
-				NewMarkup("close", "b", nil, nil),
+				mustMarkup(t, "close", "b", nil, nil),
 			}),
 			quoted:   false,
 			expected: "Text with {#b}bold{/b}",

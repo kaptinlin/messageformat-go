@@ -99,7 +99,7 @@ func main() {
 	fmt.Println("5. Built-in Function Formatting:")
 
 	// Number with options
-	mf5a, err := messageformat.Parse([]string{"en"}, "Price: {$price :number style=currency currency=USD}", messageformat.WithBidiIsolation(messageformat.BidiNone))
+	mf5a, err := messageformat.Parse([]string{"en"}, "Price: {$price :currency currency=USD}", messageformat.WithBidiIsolation(messageformat.BidiNone))
 	if err != nil {
 		log.Fatal(err)
 	}

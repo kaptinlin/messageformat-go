@@ -146,7 +146,7 @@ func TestVariables(t *testing.T) {
 		// Create context with the value
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			map[string]any{
 				"val": value,
 			},
@@ -307,7 +307,7 @@ func TestVariablePaths(t *testing.T) {
 		// Create context with the values
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			values,
 			nil,
 		)

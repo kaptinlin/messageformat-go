@@ -66,7 +66,7 @@ func readNumericOperand(value any, source string) (*NumericInput, error) {
 		)
 	}
 
-	var options map[string]any
+	var options Options
 
 	// Check if it's a MessageValue with valueOf method
 	if mv, ok := value.(messagevalue.MessageValue); ok {
@@ -210,7 +210,7 @@ func readNumericOperand(value any, source string) (*NumericInput, error) {
 //	}
 func NumberFunction(
 	ctx MessageFunctionContext,
-	options map[string]any,
+	options Options,
 	operand any,
 ) messagevalue.MessageValue {
 	// Read numeric operand - matches TypeScript: const input = readNumericOperand(operand, ctx.source);
@@ -222,7 +222,10 @@ func NumberFunction(
 
 	// Start with operand options and set defaults - matches TypeScript Object.assign
 	mergedOptions := mergeNumberOptions(numInput.Options, nil, ctx.LocaleMatcher())
-	// Don't force style=decimal here - let user options override
+	if existingStyle, ok := numInput.Options["style"]; ok && existingStyle != "decimal" {
+		ctx.OnError(pkgErrors.NewBadOperandError("Cannot format a non-decimal number as :number", ctx.Source()))
+		return messagevalue.NewFallbackValue(ctx.Source(), GetFirstLocale(ctx.Locales()))
+	}
 
 	// Process expression options - matches TypeScript for loop
 	for name, optval := range options {
@@ -241,22 +244,29 @@ func NumberFunction(
 				ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
 			}
 		case "roundingMode", "roundingPriority", "select", "signDisplay",
-			"trailingZeroDisplay", "useGrouping", "style", "currency", "currencyDisplay", "currencySign":
+			"trailingZeroDisplay", "useGrouping":
 			if strVal, err := asString(optval); err == nil {
 				mergedOptions[name] = strVal
 			} else {
 				msg := fmt.Sprintf("Value %v is not valid for :number option %s", optval, name)
 				ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
 			}
+		case "style":
+			if strVal, err := asString(optval); err != nil || strVal != "decimal" {
+				msg := fmt.Sprintf("Value %v is not valid for :number option %s", optval, name)
+				ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
+				return messagevalue.NewFallbackValue(ctx.Source(), GetFirstLocale(ctx.Locales()))
+			}
+		case "currency", "currencyDisplay", "currencySign":
+			msg := fmt.Sprintf("Value %v is not valid for :number option %s", optval, name)
+			ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
+			return messagevalue.NewFallbackValue(ctx.Source(), GetFirstLocale(ctx.Locales()))
 		default:
 			// Unknown option - silently ignore to match TypeScript behavior
 		}
 	}
 
-	// Set default style if not specified
-	if _, hasStyle := mergedOptions["style"]; !hasStyle {
-		mergedOptions["style"] = "decimal"
-	}
+	mergedOptions["style"] = "decimal"
 
 	return getMessageNumber(ctx, numInput.Value, mergedOptions, true)
 }
@@ -300,7 +310,7 @@ func NumberFunction(
 //	}
 func IntegerFunction(
 	ctx MessageFunctionContext,
-	options map[string]any,
+	options Options,
 	operand any,
 ) messagevalue.MessageValue {
 	// Read numeric operand - matches TypeScript: const input = readNumericOperand(operand, ctx.source);
@@ -339,6 +349,9 @@ func IntegerFunction(
 	// Start with operand options and set defaults - matches TypeScript Object.assign
 	mergedOptions := mergeNumberOptions(numInput.Options, nil, ctx.LocaleMatcher())
 	mergedOptions["maximumFractionDigits"] = 0
+	delete(mergedOptions, "minimumFractionDigits")
+	delete(mergedOptions, "minimumSignificantDigits")
+	mergedOptions["style"] = "decimal"
 
 	// Process expression options - matches TypeScript for loop
 	for name, optval := range options {
@@ -383,12 +396,12 @@ func IntegerFunction(
 func getMessageNumber(
 	ctx MessageFunctionContext,
 	value any,
-	options map[string]any,
+	options Options,
 	selectable bool,
 ) messagevalue.MessageValue {
 	// Validate select option - matches TypeScript select validation logic
 	if selectable {
-		if selectVal, hasSelect := options["select"]; hasSelect {
+		if selectVal, hasSelect := options.Value("select"); hasSelect {
 			// Check if select option is set by literal value
 			if !ctx.LiteralOptionKeys()["select"] {
 				ctx.OnError(pkgErrors.NewBadOptionError("The option select may only be set by a literal value", ctx.Source()))

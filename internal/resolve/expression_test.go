@@ -17,7 +17,7 @@ import (
 func TestResolveExpression_NilExpression(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
-		functions.DefaultFunctions,
+		functions.DefaultFunctionMap(),
 		map[string]any{},
 		nil,
 	)
@@ -32,7 +32,7 @@ func TestResolveExpression_NilExpression(t *testing.T) {
 func TestResolveExpression_NilArg(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
-		functions.DefaultFunctions,
+		functions.DefaultFunctionMap(),
 		map[string]any{},
 		nil,
 	)
@@ -49,7 +49,7 @@ func TestResolveExpression_NilArg(t *testing.T) {
 func TestResolveExpression_WithFunctionRef(t *testing.T) {
 	tests := []struct {
 		name         string
-		operand      datamodel.Node
+		operand      datamodel.ExpressionArg
 		functionName string
 		options      datamodel.Options
 		scope        map[string]any
@@ -85,7 +85,7 @@ func TestResolveExpression_WithFunctionRef(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := NewContext(
 				[]string{"en"},
-				functions.DefaultFunctions,
+				functions.DefaultFunctionMap(),
 				tt.scope,
 				nil,
 			)
@@ -103,7 +103,7 @@ func TestResolveExpression_WithFunctionRef(t *testing.T) {
 func TestResolveExpression_LiteralOnly(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
-		functions.DefaultFunctions,
+		functions.DefaultFunctionMap(),
 		map[string]any{},
 		nil,
 	)
@@ -151,7 +151,7 @@ func TestResolveExpression_VariableOnly(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := NewContext(
 				[]string{"en"},
-				functions.DefaultFunctions,
+				functions.DefaultFunctionMap(),
 				tt.scope,
 				nil,
 			)
@@ -165,34 +165,12 @@ func TestResolveExpression_VariableOnly(t *testing.T) {
 	}
 }
 
-// TestResolveExpression_UnsupportedType tests that unsupported expression types return fallback
-func TestResolveExpression_UnsupportedType(t *testing.T) {
-	var errorCalled bool
-	ctx := NewContext(
-		[]string{"en"},
-		functions.DefaultFunctions,
-		map[string]any{},
-		func(err error) {
-			errorCalled = true
-		},
-	)
-
-	// Create a mock unsupported node type
-	unsupportedNode := &mockUnsupportedNode{}
-	expr := datamodel.NewExpression(unsupportedNode, nil, nil)
-
-	// This should return a fallback value instead of panicking
-	result := ResolveExpression(ctx, expr)
-	assert.Equal(t, "fallback", result.Type())
-	assert.True(t, errorCalled, "OnError should have been called")
-}
-
 // TestResolveExpression_ComplexScenarios tests complex resolution scenarios
 func TestResolveExpression_ComplexScenarios(t *testing.T) {
 	t.Run("function with variable operand", func(t *testing.T) {
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			map[string]any{"count": 42},
 			nil,
 		)
@@ -214,7 +192,7 @@ func TestResolveExpression_ComplexScenarios(t *testing.T) {
 	t.Run("function with literal operand", func(t *testing.T) {
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			map[string]any{},
 			nil,
 		)
@@ -242,7 +220,7 @@ func TestResolveExpression_ErrorHandling(t *testing.T) {
 
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			map[string]any{},
 			onError,
 		)
@@ -261,7 +239,7 @@ func TestResolveExpression_ErrorHandling(t *testing.T) {
 	t.Run("function with invalid operand", func(t *testing.T) {
 		ctx := NewContext(
 			[]string{"en"},
-			functions.DefaultFunctions,
+			functions.DefaultFunctionMap(),
 			map[string]any{},
 			nil,
 		)
@@ -282,7 +260,7 @@ func TestResolveExpression_ErrorHandling(t *testing.T) {
 func TestResolveExpression_WithAnnotations(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
-		functions.DefaultFunctions,
+		functions.DefaultFunctionMap(),
 		map[string]any{"value": 42},
 		nil,
 	)
@@ -300,12 +278,6 @@ func TestResolveExpression_WithAnnotations(t *testing.T) {
 	result := ResolveExpression(ctx, expr)
 	assert.Equal(t, "number", result.Type())
 }
-
-// mockUnsupportedNode is a mock implementation of an unsupported node type
-type mockUnsupportedNode struct{}
-
-func (m *mockUnsupportedNode) Type() string { return "unsupported" }
-func (m *mockUnsupportedNode) CST() any     { return nil }
 
 // TestResolveExpression_LocaleHandling tests locale handling in expression resolution
 func TestResolveExpression_LocaleHandling(t *testing.T) {
@@ -335,7 +307,7 @@ func TestResolveExpression_LocaleHandling(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := NewContext(
 				tt.locales,
-				functions.DefaultFunctions,
+				functions.DefaultFunctionMap(),
 				map[string]any{"value": "test"},
 				nil,
 			)
@@ -353,7 +325,7 @@ func TestResolveExpression_LocaleHandling(t *testing.T) {
 func TestResolveExpression_MessageValuePassthrough(t *testing.T) {
 	ctx := NewContext(
 		[]string{"en"},
-		functions.DefaultFunctions,
+		functions.DefaultFunctionMap(),
 		map[string]any{
 			"preformatted": messagevalue.NewStringValue("formatted", "en", "test"),
 		},

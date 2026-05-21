@@ -6,6 +6,7 @@ import (
 	"time"
 
 	pkgerrors "github.com/kaptinlin/messageformat-go/pkg/errors"
+	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -60,7 +61,7 @@ func TestMathFunctionAppliesDelta(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		options map[string]any
+		options Options
 		operand any
 		want    any
 	}{
@@ -94,7 +95,7 @@ func TestMathFunctionReportsOptionErrors(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		options map[string]any
+		options Options
 	}{
 		{name: "missing operation", options: map[string]any{}},
 		{name: "conflicting operations", options: map[string]any{"add": 1, "subtract": 1}},
@@ -135,8 +136,9 @@ func TestIntegerFunctionAppliesOptions(t *testing.T) {
 	value, err := result.ValueOf()
 	require.NoError(t, err)
 	assert.Equal(t, int64(4), value)
-	assert.Equal(t, 3, result.Options()["minimumIntegerDigits"])
-	assert.Equal(t, "always", result.Options()["signDisplay"])
+	optioned := result.(messagevalue.OptionedValue)
+	assert.Equal(t, 3, optioned.Options()["minimumIntegerDigits"])
+	assert.Equal(t, "always", optioned.Options()["signDisplay"])
 	assert.Empty(t, errs)
 }
 
@@ -172,8 +174,9 @@ func TestPercentFunctionAppliesOptions(t *testing.T) {
 
 	require.NotNil(t, result)
 	assert.Equal(t, "number", result.Type())
-	assert.Equal(t, 1, result.Options()["minimumFractionDigits"])
-	assert.Equal(t, "always", result.Options()["signDisplay"])
+	optioned := result.(messagevalue.OptionedValue)
+	assert.Equal(t, 1, optioned.Options()["minimumFractionDigits"])
+	assert.Equal(t, "always", optioned.Options()["signDisplay"])
 	str, err := result.ToString()
 	require.NoError(t, err)
 	assert.Equal(t, "+50.0%", str)

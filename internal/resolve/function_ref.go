@@ -126,7 +126,7 @@ func resolveFunctionRefInternal(
 	opt := resolveOptions(ctx, options)
 
 	// matches TypeScript: let res = rf(msgCtx, opt, ...fnInput);
-	res := rf(msgCtx, opt, input)
+	res := rf(msgCtx, functions.NewOptions(opt), input)
 
 	// matches TypeScript: if (res === null || ...) { throw new MessageError('bad-function-result', ...); }
 	if res == nil {
@@ -141,11 +141,16 @@ func resolveFunctionRefInternal(
 	// Handle bidi isolation and ID setting like TypeScript
 	// matches TypeScript: if (msgCtx.dir) res = { ...res, dir: msgCtx.dir, [BIDI_ISOLATE]: true };
 	if msgCtx.Dir() != "" || msgCtx.ID() != "" {
-		res = &messageValueWithOptions{
+		wrapped := &messageValueWithOptions{
 			wrapped:     res,
 			dir:         msgCtx.Dir(),
 			id:          msgCtx.ID(),
 			bidiIsolate: msgCtx.Dir() != "",
+		}
+		if _, ok := res.(messagevalue.Selector); ok {
+			res = &selectableMessageValueWithOptions{messageValueWithOptions: wrapped}
+		} else {
+			res = wrapped
 		}
 	}
 
@@ -350,7 +355,10 @@ func (mv *messageValueWithOptions) Locale() string {
 }
 
 func (mv *messageValueWithOptions) Options() map[string]any {
-	return mv.wrapped.Options()
+	if optioned, ok := mv.wrapped.(messagevalue.OptionedValue); ok {
+		return optioned.Options()
+	}
+	return nil
 }
 
 func (mv *messageValueWithOptions) ToString() (string, error) {
@@ -399,10 +407,6 @@ func (mv *messageValueWithOptions) ValueOf() (any, error) {
 	return mv.wrapped.ValueOf()
 }
 
-func (mv *messageValueWithOptions) SelectKeys(keys []string) ([]string, error) {
-	return mv.wrapped.SelectKeys(keys)
-}
-
 // HasBidiIsolate returns whether this value should be bidi isolated
 func (mv *messageValueWithOptions) HasBidiIsolate() bool {
 	return mv.bidiIsolate
@@ -411,6 +415,18 @@ func (mv *messageValueWithOptions) HasBidiIsolate() bool {
 // ID returns the ID for this value.
 func (mv *messageValueWithOptions) ID() string {
 	return mv.id
+}
+
+type selectableMessageValueWithOptions struct {
+	*messageValueWithOptions
+}
+
+func (mv *selectableMessageValueWithOptions) SelectKeys(keys []string) ([]string, error) {
+	selector, ok := mv.wrapped.(messagevalue.Selector)
+	if !ok {
+		return nil, messagevalue.ErrNotSelectable
+	}
+	return selector.SelectKeys(keys)
 }
 
 // partWithOptions wraps a MessagePart to add ID and dir information

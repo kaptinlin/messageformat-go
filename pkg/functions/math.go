@@ -43,7 +43,7 @@ import (
 //	}
 func MathFunction(
 	ctx MessageFunctionContext,
-	options map[string]any,
+	options Options,
 	operand any,
 ) messagevalue.MessageValue {
 	source := ctx.Source()
@@ -62,7 +62,7 @@ func MathFunction(
 	add, subtract := -1, -1
 
 	// Try to get add option
-	if addVal, ok := options["add"]; ok {
+	if addVal, ok := options.Value("add"); ok {
 		if addInt, err := asPositiveInteger(addVal); err == nil {
 			add = addInt
 		} else {
@@ -72,7 +72,7 @@ func MathFunction(
 	}
 
 	// Try to get subtract option
-	if subVal, ok := options["subtract"]; ok {
+	if subVal, ok := options.Value("subtract"); ok {
 		if subInt, err := asPositiveInteger(subVal); err == nil {
 			subtract = subInt
 		} else {

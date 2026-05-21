@@ -40,8 +40,8 @@ func TestTestFunctionsReturnsExpectedFunctions(t *testing.T) {
 
 	got := TestFunctions()
 
-	assert.Len(t, got, 4)
-	for _, name := range []string{"test", "test:select", "test:format", "placeholder"} {
+	assert.Len(t, got, 5)
+	for _, name := range []string{"test", "test:function", "test:select", "test:format", "placeholder"} {
 		assert.Contains(t, got, name)
 		assert.NotNil(t, got[name])
 	}
@@ -247,7 +247,8 @@ func TestCreateTestValueCapabilitiesAndOperands(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "1.0", gotString)
 
-		gotKeys, err := value.SelectKeys([]string{"1", "1.0"})
+		selector := value.(messagevalue.Selector)
+		gotKeys, err := selector.SelectKeys([]string{"1", "1.0"})
 		require.NoError(t, err)
 		if diff := cmp.Diff([]string{"1.0"}, gotKeys); diff != "" {
 			t.Fatalf("selection mismatch (-want +got):\n%s", diff)
@@ -263,7 +264,8 @@ func TestCreateTestValueCapabilitiesAndOperands(t *testing.T) {
 		_, err := value.ToString()
 		require.ErrorIs(t, err, ErrNotFormattable)
 
-		gotKeys, err := value.SelectKeys([]string{"1"})
+		selector := value.(messagevalue.Selector)
+		gotKeys, err := selector.SelectKeys([]string{"1"})
 		require.NoError(t, err)
 		if diff := cmp.Diff([]string{"1"}, gotKeys); diff != "" {
 			t.Fatalf("selection mismatch (-want +got):\n%s", diff)
@@ -280,7 +282,8 @@ func TestCreateTestValueCapabilitiesAndOperands(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "3", gotString)
 
-		_, err = value.SelectKeys([]string{"3"})
+		selector := value.(messagevalue.Selector)
+		_, err = selector.SelectKeys([]string{"3"})
 		require.ErrorIs(t, err, ErrNotSelectable)
 	})
 
@@ -314,7 +317,8 @@ func TestCreateTestValueCapabilitiesAndOperands(t *testing.T) {
 		_, err := value.ToString()
 		require.ErrorIs(t, err, ErrFormattingFailed)
 
-		_, err = value.SelectKeys([]string{"1", "1.0"})
+		selector := value.(messagevalue.Selector)
+		_, err = selector.SelectKeys([]string{"1", "1.0"})
 		require.ErrorIs(t, err, ErrBadOption)
 	})
 }
@@ -384,7 +388,8 @@ func TestCreateTestValueOptions(t *testing.T) {
 				assert.Empty(t, *gotErrors)
 			}
 
-			_, selectErr := value.SelectKeys([]string{"1"})
+			selector := value.(messagevalue.Selector)
+			_, selectErr := selector.SelectKeys([]string{"1"})
 			if tc.wantSelectErr != nil {
 				assert.ErrorIs(t, selectErr, tc.wantSelectErr)
 			} else if !assert.NoError(t, selectErr) {

@@ -142,7 +142,6 @@ import (
 	"cmp"
 	"fmt"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -303,25 +302,19 @@ func SupportedLocalesOf(locales any) ([]string, error) {
 	return result, nil
 }
 
-// hasPlural checks if a locale has plural support (simplified implementation)
-func hasPlural(locale string) bool {
-	// For TypeScript compatibility, accept any locale that starts with a known language
-	supportedLocales := []string{
-		"en", "es", "fr", "de", "it", "pt", "ru", "ja", "ko", "zh",
-		"ar", "hi", "th", "vi", "tr", "pl", "nl", "sv", "da", "no",
-		"fi", // Add Finnish for test compatibility
+// hasPlural checks if a locale has plural support by consulting go-intl's
+// CLDR-backed pluralrules package. Unlike intlbridge.ParseLocale, this uses
+// strict parsing — unparseable or unsupported tags ("x", "xx") return false
+// instead of silently aliasing to English.
+func hasPlural(loc string) bool {
+	if len(loc) < 2 {
+		return false
 	}
-
-	if len(locale) >= 2 {
-		// Extract language part (before hyphen or underscore) using strings.Cut (Go 1.20+)
-		lang, _, _ := strings.Cut(locale, "-")
-		lang, _, _ = strings.Cut(lang, "_")
-
-		if slices.Contains(supportedLocales, lang) {
-			return true
-		}
+	parsed, err := parseStrictLocale(loc)
+	if err != nil {
+		return false
 	}
-	return false
+	return hasPluralLocale(parsed)
 }
 
 // getPlural gets the plural object for a locale using proper CLDR rules

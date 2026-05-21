@@ -11,7 +11,7 @@ Custom functions implement `messageformat.MessageFunction`:
 ```go
 type MessageFunction func(
 	ctx messageformat.MessageFunctionContext,
-	options map[string]any,
+	options functions.Options,
 	operand any,
 ) messagevalue.MessageValue
 ```
@@ -52,12 +52,13 @@ import (
 	"strings"
 
 	"github.com/kaptinlin/messageformat-go"
+	"github.com/kaptinlin/messageformat-go/pkg/functions"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
 func uppercase(
 	ctx messageformat.MessageFunctionContext,
-	options map[string]any,
+	options functions.Options,
 	operand any,
 ) messagevalue.MessageValue {
 	locales := ctx.Locales()
@@ -103,28 +104,19 @@ Usage in a message:
 ```go
 func truncate(
 	ctx messageformat.MessageFunctionContext,
-	options map[string]any,
+	options functions.Options,
 	operand any,
 ) messagevalue.MessageValue {
 	text := fmt.Sprint(operand)
 	limit := 20
 	suffix := "..."
 
-	if raw, ok := options["length"]; ok {
-		switch v := raw.(type) {
-		case int:
-			limit = v
-		case float64:
-			limit = int(v)
-		case string:
-			if parsed, err := strconv.Atoi(v); err == nil {
-				limit = parsed
-			}
-		}
+	if length, ok := options.Int("length"); ok {
+		limit = length
 	}
 
-	if raw, ok := options["suffix"]; ok {
-		suffix = fmt.Sprint(raw)
+	if value, ok := options.String("suffix"); ok {
+		suffix = value
 	}
 
 	if len(text) > limit {
@@ -192,7 +184,7 @@ Custom functions should report recoverable problems through `ctx.OnError` and re
 ```go
 func safeDate(
 	ctx messageformat.MessageFunctionContext,
-	options map[string]any,
+	options functions.Options,
 	operand any,
 ) messagevalue.MessageValue {
 	locale := "en"
@@ -228,7 +220,7 @@ Use `ctx.Locales()` when behavior should vary by locale:
 ```go
 func relativeLabel(
 	ctx messageformat.MessageFunctionContext,
-	options map[string]any,
+	options functions.Options,
 	operand any,
 ) messagevalue.MessageValue {
 	locale := "en"

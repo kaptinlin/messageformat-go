@@ -39,15 +39,15 @@ Common forms:
 ```text
 {$name}
 {$count :number}
-{$price :number style=currency currency=USD}
+{$price :currency currency=USD}
 {|hello| :string}
 ```
 
 Expression parts:
 
 - operand: `$name`, `$count`, or a literal such as `|hello|`
-- annotation: `:number`, `:string`, `:datetime`
-- options: `style=currency`, `currency=USD`
+- annotation: `:number`, `:currency`, `:string`, `:datetime`
+- options: `currency=USD`
 
 ## Variables
 
@@ -110,7 +110,7 @@ Use `.local` to derive local values:
 
 ```text
 .input {$price :number}
-.local $formatted = {$price :number style=currency currency=USD}
+.local $formatted = {$price :currency currency=USD}
 ```
 
 Declarations are processed in order, so later declarations can depend on earlier ones.
@@ -202,7 +202,7 @@ Common built-in annotations:
 Examples:
 
 ```text
-{$amount :number style=currency currency=USD}
+{$amount :currency currency=USD}
 {$count :integer}
 {$createdAt :datetime dateStyle=full timeStyle=short}
 ```
@@ -306,7 +306,7 @@ That means malformed `.match` selectors and missing syntax are reported with mor
 ### Currency in a message
 
 ```text
-Your balance is {$amount :number style=currency currency=EUR}
+Your balance is {$amount :currency currency=EUR}
 ```
 
 ### Status selection

@@ -11,7 +11,7 @@ import (
 )
 
 // Custom function for demonstration
-func highlightFunction(ctx functions.MessageFunctionContext, options map[string]any, operand any) messagevalue.MessageValue {
+func highlightFunction(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 	var str string
 	if operand == nil {
 		str = ""
@@ -23,7 +23,7 @@ func highlightFunction(ctx functions.MessageFunctionContext, options map[string]
 
 	// Get highlight style from options
 	style := "bold"
-	if s, ok := options["style"].(string); ok {
+	if s, ok := options.String("style"); ok {
 		style = s
 	}
 

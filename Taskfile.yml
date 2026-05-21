@@ -56,8 +56,17 @@ tasks:
     desc: Update all dependencies
     cmds:
       - echo "Updating dependencies..."
-      - go get -u all
-      - go mod tidy
+      - |
+        deps=$(awk '
+          /^require[[:space:]]+[^(]/ { print $2 }
+          /^require[[:space:]]*\(/ { f=1; next }
+          f && /^\)/ { f=0; next }
+          f && !/\/\/ indirect/ && NF >= 2 { print $1 }
+        ' go.mod | tr '\n' ' ')
+        if [ -n "$deps" ]; then
+          go get -u $deps
+        fi
+        go mod tidy
 
   test:
     desc: Run all tests with race detection

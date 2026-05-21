@@ -77,12 +77,11 @@ func TestDateTimeValue(t *testing.T) {
 		assert.Equal(t, "en", part.Locale())
 	})
 
-	t.Run("selectKeys", func(t *testing.T) {
+	t.Run("not selectable", func(t *testing.T) {
 		dtv := NewDateTimeValue(testTime, "en", "test", nil)
 
-		keys, err := dtv.SelectKeys([]string{"one", "other"})
-		require.NoError(t, err)
-		assert.Empty(t, keys) // DateTime values don't support selection
+		_, ok := any(dtv).(Selector)
+		assert.False(t, ok)
 	})
 }
 
@@ -99,22 +98,4 @@ func TestDateTimePart(t *testing.T) {
 	assert.Equal(t, "test", part.Source())
 	assert.Equal(t, "en", part.Locale())
 	assert.Equal(t, bidi.DirLTR, part.Dir())
-}
-
-func TestFormatFunctions(t *testing.T) {
-	t.Run("GetDateFormat", func(t *testing.T) {
-		assert.Equal(t, "l, F j, Y", GetDateFormat("full"))
-		assert.Equal(t, "F j, Y", GetDateFormat("long"))
-		assert.Equal(t, "M j, Y", GetDateFormat("medium"))
-		assert.Equal(t, "n/j/y", GetDateFormat("short"))
-		assert.Equal(t, "M j, Y", GetDateFormat("unknown")) // default
-	})
-
-	t.Run("GetTimeFormat", func(t *testing.T) {
-		assert.Equal(t, "g:i:s A T", GetTimeFormat("full"))
-		assert.Equal(t, "g:i:s A T", GetTimeFormat("long"))
-		assert.Equal(t, "g:i:s A", GetTimeFormat("medium"))
-		assert.Equal(t, "g:i A", GetTimeFormat("short"))
-		assert.Equal(t, "g:i A", GetTimeFormat("unknown")) // default
-	})
 }
