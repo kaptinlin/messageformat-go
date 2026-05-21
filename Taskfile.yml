@@ -42,7 +42,7 @@ tasks:
     desc: Initialize and update git submodules
     cmds:
       - echo "Initializing git submodules..."
-      - git submodule update --init --depth 1 || echo "Submodule init completed with warnings"
+      - git submodule update --init --depth 1 tests/messageformat-wg .reference/messageformat || echo "Submodule init completed with warnings"
 
   deps:
     desc: Download Go module dependencies
@@ -129,8 +129,7 @@ tasks:
       - |
         if [ "{{.GOLANGCI_LINT_VERSION}}" != "{{.REQUIRED_GOLANGCI_LINT_VERSION}}" ]; then
           echo "Installing golangci-lint v{{.REQUIRED_GOLANGCI_LINT_VERSION}} (current: {{.GOLANGCI_LINT_VERSION}})..."
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
-            | sh -s -- -b {{.GOBIN}} v{{.REQUIRED_GOLANGCI_LINT_VERSION}}
+          GOBIN={{.GOBIN}} go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v{{.REQUIRED_GOLANGCI_LINT_VERSION}}
           echo "golangci-lint v{{.REQUIRED_GOLANGCI_LINT_VERSION}} installed successfully"
         fi
     status:
