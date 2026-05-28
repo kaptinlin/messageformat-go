@@ -26,6 +26,7 @@ func TestDateTimeValue(t *testing.T) {
 		assert.Equal(t, "en-US", dtv.Locale())
 		assert.Equal(t, bidi.DirAuto, dtv.Dir())
 		assert.Equal(t, options, dtv.Options())
+		assert.Equal(t, testTime, dtv.Time())
 
 		// Test ValueOf
 		val, err := dtv.ValueOf()
@@ -75,6 +76,9 @@ func TestDateTimeValue(t *testing.T) {
 		assert.Equal(t, "datetime", part.Type())
 		assert.Equal(t, "test", part.Source())
 		assert.Equal(t, "en", part.Locale())
+		dateTimePart, ok := part.(*DateTimePart)
+		require.True(t, ok)
+		assert.Equal(t, dateTimePart.Value(), dateTimePart.Text())
 	})
 
 	t.Run("named time zone formatting", func(t *testing.T) {
@@ -87,13 +91,20 @@ func TestDateTimeValue(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, parts, 1)
 
-		partWithChildren, ok := parts[0].(interface {
-			Parts() []MessagePart
-		})
+		dateTimePart, ok := parts[0].(*DateTimePart)
 		require.True(t, ok)
+		assert.Equal(t, dateTimePart.Value(), dateTimePart.Text())
+		require.NotEmpty(t, dateTimePart.Parts())
+
+		subPart, ok := dateTimePart.Parts()[0].(*DateTimeSubPart)
+		require.True(t, ok)
+		assert.Equal(t, subPart.Value(), subPart.Text())
+		assert.Equal(t, "test", subPart.Source())
+		assert.Equal(t, "en-US", subPart.Locale())
+		assert.Equal(t, bidi.DirAuto, subPart.Dir())
 
 		valuesByType := make(map[string]any)
-		for _, part := range partWithChildren.Parts() {
+		for _, part := range dateTimePart.Parts() {
 			valuesByType[part.Type()] = part.Value()
 		}
 		assert.Equal(t, "10", valuesByType["hour"])
@@ -121,4 +132,5 @@ func TestDateTimePart(t *testing.T) {
 	assert.Equal(t, "test", part.Source())
 	assert.Equal(t, "en", part.Locale())
 	assert.Equal(t, bidi.DirLTR, part.Dir())
+	assert.Equal(t, "Jan 2, 2006", part.Text())
 }

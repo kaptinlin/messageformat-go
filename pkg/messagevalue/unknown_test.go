@@ -99,6 +99,7 @@ func TestUnknownPart(t *testing.T) {
 
 	assert.Equal(t, "unknown", up.Type())
 	assert.Equal(t, value, up.Value())
+	assert.Equal(t, value, up.Any())
 	assert.Equal(t, source, up.Source())
 	assert.Equal(t, locale, up.Locale())
 	assert.Equal(t, bidi.DirAuto, up.Dir())

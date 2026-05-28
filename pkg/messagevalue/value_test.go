@@ -22,6 +22,7 @@ func TestStringValue(t *testing.T) {
 	str, err := sv.ToString()
 	require.NoError(t, err)
 	assert.Equal(t, "hello", str)
+	assert.Equal(t, "hello", sv.String())
 
 	value, err := sv.ValueOf()
 	require.NoError(t, err)
@@ -32,6 +33,9 @@ func TestStringValue(t *testing.T) {
 	require.Len(t, parts, 1)
 	assert.Equal(t, "string", parts[0].Type())
 	assert.Equal(t, "hello", parts[0].Value())
+	stringPart, ok := parts[0].(*StringPart)
+	require.True(t, ok)
+	assert.Equal(t, "hello", stringPart.Text())
 
 	keys, err := sv.SelectKeys([]string{"hello", "world"})
 	require.NoError(t, err)
@@ -58,6 +62,7 @@ func TestNumberValue(t *testing.T) {
 	assert.Equal(t, "en", nv.Locale())
 	assert.Equal(t, bidi.DirAuto, nv.Dir())
 	assert.NotNil(t, nv.Options())
+	assert.Equal(t, 42, nv.Number())
 
 	str, err := nv.ToString()
 	require.NoError(t, err)
@@ -72,6 +77,13 @@ func TestNumberValue(t *testing.T) {
 	require.Len(t, parts, 1)
 	assert.Equal(t, "number", parts[0].Type())
 	assert.Equal(t, "42", parts[0].Value())
+	numberPart, ok := parts[0].(*NumberPart)
+	require.True(t, ok)
+	assert.Equal(t, "42", numberPart.Text())
+	require.NotEmpty(t, numberPart.Parts())
+	numberSubPart, ok := numberPart.Parts()[0].(*NumberSubPart)
+	require.True(t, ok)
+	assert.Equal(t, "42", numberSubPart.Text())
 }
 
 func TestMessageValueConstructorsCloneOptions(t *testing.T) {
@@ -185,6 +197,7 @@ func TestTextPart(t *testing.T) {
 	assert.Equal(t, "source", tp.Source())
 	assert.Equal(t, "en", tp.Locale())
 	assert.Equal(t, bidi.DirAuto, tp.Dir())
+	assert.Equal(t, "hello", tp.Text())
 }
 
 func TestBidiIsolationPart(t *testing.T) {
@@ -195,6 +208,7 @@ func TestBidiIsolationPart(t *testing.T) {
 	assert.Empty(t, bip.Source())
 	assert.Empty(t, bip.Locale())
 	assert.Equal(t, bidi.DirAuto, bip.Dir())
+	assert.Equal(t, string(bidi.LRI), bip.Text())
 }
 
 func TestMarkupPart(t *testing.T) {
@@ -209,6 +223,9 @@ func TestMarkupPart(t *testing.T) {
 	assert.Equal(t, "open", mp.Kind())
 	assert.Equal(t, "b", mp.Name())
 	assert.Equal(t, options, mp.Options())
+	assert.Equal(t, "b", mp.Text())
+	options["class"] = "changed"
+	assert.Equal(t, "bold", mp.Options()["class"])
 }
 
 func TestMarkupPartNilOptions(t *testing.T) {
@@ -226,4 +243,5 @@ func TestFallbackPart(t *testing.T) {
 	assert.Equal(t, "$name", fp.Source())
 	assert.Equal(t, "en", fp.Locale())
 	assert.Equal(t, bidi.DirAuto, fp.Dir())
+	assert.Equal(t, "{$name}", fp.Text())
 }
