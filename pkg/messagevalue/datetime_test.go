@@ -77,6 +77,29 @@ func TestDateTimeValue(t *testing.T) {
 		assert.Equal(t, "en", part.Locale())
 	})
 
+	t.Run("named time zone formatting", func(t *testing.T) {
+		dtv := NewDateTimeValue(testTime, "en-US", "test", map[string]any{
+			"timePrecision": "minute",
+			"timeZone":      "America/New_York",
+		})
+
+		parts, err := dtv.ToParts()
+		require.NoError(t, err)
+		require.Len(t, parts, 1)
+
+		partWithChildren, ok := parts[0].(interface {
+			Parts() []MessagePart
+		})
+		require.True(t, ok)
+
+		valuesByType := make(map[string]any)
+		for _, part := range partWithChildren.Parts() {
+			valuesByType[part.Type()] = part.Value()
+		}
+		assert.Equal(t, "10", valuesByType["hour"])
+		assert.Equal(t, "04", valuesByType["minute"])
+	})
+
 	t.Run("not selectable", func(t *testing.T) {
 		dtv := NewDateTimeValue(testTime, "en", "test", nil)
 
