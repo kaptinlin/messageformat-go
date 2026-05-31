@@ -17,13 +17,14 @@ func TestResolveFunctionRefAppliesUniversalOptions(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		dir     string
-		wantDir bidi.Direction
+		name           string
+		dir            string
+		wantDir        bidi.Direction
+		wantPartLocale string
 	}{
-		{name: "ltr", dir: "ltr", wantDir: bidi.DirLTR},
-		{name: "rtl", dir: "rtl", wantDir: bidi.DirRTL},
-		{name: "auto", dir: "auto", wantDir: bidi.DirAuto},
+		{name: "ltr", dir: "ltr", wantDir: bidi.DirLTR, wantPartLocale: ""},
+		{name: "rtl", dir: "rtl", wantDir: bidi.DirRTL, wantPartLocale: "en"},
+		{name: "auto", dir: "auto", wantDir: bidi.DirAuto, wantPartLocale: "en"},
 	}
 
 	for _, tc := range tests {
@@ -72,6 +73,7 @@ func TestResolveFunctionRefAppliesUniversalOptions(t *testing.T) {
 			assert.Equal(t, tc.wantDir, parts[0].Dir())
 			assert.Equal(t, "part-id", parts[0].(interface{ ID() string }).ID())
 			assert.Equal(t, tc.dir, parts[0].(interface{ PartDir() string }).PartDir())
+			assert.Equal(t, tc.wantPartLocale, parts[0].(interface{ PartLocale() string }).PartLocale())
 		})
 	}
 }

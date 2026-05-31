@@ -119,7 +119,15 @@ func TestNumberValueTypes(t *testing.T) {
 		expected string
 	}{
 		{"int", 42, "42"},
+		{"int8", int8(42), "42"},
+		{"int16", int16(42), "42"},
+		{"int32", int32(42), "42"},
 		{"int64", int64(42), "42"},
+		{"uint", uint(42), "42"},
+		{"uint8", uint8(42), "42"},
+		{"uint16", uint16(42), "42"},
+		{"uint32", uint32(42), "42"},
+		{"uint64", uint64(42), "42"},
 		{"float64", 42.5, "42.5"},
 		{"float32", float32(42.5), "42.5"},
 	}

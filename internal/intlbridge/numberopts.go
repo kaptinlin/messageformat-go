@@ -1,7 +1,7 @@
 package intlbridge
 
 import (
-	"fmt"
+	"strconv"
 
 	"github.com/agentable/go-intl/numberformat"
 )
@@ -222,8 +222,7 @@ func asOptInt(raw any) (int, bool) {
 			return int(v), true
 		}
 	case string:
-		var n int
-		if _, err := fmt.Sscanf(v, "%d", &n); err == nil {
+		if n, err := strconv.Atoi(v); err == nil {
 			return n, true
 		}
 	}

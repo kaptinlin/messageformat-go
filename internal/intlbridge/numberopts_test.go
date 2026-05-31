@@ -155,6 +155,57 @@ func TestNumberOptions_IntCoercion(t *testing.T) {
 	})
 }
 
+func TestNumberOptions_IntCoercionAcceptedTypes(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		in   any
+	}{
+		{name: "int8", in: int8(4)},
+		{name: "int16", in: int16(4)},
+		{name: "int32", in: int32(4)},
+		{name: "uint", in: uint(4)},
+		{name: "uint8", in: uint8(4)},
+		{name: "uint16", in: uint16(4)},
+		{name: "uint32", in: uint32(4)},
+		{name: "uint64", in: uint64(4)},
+		{name: "float32", in: float32(4)},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := NumberOptions(map[string]any{"minimumIntegerDigits": tc.in})
+			assertIntPtr(t, 4, got.MinimumIntegerDigits)
+		})
+	}
+}
+
+func TestNumberOptions_IntCoercionRejectsMalformedValues(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		in   any
+	}{
+		{name: "string with trailing junk", in: "4px"},
+		{name: "string with leading space", in: " 4"},
+		{name: "empty string", in: ""},
+		{name: "bool", in: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := NumberOptions(map[string]any{"minimumIntegerDigits": tc.in})
+			assert.Nil(t, got.MinimumIntegerDigits)
+		})
+	}
+}
+
 func assertIntPtr(t *testing.T, want int, got *int) {
 	t.Helper()
 	if assert.NotNil(t, got) {

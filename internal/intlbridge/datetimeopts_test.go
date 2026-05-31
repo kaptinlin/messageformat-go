@@ -129,3 +129,21 @@ func TestDateTimeOptions_InvalidTypesDropped(t *testing.T) {
 	assert.Equal(t, datetimeformat.NumericStyle(""), got.Hour)
 	assert.Equal(t, datetimeformat.LongTimeZoneName, got.TimeZoneName)
 }
+
+func TestDateTimeOptions_ScalarsDropInvalidValues(t *testing.T) {
+	t.Parallel()
+
+	got := DateTimeOptions(map[string]any{
+		"calendar":        123,
+		"numberingSystem": false,
+		"localeMatcher":   123,
+		"timeZone":        []string{"UTC"},
+		"hour12":          "true",
+	})
+
+	assert.Empty(t, got.Calendar)
+	assert.Empty(t, got.NumberingSystem)
+	assert.Empty(t, got.LocaleMatcher)
+	assert.Empty(t, got.TimeZone)
+	assert.Nil(t, got.Hour12)
+}

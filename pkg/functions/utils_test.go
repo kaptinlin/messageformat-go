@@ -18,6 +18,8 @@ func TestAsBoolean(t *testing.T) {
 		{"true string", "true", true, false},
 		{"false string", "false", false, false},
 		{"invalid string", "invalid", false, true},
+		{"object valueOf true", map[string]any{"valueOf": "true"}, true, false},
+		{"object valueOf false", map[string]any{"valueOf": false}, false, false},
 		{"number", 42, false, true},
 		{"nil", nil, false, true},
 	}
@@ -48,6 +50,8 @@ func TestAsPositiveInteger(t *testing.T) {
 		{"positive float", 3.0, 3, false},
 		{"positive string", "123", 123, false},
 		{"zero string", "0", 0, false},
+		{"object valueOf int64", map[string]any{"valueOf": int64(7)}, 7, false},
+		{"object valueOf string", map[string]any{"valueOf": "8"}, 8, false},
 		{"invalid string", "abc", 0, true},
 		{"negative string", "-5", 0, true},
 		{"float string", "3.14", 0, true},
@@ -75,6 +79,7 @@ func TestAsString(t *testing.T) {
 	}{
 		{"string", "hello", "hello", false},
 		{"empty string", "", "", false},
+		{"object valueOf string", map[string]any{"valueOf": "compact"}, "compact", false},
 		{"number", 42, "", true},
 		{"boolean", true, "", true},
 		{"nil", nil, "", true},
