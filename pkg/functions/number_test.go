@@ -411,6 +411,31 @@ func TestNumberTypeScriptCompatibility(t *testing.T) {
 		assert.Equal(t, "number", result.Type())
 	})
 
+	t.Run("BigInt input honors number formatting options", func(t *testing.T) {
+		ctx := NewMessageFunctionContext(
+			[]string{"en"},
+			"test source",
+			"best fit",
+			nil,
+			nil,
+			"",
+			"",
+		)
+
+		bigInt := new(big.Int).Exp(big.NewInt(10), big.NewInt(30), nil)
+		result := NumberFunction(ctx, map[string]any{"useGrouping": "always"}, bigInt)
+		require.NotNil(t, result)
+
+		formatted, err := result.ToString()
+		require.NoError(t, err)
+		assert.Equal(t, "1,000,000,000,000,000,000,000,000,000,000", formatted)
+
+		parts, err := result.ToParts()
+		require.NoError(t, err)
+		require.Len(t, parts, 1)
+		assert.Equal(t, formatted, parts[0].Value())
+	})
+
 	t.Run("valueOf method operand", func(t *testing.T) {
 		// Test operand with valueOf method (matches TypeScript Number.valueOf())
 		ctx := NewMessageFunctionContext(

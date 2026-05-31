@@ -3,6 +3,7 @@ package messagevalue
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 
@@ -87,18 +88,18 @@ func (nv *NumberValue) Options() map[string]any {
 }
 
 func (nv *NumberValue) ToString() (string, error) {
-	formatter, num, ok, err := nv.newFormatter()
+	formatter, value, ok, err := nv.newFormatter()
 	if err != nil {
 		return fmt.Sprintf("%v", nv.value), err
 	}
 	if !ok {
 		return fmt.Sprintf("%v", nv.value), nil
 	}
-	return formatter.Format(numberformat.Float(num)), nil
+	return formatter.Format(value), nil
 }
 
-// newFormatter resolves the value to a float64 and constructs a NumberFormat
-// using the bridge-translated options. The bool indicates whether a formatter
+// newFormatter resolves the value into go-intl's numeric input and constructs
+// a NumberFormat using the bridge-translated options. The bool indicates whether a formatter
 // could be built (false for non-numeric values, which the caller falls back to
 // fmt.Sprintf for).
 //
@@ -107,24 +108,62 @@ func (nv *NumberValue) ToString() (string, error) {
 // and the formatter is rebuilt with the remaining options. ECMA-402 throws on
 // these inputs, but MF2's spec calls for graceful fallback instead of failing
 // the whole message.
-func (nv *NumberValue) newFormatter() (*numberformat.NumberFormat, float64, bool, error) {
-	num, ok := numberAsFloat(nv.value)
+func (nv *NumberValue) newFormatter() (*numberformat.NumberFormat, numberformat.Value, bool, error) {
+	value, ok := numberFormatValue(nv.value)
 	if !ok {
-		return nil, 0, false, nil
+		return nil, numberformat.Value{}, false, nil
 	}
 	loc := intlbridge.ParseLocale(nv.locale)
 	opts := intlbridge.NumberOptions(nv.options)
 	f, err := numberformat.New(loc, opts)
 	if err == nil {
-		return f, num, true, nil
+		return f, value, true, nil
 	}
 	opts.Style = ""
 	opts.Currency = ""
 	opts.Unit = ""
 	if f2, err2 := numberformat.New(loc, opts); err2 == nil {
-		return f2, num, true, nil
+		return f2, value, true, nil
 	}
-	return nil, num, false, err
+	return nil, value, false, err
+}
+
+func numberFormatValue(v any) (numberformat.Value, bool) {
+	switch x := v.(type) {
+	case int:
+		return numberformat.Int(int64(x)), true
+	case int8:
+		return numberformat.Int(int64(x)), true
+	case int16:
+		return numberformat.Int(int64(x)), true
+	case int32:
+		return numberformat.Int(int64(x)), true
+	case int64:
+		return numberformat.Int(x), true
+	case uint:
+		return numberformat.Uint(uint64(x)), true
+	case uint8:
+		return numberformat.Uint(uint64(x)), true
+	case uint16:
+		return numberformat.Uint(uint64(x)), true
+	case uint32:
+		return numberformat.Uint(uint64(x)), true
+	case uint64:
+		return numberformat.Uint(x), true
+	case float32:
+		return numberformat.Float(float64(x)), true
+	case float64:
+		return numberformat.Float(x), true
+	case *big.Int:
+		return numberformat.BigInt(x), true
+	case big.Int:
+		return numberformat.BigInt(&x), true
+	case *big.Float:
+		return numberformat.BigFloat(x), true
+	case big.Float:
+		return numberformat.BigFloat(&x), true
+	}
+	return numberformat.Value{}, false
 }
 
 func numberAsFloat(v any) (float64, bool) {
@@ -158,7 +197,7 @@ func numberAsFloat(v any) (float64, bool) {
 }
 
 func (nv *NumberValue) ToParts() ([]MessagePart, error) {
-	formatter, num, ok, err := nv.newFormatter()
+	formatter, value, ok, err := nv.newFormatter()
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +211,6 @@ func (nv *NumberValue) ToParts() ([]MessagePart, error) {
 			},
 		}, nil
 	}
-	value := numberformat.Float(num)
 	intlParts := formatter.FormatToParts(value)
 	formatted := formatter.Format(value)
 	sub := make([]MessagePart, 0, len(intlParts))
