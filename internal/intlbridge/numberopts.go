@@ -1,9 +1,15 @@
 package intlbridge
 
 import (
+	"math"
 	"strconv"
 
 	"github.com/agentable/go-intl/numberformat"
+)
+
+const (
+	maxIntValue = uint64(1<<(strconv.IntSize-1) - 1)
+	minIntValue = -1 << (strconv.IntSize - 1)
 )
 
 // NumberOptions translates MessageFormat 2.0's loose map[string]any option bag
@@ -202,29 +208,46 @@ func asOptInt(raw any) (int, bool) {
 	case int32:
 		return int(v), true
 	case int64:
+		if v < int64(minIntValue) || v > int64(maxIntValue) {
+			return 0, false
+		}
 		return int(v), true
 	case uint:
-		return int(v), true
+		return asOptUint64(uint64(v))
 	case uint8:
 		return int(v), true
 	case uint16:
 		return int(v), true
 	case uint32:
-		return int(v), true
+		return asOptUint64(uint64(v))
 	case uint64:
-		return int(v), true
+		return asOptUint64(v)
 	case float32:
-		if float32(int(v)) == v {
-			return int(v), true
-		}
+		return asOptFloat64(float64(v))
 	case float64:
-		if float64(int(v)) == v {
-			return int(v), true
-		}
+		return asOptFloat64(v)
 	case string:
 		if n, err := strconv.Atoi(v); err == nil {
 			return n, true
 		}
 	}
 	return 0, false
+}
+
+func asOptUint64(v uint64) (int, bool) {
+	if v > maxIntValue {
+		return 0, false
+	}
+	return int(v), true
+}
+
+func asOptFloat64(v float64) (int, bool) {
+	if math.IsNaN(v) || math.IsInf(v, 0) || math.Trunc(v) != v {
+		return 0, false
+	}
+	n, err := strconv.ParseInt(strconv.FormatFloat(v, 'f', 0, 64), 10, strconv.IntSize)
+	if err != nil {
+		return 0, false
+	}
+	return int(n), true
 }

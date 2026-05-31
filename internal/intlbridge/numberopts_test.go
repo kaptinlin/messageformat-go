@@ -1,6 +1,7 @@
 package intlbridge
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/agentable/go-intl/numberformat"
@@ -194,6 +195,8 @@ func TestNumberOptions_IntCoercionRejectsMalformedValues(t *testing.T) {
 		{name: "string with leading space", in: " 4"},
 		{name: "empty string", in: ""},
 		{name: "bool", in: true},
+		{name: "uint64 over int max", in: uint64(1) << (strconv.IntSize - 1)},
+		{name: "integral float64 over int max", in: float64(uint64(1) << (strconv.IntSize - 1))},
 	}
 
 	for _, tc := range tests {
