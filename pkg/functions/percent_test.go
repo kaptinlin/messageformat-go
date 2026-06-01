@@ -179,6 +179,48 @@ func TestPercentFunctionAllowsDecimalStyledOperand(t *testing.T) {
 	assert.Empty(t, errs)
 }
 
+func TestPercentFunctionDiscardsInheritedSelectionOptions(t *testing.T) {
+	t.Parallel()
+
+	var errs []error
+	ctx := NewMessageFunctionContext(
+		[]string{"en"},
+		"test source",
+		"best fit",
+		func(err error) {
+			errs = append(errs, err)
+		},
+		nil,
+		"",
+		"",
+	)
+	operand := messagevalue.NewNumberValue(0.01, "en", "operand", map[string]any{
+		"style":                "decimal",
+		"minimumIntegerDigits": 3,
+		"roundingIncrement":    5,
+		"select":               "exact",
+	})
+
+	result := PercentFunction(ctx, nil, operand)
+	numberVal, ok := result.(*messagevalue.NumberValue)
+	require.True(t, ok)
+	assert.Empty(t, errs)
+
+	resultOptions := numberVal.Options()
+	assert.Equal(t, "percent", resultOptions["style"])
+	assert.NotContains(t, resultOptions, "minimumIntegerDigits")
+	assert.NotContains(t, resultOptions, "roundingIncrement")
+	assert.NotContains(t, resultOptions, "select")
+
+	selectedKeys, err := numberVal.SelectKeys([]string{"one", "other"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"one"}, selectedKeys)
+
+	formatted, err := numberVal.ToString()
+	require.NoError(t, err)
+	assert.Equal(t, "1%", formatted)
+}
+
 // TestCurrencyCannotSelect verifies that :currency does not support selection
 // Reference: TypeScript implementation - currency uses getMessageNumber(..., false)
 func TestCurrencyCannotSelect(t *testing.T) {

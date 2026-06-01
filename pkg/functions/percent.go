@@ -85,6 +85,10 @@ func PercentFunction(
 
 	// Start with operand options and set defaults - matches TypeScript Object.assign
 	mergedOptions := mergeNumberOptions(numInput.Options, nil, ctx.LocaleMatcher())
+	// MF2 requires :percent to discard inherited options that would change selection.
+	delete(mergedOptions, "minimumIntegerDigits")
+	delete(mergedOptions, "roundingIncrement")
+	delete(mergedOptions, "select")
 	mergedOptions["style"] = "percent" // Set percent style
 
 	// Process expression options - matches TypeScript for loop
