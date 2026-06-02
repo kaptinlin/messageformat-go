@@ -190,10 +190,8 @@ func dateTimeImplementation(
 
 		// Read timePrecision (optional, defaults to 'minute' in formatting)
 		// TypeScript: switch (readStringOption(...))
-		timePrecision := readStringOption(ctx, exprOpt, precisionName, timePrecisionValues)
-		if timePrecision != "" {
-			dtOptions["timePrecision"] = timePrecision
-		}
+		timePrecision := cmp.Or(readStringOption(ctx, exprOpt, precisionName, timePrecisionValues), "minute")
+		dtOptions["timePrecision"] = timePrecision
 
 		// Read timeZoneStyle (optional)
 		// TypeScript: options.timeZoneName = readStringOption(...)

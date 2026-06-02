@@ -130,3 +130,38 @@ func TestTimeFunctionPrecisionSecondParts(t *testing.T) {
 	assert.Equal(t, "06", valuesByType["second"])
 	assert.Empty(t, errors)
 }
+
+func TestTimeFunctionDefaultsToMinutePrecision(t *testing.T) {
+	t.Parallel()
+
+	var errors []error
+	result := TimeFunction(newTestContext(func(err error) {
+		errors = append(errors, err)
+	}), nil, "2006-01-02T15:04:05Z")
+
+	dtv, ok := result.(*messagevalue.DateTimeValue)
+	require.True(t, ok, "Expected DateTimeValue, got %T", result)
+	assert.Equal(t, "minute", dtv.Options()["timePrecision"])
+
+	parts, err := dtv.ToParts()
+	require.NoError(t, err)
+	require.Len(t, parts, 1)
+	partWithChildren, ok := parts[0].(interface {
+		Parts() []messagevalue.MessagePart
+	})
+	require.True(t, ok, "Expected datetime part with children, got %T", parts[0])
+
+	subparts := partWithChildren.Parts()
+	require.NotEmpty(t, subparts)
+	valuesByType := make(map[string]any, len(subparts))
+	for _, part := range subparts {
+		valuesByType[part.Type()] = part.Value()
+	}
+	assert.Contains(t, valuesByType, "hour")
+	assert.Contains(t, valuesByType, "minute")
+	assert.NotContains(t, valuesByType, "second")
+	assert.NotContains(t, valuesByType, "year")
+	assert.NotContains(t, valuesByType, "month")
+	assert.NotContains(t, valuesByType, "day")
+	assert.Empty(t, errors)
+}
