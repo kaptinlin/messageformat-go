@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"log"
 
-	mf "github.com/kaptinlin/messageformat-go/v1"
+	mf "github.com/kaptinlin/messageformat-go/mf1"
 )
 
 // LocalizedMessage represents a message in multiple languages

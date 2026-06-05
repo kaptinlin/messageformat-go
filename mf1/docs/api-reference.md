@@ -5,7 +5,7 @@ Reference for the supported ICU MessageFormat v1 compatibility package.
 ## Import
 
 ```go
-import mf "github.com/kaptinlin/messageformat-go/v1"
+import mf "github.com/kaptinlin/messageformat-go/mf1"
 ```
 
 ## Construction
@@ -67,7 +67,8 @@ The package supports the usual ICU MessageFormat v1 features:
 This package is shipped from the root module. Use:
 
 ```bash
-go get github.com/kaptinlin/messageformat-go@latest
+go get github.com/kaptinlin/messageformat-go/mf1@latest
 ```
 
-Do not treat `github.com/kaptinlin/messageformat-go/v1` as a standalone Go module.
+`github.com/kaptinlin/messageformat-go/mf1` is a standalone Go module: it
+depends only on `go-intl`, not on the root MessageFormat 2 module.

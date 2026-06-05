@@ -1,6 +1,6 @@
 # V1 Examples
 
-Examples for the supported `github.com/kaptinlin/messageformat-go/v1` package.
+Examples for the supported `github.com/kaptinlin/messageformat-go/mf1` package.
 
 ## Run
 
@@ -25,7 +25,7 @@ go run ./v1/examples/performance
 All examples import the package path below:
 
 ```go
-import mf "github.com/kaptinlin/messageformat-go/v1"
+import mf "github.com/kaptinlin/messageformat-go/mf1"
 ```
 
 That path is a package inside the root module. Consumers should version the root module:

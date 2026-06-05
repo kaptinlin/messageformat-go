@@ -8,7 +8,7 @@ import (
 
 	"github.com/agentable/go-intl/locale"
 	"github.com/agentable/go-intl/pluralrules"
-	"github.com/kaptinlin/messageformat-go/internal/intlbridge"
+	"github.com/kaptinlin/messageformat-go/mf1/internal/intlbridge"
 )
 
 // PluralCategory represents the plural categories from CLDR

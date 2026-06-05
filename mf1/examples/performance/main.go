@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	mf "github.com/kaptinlin/messageformat-go/v1"
+	mf "github.com/kaptinlin/messageformat-go/mf1"
 )
 
 // MessageCache demonstrates compiled message caching for performance

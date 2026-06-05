@@ -10,7 +10,7 @@ import (
 
 	"github.com/agentable/go-intl/datetimeformat"
 	"github.com/agentable/go-intl/numberformat"
-	"github.com/kaptinlin/messageformat-go/internal/intlbridge"
+	"github.com/kaptinlin/messageformat-go/mf1/internal/intlbridge"
 )
 
 // NumberFmt formats numbers with specified parameters

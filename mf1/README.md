@@ -5,10 +5,10 @@ Supported ICU MessageFormat v1 compatibility package for this repository.
 `v1` is a package inside the root module, not a standalone Go module. Import it as:
 
 ```go
-import mf "github.com/kaptinlin/messageformat-go/v1"
+import mf "github.com/kaptinlin/messageformat-go/mf1"
 ```
 
-Do not run `go get github.com/kaptinlin/messageformat-go/v1` as if it were a separate module. Use the root module version instead:
+Do not run `go get github.com/kaptinlin/messageformat-go/mf1` as if it were a separate module. Use the root module version instead:
 
 ```bash
 go get github.com/kaptinlin/messageformat-go@latest
@@ -29,7 +29,7 @@ import (
 	"fmt"
 	"log"
 
-	mf "github.com/kaptinlin/messageformat-go/v1"
+	mf "github.com/kaptinlin/messageformat-go/mf1"
 )
 
 func main() {

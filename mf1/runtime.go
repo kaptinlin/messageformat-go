@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/agentable/go-intl/numberformat"
-	"github.com/kaptinlin/messageformat-go/internal/intlbridge"
+	"github.com/kaptinlin/messageformat-go/mf1/internal/intlbridge"
 )
 
 // Safe integer range constants (JavaScript Number.MAX_SAFE_INTEGER/MIN_SAFE_INTEGER)

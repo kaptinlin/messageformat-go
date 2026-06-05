@@ -14,7 +14,7 @@ A Go implementation of Unicode MessageFormat 2.0 for parsing, validating, and fo
 - **Locale-aware functions**: Format numbers, dates, currencies, percentages, offsets, strings, and units through [`github.com/agentable/go-intl`](https://github.com/agentable/go-intl).
 - **Custom formatters**: Register application functions with `WithFunction` or `WithFunctions`.
 - **Structured rendering**: Use `FormatToParts` for rich text, markup-aware rendering, and post-processing.
-- **Migration path**: Keep existing ICU MessageFormat v1 code on the supported `github.com/kaptinlin/messageformat-go/v1` package.
+- **Migration path**: Keep existing ICU MessageFormat v1 code on the supported `github.com/kaptinlin/messageformat-go/mf1` package.
 - **Official conformance**: Run the Unicode MessageFormat Working Group test suite with `task test-official` or `task test-v2`.
 
 ## Installation
@@ -28,7 +28,7 @@ Requires **Go 1.26+**.
 For ICU MessageFormat v1 compatibility, import:
 
 ```go
-import messageformatv1 "github.com/kaptinlin/messageformat-go/v1"
+import mf1 "github.com/kaptinlin/messageformat-go/mf1"
 ```
 
 ## Quick Start
