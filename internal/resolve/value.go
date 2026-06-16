@@ -37,7 +37,8 @@ func resolveValue(ctx *Context, value datamodel.Node) (any, error) {
 	case *datamodel.Literal:
 		return v.Value(), nil
 	case *datamodel.VariableRef:
-		return lookupVariableRef(ctx, v), nil
+		resolved, _ := lookupVariableRef(ctx, v)
+		return resolved, nil
 	default:
 		// Should never happen - matches TypeScript @ts-expect-error
 		logger.Error("unsupported value type", "type", v.Type())

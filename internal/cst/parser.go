@@ -71,7 +71,7 @@ func (ctx *ParseContext) Source() string {
 // onError(type: 'missing-syntax', start: number, char: string): void;
 func (ctx *ParseContext) OnError(errorType string, start int, endOrChar any) {
 	// Convert string error types to constants
-	var errorTypeConstant string
+	var errorTypeConstant errors.ErrorKind
 	switch errorType {
 	case "missing-syntax":
 		errorTypeConstant = errors.ErrorTypeMissingSyntax

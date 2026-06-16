@@ -321,13 +321,15 @@ func TestResolveExpression_LocaleHandling(t *testing.T) {
 	}
 }
 
-// TestResolveExpression_MessageValuePassthrough tests that existing MessageValues are handled correctly
-func TestResolveExpression_MessageValuePassthrough(t *testing.T) {
+// TestResolveExpression_ExternalMessageValuePreservedAsUnknown tests that externally supplied MessageValues
+// are preserved as unknown input values instead of being treated as locally resolved values.
+func TestResolveExpression_ExternalMessageValuePreservedAsUnknown(t *testing.T) {
+	preformatted := messagevalue.NewStringValue("formatted", "en", "test")
 	ctx := NewContext(
 		[]string{"en"},
 		functions.DefaultFunctionMap(),
 		map[string]any{
-			"preformatted": messagevalue.NewStringValue("formatted", "en", "test"),
+			"preformatted": preformatted,
 		},
 		nil,
 	)
@@ -337,11 +339,8 @@ func TestResolveExpression_MessageValuePassthrough(t *testing.T) {
 
 	result := ResolveExpression(ctx, expr)
 
-	// The MessageValue gets wrapped by the string function
-	assert.Equal(t, "string", result.Type())
-	// The ToString might return the struct representation or the value
-	str, err := result.ToString()
+	assert.Equal(t, "unknown", result.Type())
+	value, err := result.ValueOf()
 	require.NoError(t, err)
-	// Accept either the original value or struct representation
-	assert.True(t, str == "formatted" || len(str) > 0, "Expected non-empty string result")
+	assert.Same(t, preformatted, value)
 }

@@ -46,8 +46,18 @@ func TestUnknownValue(t *testing.T) {
 			locale:           "en",
 			expectedType:     "unknown",
 			expectedDir:      bidi.DirAuto,
-			expectedToString: "<nil>",
+			expectedToString: "null",
 			expectedValueOf:  nil,
+		},
+		{
+			name:             "typed nil pointer",
+			source:           "test",
+			value:            (*struct{})(nil),
+			locale:           "en",
+			expectedType:     "unknown",
+			expectedDir:      bidi.DirAuto,
+			expectedToString: "null",
+			expectedValueOf:  (*struct{})(nil),
 		},
 	}
 

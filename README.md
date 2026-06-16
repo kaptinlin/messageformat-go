@@ -10,7 +10,7 @@ A Go implementation of Unicode MessageFormat 2.0 for parsing, validating, and fo
 ## Features
 
 - **MessageFormat 2.0**: Parse, validate, select, and format messages with the Unicode MessageFormat 2.0 model.
-- **Go-first API**: Use typed options, immutable formatter snapshots, structured parts, and explicit error returns.
+- **Established API surface**: Use stable constructor concepts, option names, formatting methods, and runtime defaults across MessageFormat 2 implementations.
 - **Locale-aware functions**: Format numbers, dates, currencies, percentages, offsets, strings, and units through [`github.com/agentable/go-intl`](https://github.com/agentable/go-intl).
 - **Custom formatters**: Register application functions with `WithFunction` or `WithFunctions`.
 - **Structured rendering**: Use `FormatToParts` for rich text, markup-aware rendering, and post-processing.
@@ -123,7 +123,7 @@ Built-in functions include `:number`, `:integer`, `:string`, `:offset`, `:curren
 
 ### Structured Parts
 
-Use `FormatToParts` when a UI needs typed output instead of one string:
+Use `FormatToParts` when a UI needs structured output instead of one string. `Format` follows the documented string conversion path; `FormatToParts` keeps the resolved part values for rich rendering.
 
 ```go
 parts, err := mf.FormatToParts(map[string]any{"amount": 29.99})
@@ -173,7 +173,7 @@ Use functional options for focused constructor changes:
 
 | Option | Purpose | Default |
 |--------|---------|---------|
-| `WithBidiIsolation(strategy)` | Control Unicode bidi isolation markers | `BidiNone` |
+| `WithBidiIsolation(strategy)` | Control Unicode bidi isolation markers | `BidiDefault` |
 | `WithDir(direction)` | Set message base direction | Locale-derived |
 | `WithLocaleMatcher(matcher)` | Select locale matching behavior | `LocaleBestFit` |
 | `WithFunction(name, fn)` | Register one custom function | Built-ins only |
@@ -186,7 +186,6 @@ Example:
 mf, err := messageformat.Parse(
 	[]string{"ar"},
 	"مرحبا {$name}!",
-	messageformat.WithBidiIsolation(messageformat.BidiDefault),
 	messageformat.WithDir(messageformat.DirRTL),
 )
 ```
@@ -196,12 +195,12 @@ Use `messageformat.Options(...)` when a struct is more convenient:
 ```go
 mf, err := messageformat.Parse(
 	[]string{"en"},
-	"Hello, {$name}!",
-	messageformat.Options(messageformat.MessageFormatOptions{
-		BidiIsolation: messageformat.BidiNone,
-		LocaleMatcher: messageformat.LocaleBestFit,
-	}),
-)
+		"Hello, {$name}!",
+		messageformat.Options(messageformat.MessageFormatOptions{
+			BidiIsolation: messageformat.BidiDefault,
+			LocaleMatcher: messageformat.LocaleBestFit,
+		}),
+	)
 ```
 
 ## Conformance
@@ -213,7 +212,7 @@ task test-official  # Official MessageFormat 2.0 suite only
 task test-v2        # Package tests plus official suite, with race detection
 ```
 
-The TypeScript `messageformat` project is kept as a reference for behavior and API parity. Project design contracts live in [`SPECS/`](SPECS/).
+Project design contracts live in [`SPECS/`](SPECS/).
 
 ## Documentation
 

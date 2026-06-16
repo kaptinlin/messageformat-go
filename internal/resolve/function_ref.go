@@ -421,6 +421,17 @@ type selectableMessageValueWithOptions struct {
 	*messageValueWithOptions
 }
 
+// CanSelect reports whether the wrapped value supports pattern selection.
+// TypeScript original code:
+// // Message values expose selectKey only when selectable.
+func (mv *selectableMessageValueWithOptions) CanSelect() bool {
+	selectable, ok := mv.wrapped.(interface{ CanSelect() bool })
+	if !ok {
+		return true
+	}
+	return selectable.CanSelect()
+}
+
 func (mv *selectableMessageValueWithOptions) SelectKeys(keys []string) ([]string, error) {
 	selector, ok := mv.wrapped.(messagevalue.Selector)
 	if !ok {

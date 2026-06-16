@@ -13,7 +13,7 @@ func CloneMessage(message Message) Message {
 			cloneDeclarationsDeep(m.declarations),
 			clonePatternDeep(m.pattern),
 			m.comment,
-			m.cst,
+			m.span,
 		)
 	case *SelectMessage:
 		return newSelectMessageWithCST(
@@ -21,7 +21,7 @@ func CloneMessage(message Message) Message {
 			cloneVariableRefs(m.selectors),
 			cloneVariantsDeep(m.variants),
 			m.comment,
-			m.cst,
+			m.span,
 		)
 	default:
 		return message
@@ -52,9 +52,9 @@ func cloneDeclaration(declaration Declaration) Declaration {
 	case nil:
 		return nil
 	case *InputDeclaration:
-		return newInputDeclarationWithCST(d.name, cloneVariableRefExpression(d.value), d.cst)
+		return newInputDeclarationWithCST(d.name, cloneVariableRefExpression(d.value), d.span)
 	case *LocalDeclaration:
-		return newLocalDeclarationWithCST(d.name, cloneExpression(d.value), d.cst)
+		return newLocalDeclarationWithCST(d.name, cloneExpression(d.value), d.span)
 	default:
 		return declaration
 	}
@@ -72,7 +72,7 @@ func cloneVariableRefExpression(expression *VariableRefExpression) *VariableRefE
 		cloneVariableRef(expression.arg),
 		cloneFunctionRef(expression.functionRef),
 		cloneAttributesDeep(expression.attributes),
-		expression.cst,
+		expression.span,
 	)
 }
 
@@ -89,7 +89,7 @@ func cloneVariantsDeep(variants []Variant) []Variant {
 		cloned[i] = Variant{
 			keys:  cloneVariantKeysDeep(variants[i].keys),
 			value: clonePatternDeep(variants[i].value),
-			cst:   variants[i].cst,
+			span:  variants[i].span,
 		}
 	}
 	return cloned
@@ -121,7 +121,7 @@ func cloneVariantKey(key VariantKey) VariantKey {
 	case *Literal:
 		return cloneLiteral(k)
 	case *CatchallKey:
-		return newCatchallKeyWithCST(k.value, k.cst)
+		return newCatchallKeyWithCST(k.value, k.span)
 	default:
 		return key
 	}
@@ -151,7 +151,7 @@ func clonePatternElement(element PatternElement) PatternElement {
 	case nil:
 		return nil
 	case *TextElement:
-		return newTextElementWithCST(e.value, e.cst)
+		return newTextElementWithCST(e.value, e.span)
 	case *Expression:
 		return cloneExpression(e)
 	case *Markup:
@@ -173,7 +173,7 @@ func cloneExpression(expression *Expression) *Expression {
 		cloneExpressionArg(expression.arg),
 		cloneFunctionRef(expression.functionRef),
 		cloneAttributesDeep(expression.attributes),
-		expression.cst,
+		expression.span,
 	)
 }
 
@@ -202,7 +202,7 @@ func cloneFunctionRef(ref *FunctionRef) *FunctionRef {
 	if ref == nil {
 		return nil
 	}
-	return newFunctionRefWithCST(ref.name, cloneOptionsDeep(ref.options), ref.cst)
+	return newFunctionRefWithCST(ref.name, cloneOptionsDeep(ref.options), ref.span)
 }
 
 // cloneMarkup copies a markup node.
@@ -218,7 +218,7 @@ func cloneMarkup(markup *Markup) *Markup {
 		markup.name,
 		cloneOptionsDeep(markup.options),
 		cloneAttributesDeep(markup.attributes),
-		markup.cst,
+		markup.span,
 	)
 	return cloned
 }
@@ -281,7 +281,7 @@ func cloneAttributeValue(value AttributeValue) AttributeValue {
 	case *Literal:
 		return cloneLiteral(v)
 	case *BooleanAttribute:
-		return newBooleanAttributeWithCST(v.cst)
+		return newBooleanAttributeWithCST(v.span)
 	default:
 		return value
 	}
@@ -295,7 +295,7 @@ func cloneLiteral(literal *Literal) *Literal {
 	if literal == nil {
 		return nil
 	}
-	return newLiteralWithCST(literal.value, literal.cst)
+	return newLiteralWithCST(literal.value, literal.span)
 }
 
 // cloneVariableRef copies a variable reference node.
@@ -306,5 +306,5 @@ func cloneVariableRef(ref *VariableRef) *VariableRef {
 	if ref == nil {
 		return nil
 	}
-	return newVariableRefWithCST(ref.name, ref.cst)
+	return newVariableRefWithCST(ref.name, ref.span)
 }

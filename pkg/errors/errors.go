@@ -7,6 +7,15 @@ import (
 	"strings"
 )
 
+// ErrorKind is the stable identity of a MessageFormat error.
+// TypeScript original code:
+// type MessageErrorType = MessageError['type'];
+type ErrorKind string
+
+func (kind ErrorKind) String() string {
+	return string(kind)
+}
+
 // MessageError represents the base error class used by MessageFormat
 // TypeScript original code:
 //
@@ -37,18 +46,23 @@ func (e *MessageError) ErrorType() string {
 	return e.Type
 }
 
+// Kind returns the typed error identity for errors.Is and caller branching.
+func (e *MessageError) Kind() ErrorKind {
+	return ErrorKind(e.Type)
+}
+
 // Is implements error comparison for errors.Is()
 func (e *MessageError) Is(target error) bool {
 	if t, ok := target.(*MessageError); ok {
-		return e.Type == t.Type
+		return e.Kind() == t.Kind()
 	}
 	return false
 }
 
 // NewMessageError creates a new base message error
-func NewMessageError(errorType, message string) *MessageError {
+func NewMessageError(errorType ErrorKind, message string) *MessageError {
 	return &MessageError{
-		Type:    errorType,
+		Type:    errorType.String(),
 		Message: message,
 	}
 }
@@ -94,12 +108,12 @@ type MessageSyntaxError struct {
 
 // NewMessageSyntaxError creates a new syntax error
 // TypeScript original code: MessageSyntaxError constructor
-func NewMessageSyntaxError(errorType string, start int, end *int, expected *string) *MessageSyntaxError {
+func NewMessageSyntaxError(errorType ErrorKind, start int, end *int, expected *string) *MessageSyntaxError {
 	var message string
 	if expected != nil {
 		message = fmt.Sprintf("missing %s", *expected)
 	} else {
-		message = errorType
+		message = errorType.String()
 	}
 
 	if start >= 0 {
@@ -143,9 +157,20 @@ type MessageDataModelError struct {
 	*MessageSyntaxError
 }
 
+// As exposes MessageDataModelError as its embedded syntax error.
+// TypeScript original code:
+// export class MessageDataModelError extends MessageSyntaxError {}
+func (e *MessageDataModelError) As(target any) bool {
+	if syntaxError, ok := target.(**MessageSyntaxError); ok {
+		*syntaxError = e.MessageSyntaxError
+		return true
+	}
+	return false
+}
+
 // NewMessageDataModelError creates a new data model error
 // TypeScript original code: MessageDataModelError constructor
-func NewMessageDataModelError(errorType string, node Node) *MessageDataModelError {
+func NewMessageDataModelError(errorType ErrorKind, node Node) *MessageDataModelError {
 	// Get CST position information from node if available
 	start := -1
 	end := -1
@@ -187,9 +212,9 @@ type MessageResolutionError struct {
 
 // NewMessageResolutionError creates a new resolution error
 // TypeScript original code: MessageResolutionError constructor
-func NewMessageResolutionError(errorType, message, source string, cause ...error) *MessageResolutionError {
+func NewMessageResolutionError(errorType ErrorKind, message, source string, cause ...error) *MessageResolutionError {
 	// Include error type in message for compatibility with tests
-	if !strings.Contains(message, errorType) {
+	if !strings.Contains(message, errorType.String()) {
 		message = fmt.Sprintf("%s: %s", errorType, message)
 	}
 
@@ -231,7 +256,7 @@ type MessageSelectionError struct {
 
 // NewMessageSelectionError creates a new selection error
 // TypeScript original code: MessageSelectionError constructor
-func NewMessageSelectionError(errorType string, cause error) *MessageSelectionError {
+func NewMessageSelectionError(errorType ErrorKind, cause error) *MessageSelectionError {
 	message := fmt.Sprintf("Selection error: %s", errorType)
 
 	return &MessageSelectionError{
@@ -274,7 +299,7 @@ type MessageFunctionError struct {
 
 // NewMessageFunctionError creates a new function error
 // TypeScript original code: MessageFunctionError constructor
-func NewMessageFunctionError(errorType, message string) *MessageFunctionError {
+func NewMessageFunctionError(errorType ErrorKind, message string) *MessageFunctionError {
 	return &MessageFunctionError{
 		MessageError: NewMessageError(errorType, message),
 		Source:       "�", // TypeScript default value

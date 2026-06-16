@@ -2,7 +2,6 @@ package resolve
 
 import (
 	stdErrors "errors"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -256,6 +255,57 @@ func TestResolveVariableRef_MissingVariables(t *testing.T) {
 	assert.Equal(t, "unresolved-variable", errorType)
 }
 
+func TestResolveVariableRef_NilValueIsNotMissing(t *testing.T) {
+	var errs []error
+	ctx := NewContext(
+		[]string{"en"},
+		functions.DefaultFunctionMap(),
+		map[string]any{
+			"value": nil,
+		},
+		func(err error) {
+			errs = append(errs, err)
+		},
+	)
+
+	ref := datamodel.NewVariableRef("value")
+	result := ResolveVariableRef(ctx, ref)
+
+	assert.Equal(t, "unknown", result.Type())
+	value, err := result.ValueOf()
+	require.NoError(t, err)
+	assert.Nil(t, value)
+	assert.Empty(t, errs)
+}
+
+func TestResolveVariableRef_TypedNilValueIsNotMissing(t *testing.T) {
+	type customValue struct {
+		Name string
+	}
+
+	var typedNil *customValue
+	var errs []error
+	ctx := NewContext(
+		[]string{"en"},
+		functions.DefaultFunctionMap(),
+		map[string]any{
+			"value": typedNil,
+		},
+		func(err error) {
+			errs = append(errs, err)
+		},
+	)
+
+	ref := datamodel.NewVariableRef("value")
+	result := ResolveVariableRef(ctx, ref)
+
+	assert.Equal(t, "unknown", result.Type())
+	value, err := result.ValueOf()
+	require.NoError(t, err)
+	assert.Equal(t, typedNil, value)
+	assert.Empty(t, errs)
+}
+
 // TestLookupVariableRef_UnresolvedExpression tests unresolved expression handling
 func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 	t.Run("basic unresolved expression", func(t *testing.T) {
@@ -276,9 +326,10 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 		)
 
 		ref := datamodel.NewVariableRef("x")
-		result := lookupVariableRef(ctx, ref)
+		result, found := lookupVariableRef(ctx, ref)
 
 		// Should resolve to a MessageValue
+		assert.True(t, found)
 		assert.NotNil(t, result)
 		mv, ok := result.(messagevalue.MessageValue)
 		assert.True(t, ok)
@@ -308,9 +359,10 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 		)
 
 		ref := datamodel.NewVariableRef("x")
-		result := lookupVariableRef(ctx, ref)
+		result, found := lookupVariableRef(ctx, ref)
 
 		// Should resolve using the custom scope
+		assert.True(t, found)
 		assert.NotNil(t, result)
 		// The result could be a MessageValue or the raw value "scoped value"
 		if mv, ok := result.(messagevalue.MessageValue); ok {
@@ -346,9 +398,10 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 		)
 
 		ref := datamodel.NewVariableRef("local")
-		result := lookupVariableRef(ctx, ref)
+		result, found := lookupVariableRef(ctx, ref)
 
 		// Should return the original parameter value directly
+		assert.True(t, found)
 		assert.Equal(t, "original value", result)
 	})
 }
@@ -360,30 +413,35 @@ func TestGetValue_EdgeCases(t *testing.T) {
 		scope    any
 		varName  string
 		expected any
+		found    bool
 	}{
 		{
 			name:     "nil scope",
 			scope:    nil,
 			varName:  "test",
 			expected: nil,
+			found:    false,
 		},
 		{
 			name:     "string scope (not a valid scope)",
 			scope:    "not a scope",
 			varName:  "test",
 			expected: nil,
+			found:    false,
 		},
 		{
 			name:     "number scope (not a valid scope)",
 			scope:    42,
 			varName:  "test",
 			expected: nil,
+			found:    false,
 		},
 		{
 			name:     "empty map",
 			scope:    map[string]any{},
 			varName:  "test",
 			expected: nil,
+			found:    false,
 		},
 		{
 			name: "map[interface{}]interface{}",
@@ -392,6 +450,7 @@ func TestGetValue_EdgeCases(t *testing.T) {
 			},
 			varName:  "key",
 			expected: "value",
+			found:    true,
 		},
 		{
 			name: "dotted key with no match",
@@ -400,6 +459,7 @@ func TestGetValue_EdgeCases(t *testing.T) {
 			},
 			varName:  "a.b.c",
 			expected: nil,
+			found:    false,
 		},
 		{
 			name: "dotted key with partial match only",
@@ -408,6 +468,7 @@ func TestGetValue_EdgeCases(t *testing.T) {
 			},
 			varName:  "a.b.c",
 			expected: nil,
+			found:    false,
 		},
 		{
 			name: "complex nested path resolution",
@@ -418,12 +479,14 @@ func TestGetValue_EdgeCases(t *testing.T) {
 			},
 			varName:  "a.b.c",
 			expected: "found",
+			found:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := getValue(tt.scope, tt.varName)
+			result, found := getValue(tt.scope, tt.varName)
+			assert.Equal(t, tt.found, found)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -622,9 +685,8 @@ func TestResolveVariableRef_ComplexObject(t *testing.T) {
 	ref := datamodel.NewVariableRef("obj")
 	result := ResolveVariableRef(ctx, ref)
 
-	// Complex objects should be converted to string representation
-	assert.Equal(t, "string", result.Type())
-	str, err := result.ToString()
+	assert.Equal(t, "unknown", result.Type())
+	value, err := result.ValueOf()
 	require.NoError(t, err)
-	assert.Contains(t, str, fmt.Sprintf("%v", customObj))
+	assert.Equal(t, customObj, value)
 }

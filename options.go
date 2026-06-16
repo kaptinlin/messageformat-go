@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"maps"
 
-	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 )
 
@@ -67,14 +66,11 @@ func WithBidiIsolation(strategy BidiIsolation) Option {
 func WithBidiIsolationString(strategy string) Option {
 	return func(opts *MessageFormatOptions) {
 		opts.bidiIsolationSet = true
-		switch strategy {
-		case "default":
-			opts.BidiIsolation = BidiDefault
-		case "none":
+		if strategy == "none" {
 			opts.BidiIsolation = BidiNone
-		default:
-			opts.BidiIsolation = BidiDefault
+			return
 		}
+		opts.BidiIsolation = BidiDefault
 	}
 }
 
@@ -90,7 +86,7 @@ func WithDir(direction Direction) Option {
 // WithDirString sets the message's base direction from string (for backward compatibility)
 func WithDirString(direction string) Option {
 	return func(opts *MessageFormatOptions) {
-		opts.Dir = bidi.ParseDirection(direction)
+		opts.Dir = Direction(direction)
 	}
 }
 
@@ -106,14 +102,7 @@ func WithLocaleMatcher(matcher LocaleMatcher) Option {
 // WithLocaleMatcherString sets the locale matching algorithm from string (for backward compatibility)
 func WithLocaleMatcherString(matcher string) Option {
 	return func(opts *MessageFormatOptions) {
-		switch matcher {
-		case "best fit":
-			opts.LocaleMatcher = LocaleBestFit
-		case "lookup":
-			opts.LocaleMatcher = LocaleLookup
-		default:
-			opts.LocaleMatcher = LocaleBestFit
-		}
+		opts.LocaleMatcher = LocaleMatcher(matcher)
 	}
 }
 

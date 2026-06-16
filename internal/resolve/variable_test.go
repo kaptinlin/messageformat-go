@@ -23,19 +23,36 @@ func TestGetValue(t *testing.T) {
 	}
 
 	// Direct lookup
-	assert.Equal(t, "Alice", getValue(scope, "name"))
-	assert.Equal(t, 30, getValue(scope, "age"))
+	value, found := getValue(scope, "name")
+	assert.True(t, found)
+	assert.Equal(t, "Alice", value)
+
+	value, found = getValue(scope, "age")
+	assert.True(t, found)
+	assert.Equal(t, 30, value)
 
 	// Dotted property access
-	assert.Equal(t, "dark", getValue(scope, "settings.theme"))
-	assert.Equal(t, "en", getValue(scope, "settings.lang"))
+	value, found = getValue(scope, "settings.theme")
+	assert.True(t, found)
+	assert.Equal(t, "dark", value)
+
+	value, found = getValue(scope, "settings.lang")
+	assert.True(t, found)
+	assert.Equal(t, "en", value)
 
 	// Non-existent key
-	assert.Nil(t, getValue(scope, "nonexistent"))
+	value, found = getValue(scope, "nonexistent")
+	assert.False(t, found)
+	assert.Nil(t, value)
 
 	// Non-scope value
-	assert.Nil(t, getValue("not a scope", "name"))
-	assert.Nil(t, getValue(nil, "name"))
+	value, found = getValue("not a scope", "name")
+	assert.False(t, found)
+	assert.Nil(t, value)
+
+	value, found = getValue(nil, "name")
+	assert.False(t, found)
+	assert.Nil(t, value)
 }
 
 func TestLookupVariableRef(t *testing.T) {
@@ -53,12 +70,14 @@ func TestLookupVariableRef(t *testing.T) {
 
 	// Existing variable
 	ref := datamodel.NewVariableRef("name")
-	value := lookupVariableRef(ctx, ref)
+	value, found := lookupVariableRef(ctx, ref)
+	assert.True(t, found)
 	assert.Equal(t, "Alice", value)
 
 	// Non-existing variable
 	ref2 := datamodel.NewVariableRef("nonexistent")
-	value2 := lookupVariableRef(ctx, ref2)
+	value2, found := lookupVariableRef(ctx, ref2)
+	assert.False(t, found)
 	assert.Nil(t, value2)
 }
 
@@ -388,5 +407,16 @@ func TestVariablePaths(t *testing.T) {
 		assert.Equal(t, "number", parts[0].Type())
 		assert.Equal(t, "42", parts[0].Value()) // Should be 42, not 13
 		assert.Equal(t, "en", parts[0].Locale())
+	})
+
+	t.Run("normalized key match", func(t *testing.T) {
+		values := map[string]any{
+			"cafe\u0301": "normalized",
+		}
+
+		parts := resolveVariablePath(t, "café", values)
+		require.Len(t, parts, 1)
+		assert.Equal(t, "string", parts[0].Type())
+		assert.Equal(t, "normalized", parts[0].Value())
 	})
 }

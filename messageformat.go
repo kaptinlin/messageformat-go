@@ -3,7 +3,6 @@
 package messageformat
 
 import (
-	"fmt"
 	"log/slog"
 	"maps"
 	"slices"
@@ -88,9 +87,7 @@ func NewOptions(opts *MessageFormatOptions) *MessageFormatOptions {
 		opts = &MessageFormatOptions{}
 	}
 	if opts.BidiIsolation == "" {
-		// Default to BidiNone for backward compatibility
-		// However, enable BidiDefault for RTL locales to match TypeScript reference implementation
-		opts.BidiIsolation = BidiNone
+		opts.BidiIsolation = BidiDefault
 	}
 	if opts.Dir == "" {
 		opts.Dir = DirAuto
@@ -151,10 +148,6 @@ func Compile(locales []string, message datamodel.Message, options ...Option) (*M
 	messageSnapshot := datamodel.CloneMessage(message)
 
 	opts := NewOptions(NewMessageFormatOptions(options...))
-	if !opts.bidiIsolationSet && opts.BidiIsolation == BidiNone && len(localeList) > 0 && bidi.GetLocaleDirection(localeList[0]) == bidi.DirRTL {
-		opts.BidiIsolation = BidiDefault
-	}
-
 	bidiIsolation := opts.BidiIsolation != BidiNone
 
 	dir := string(opts.Dir)
@@ -194,30 +187,53 @@ func (mf *MessageFormat) Format(
 	values map[string]any,
 	options ...FormatOption,
 ) (string, error) {
-	parts, err := mf.FormatToParts(values, options...)
-	if err != nil {
-		mf.logger.Error("failed to format message", "error", err)
-		return "", err
+	formatOptions := NewFormatOptions(options...)
+	onError := func(err error) {
+		mf.logger.Warn("MessageFormat error", "error", err)
 	}
+	if formatOptions.OnError != nil {
+		onError = formatOptions.OnError
+	}
+
+	ctx := mf.createContext(values, onError)
+	pattern := selector.SelectPattern(ctx, mf.message)
 
 	var result strings.Builder
 
-	for _, part := range parts {
-		switch p := part.(type) {
-		case *messagevalue.TextPart:
-			result.WriteString(p.Value().(string))
-		case *messagevalue.BidiIsolationPart:
-			result.WriteString(p.Value().(string))
-		case *messagevalue.FallbackPart:
-			result.WriteString(p.Value().(string))
-		case *messagevalue.MarkupPart:
-			continue
-		default:
-			if str, ok := p.Value().(string); ok {
-				result.WriteString(str)
-			} else {
-				fmt.Fprintf(&result, "%v", p.Value())
+	for _, element := range pattern.Elements() {
+		switch elem := element.(type) {
+		case *datamodel.TextElement:
+			result.WriteString(elem.Value())
+		case *datamodel.Expression:
+			mv := resolve.ResolveExpression(ctx, elem)
+			if mv == nil {
+				result.WriteString("{}")
+				continue
 			}
+
+			formatted, err := mv.ToString()
+			if err != nil {
+				ctx.OnError(err)
+				formatted = "{" + mv.Source() + "}"
+				if mf.bidiIsolation {
+					result.WriteString("\u2068")
+					result.WriteString(formatted)
+					result.WriteString("\u2069")
+				} else {
+					result.WriteString(formatted)
+				}
+				continue
+			}
+
+			if mf.shouldApplyBidiIsolation(mv) {
+				result.WriteString(mf.getBidiIsolationStart(mv.Dir()))
+				result.WriteString(formatted)
+				result.WriteString("\u2069")
+			} else {
+				result.WriteString(formatted)
+			}
+		case *datamodel.Markup:
+			resolve.FormatMarkup(ctx, elem)
 		}
 	}
 
@@ -417,24 +433,12 @@ func (mf *MessageFormat) ResolvedOptions() ResolvedMessageFormatOptions {
 		bidiIsolation = BidiDefault
 	}
 
-	dir := bidi.ParseDirection(mf.dir)
-
-	var localeMatcher LocaleMatcher
-	switch mf.localeMatcher {
-	case "best fit":
-		localeMatcher = LocaleBestFit
-	case "lookup":
-		localeMatcher = LocaleLookup
-	default:
-		localeMatcher = LocaleBestFit
-	}
-
 	functionsCopy := maps.Clone(mf.functions)
 
 	return ResolvedMessageFormatOptions{
 		BidiIsolation: bidiIsolation,
-		Dir:           dir,
+		Dir:           Direction(mf.dir),
 		Functions:     functionsCopy,
-		LocaleMatcher: localeMatcher,
+		LocaleMatcher: LocaleMatcher(mf.localeMatcher),
 	}
 }

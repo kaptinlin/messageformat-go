@@ -18,7 +18,7 @@ func main() {
 one {{One message}}
 *   {{{$count} messages}}`
 
-	mf1, err := messageformat.Parse([]string{"en"}, pluralMessage, messageformat.WithBidiIsolation(messageformat.BidiNone))
+	mf1, err := messageformat.Parse([]string{"en"}, pluralMessage)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,7 +47,7 @@ one {{One message}}
 one {{One item}}
 *   {{{$count} items}}`
 
-	mfEn, err := messageformat.Parse([]string{"en"}, englishPlural, messageformat.WithBidiIsolation(messageformat.BidiNone))
+	mfEn, err := messageformat.Parse([]string{"en"}, englishPlural)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -69,7 +69,7 @@ one {{One item}}
 0 {{没有物品}}
 * {{有 {$count} 个物品}}`
 
-	mfCn, err := messageformat.Parse([]string{"zh-CN"}, chinesePlural, messageformat.WithBidiIsolation(messageformat.BidiNone))
+	mfCn, err := messageformat.Parse([]string{"zh-CN"}, chinesePlural)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -93,7 +93,7 @@ male   {{{$name} sent a message}}
 female {{{$name} sent a message}}
 *      {{{$name} sent a message}}`
 
-	mf3, err := messageformat.Parse([]string{"en"}, genderMessage, messageformat.WithBidiIsolation(messageformat.BidiNone))
+	mf3, err := messageformat.Parse([]string{"en"}, genderMessage)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -126,7 +126,7 @@ one *      {{{$name} sent one message}}
 *   female {{{$name} sent {$count} messages}}
 *   *      {{{$name} sent {$count} messages}}`
 
-	mf4, err := messageformat.Parse([]string{"en"}, complexMessage, messageformat.WithBidiIsolation(messageformat.BidiNone))
+	mf4, err := messageformat.Parse([]string{"en"}, complexMessage)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -160,7 +160,7 @@ away    {{{$user} is away}}
 busy    {{{$user} is busy}}
 *       {{{$user} has unknown status}}`
 
-	mf5, err := messageformat.Parse([]string{"en"}, statusMessage, messageformat.WithBidiIsolation(messageformat.BidiNone))
+	mf5, err := messageformat.Parse([]string{"en"}, statusMessage)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -194,7 +194,7 @@ busy    {{{$user} is busy}}
 5 {{5 hours ago}}
 * {{{$hours} hours ago}}`
 
-	mf6, err := messageformat.Parse([]string{"en"}, timeMessage, messageformat.WithBidiIsolation(messageformat.BidiNone))
+	mf6, err := messageformat.Parse([]string{"en"}, timeMessage)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -221,7 +221,7 @@ audio    {{🎵 {$name} (Audio file)}}
 document {{📄 {$name} (Document)}}
 *        {{📁 {$name} (Unknown file type)}}`
 
-	mf7, err := messageformat.Parse([]string{"en"}, fileMessage, messageformat.WithBidiIsolation(messageformat.BidiNone))
+	mf7, err := messageformat.Parse([]string{"en"}, fileMessage)
 	if err != nil {
 		log.Fatal(err)
 	}

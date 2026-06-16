@@ -36,18 +36,18 @@ If you are new to the package, read the guides in this order:
 
 These docs assume the current package defaults:
 
-- `BidiIsolation` defaults to `BidiNone`
+- `BidiIsolation` defaults to `BidiDefault`
 - `LocaleMatcher` defaults to `LocaleBestFit`
 - `MessageFormat` instances are safe for concurrent use after construction
 - syntax errors preserve their specific error type instead of being flattened into a generic parse error
 
-If you need bidi isolation markers for RTL-safe embedding, opt in explicitly:
+If you need plain output without bidi isolation markers, opt out explicitly:
 
 ```go
 mf, err := messageformat.Parse(
 	[]string{"ar"},
 	"مرحبا {$name}!",
-	messageformat.WithBidiIsolation(messageformat.BidiDefault),
+	messageformat.WithBidiIsolation(messageformat.BidiNone),
 )
 ```
 

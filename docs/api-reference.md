@@ -178,7 +178,7 @@ Custom functions return concrete values from `pkg/messagevalue`, such as:
 
 Important runtime defaults:
 
-- `BidiIsolation` defaults to `messageformat.BidiNone`
+- `BidiIsolation` defaults to `messageformat.BidiDefault`
 - `LocaleMatcher` defaults to `messageformat.LocaleBestFit`
 - locale input is defensively copied during construction
 - `MessageFormat` instances are safe for concurrent use after construction

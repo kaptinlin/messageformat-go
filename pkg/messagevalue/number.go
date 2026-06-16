@@ -87,6 +87,13 @@ func (nv *NumberValue) Options() map[string]any {
 	return nv.options
 }
 
+// CanSelect reports whether this number value supports pattern selection.
+// TypeScript original code:
+// // MessageNumber values expose selectKey only when selectable.
+func (nv *NumberValue) CanSelect() bool {
+	return nv.selectable
+}
+
 func (nv *NumberValue) ToString() (string, error) {
 	formatter, value, ok, err := nv.newFormatter()
 	if err != nil {

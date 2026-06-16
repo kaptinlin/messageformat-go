@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-
-	"github.com/kaptinlin/messageformat-go/internal/cst"
 )
 
 var ErrInvalidMarkupKind = errors.New("invalid markup kind")
@@ -37,6 +35,39 @@ type AttributeValue interface {
 	Node
 	String() string
 	attributeValue()
+}
+
+type sourcePosition interface {
+	Start() int
+	End() int
+}
+
+type sourceSpan struct {
+	start int
+	end   int
+}
+
+func unknownSourceSpan() sourceSpan {
+	return sourceSpan{start: -1, end: -1}
+}
+
+func sourceSpanFromPosition(position sourcePosition) sourceSpan {
+	if position == nil {
+		return unknownSourceSpan()
+	}
+	return sourceSpan{start: position.Start(), end: position.End()}
+}
+
+func (s sourceSpan) getPosition() (int, int) {
+	return s.start, s.end
+}
+
+func (s sourceSpan) Start() int {
+	return s.start
+}
+
+func (s sourceSpan) End() int {
+	return s.end
 }
 
 func cloneDeclarations(declarations []Declaration) []Declaration {
@@ -96,7 +127,7 @@ func cloneVariantValue(variant Variant) Variant {
 	return Variant{
 		keys:  cloneVariantKeys(variant.keys),
 		value: clonePattern(variant.value),
-		cst:   variant.cst,
+		span:  variant.span,
 	}
 }
 
@@ -141,7 +172,7 @@ const (
 // BooleanAttribute represents a boolean attribute (true value)
 // TypeScript original code: true
 type BooleanAttribute struct {
-	cst cst.Node
+	span sourceSpan
 }
 
 // NewBooleanAttribute creates a new boolean attribute
@@ -149,9 +180,9 @@ func NewBooleanAttribute() *BooleanAttribute {
 	return &BooleanAttribute{}
 }
 
-// newBooleanAttributeWithCST creates a new boolean attribute with CST reference
-func newBooleanAttributeWithCST(cst cst.Node) *BooleanAttribute {
-	return &BooleanAttribute{cst: cst}
+// newBooleanAttributeWithCST creates a new boolean attribute with source position from CST.
+func newBooleanAttributeWithCST(cst sourcePosition) *BooleanAttribute {
+	return &BooleanAttribute{span: sourceSpanFromPosition(cst)}
 }
 
 func (ba *BooleanAttribute) Type() string {
@@ -162,8 +193,8 @@ func (ba *BooleanAttribute) String() string {
 	return "true"
 }
 
-func (ba *BooleanAttribute) cstNode() cst.Node {
-	return ba.cst
+func (ba *BooleanAttribute) GetPosition() (start, end int) {
+	return ba.span.getPosition()
 }
 
 func (ba *BooleanAttribute) attributeValue() {}
@@ -208,7 +239,7 @@ type PatternMessage struct {
 	declarations []Declaration
 	pattern      Pattern
 	comment      string
-	cst          cst.Node // [cstKey]?: CST.SimpleMessage | CST.ComplexMessage
+	span         sourceSpan // Source position from [cstKey]?: CST.SimpleMessage | CST.ComplexMessage
 }
 
 // NewPatternMessage creates a new pattern message
@@ -217,17 +248,17 @@ func NewPatternMessage(declarations []Declaration, pattern Pattern, comment stri
 		declarations: cloneDeclarations(declarations),
 		pattern:      clonePattern(pattern),
 		comment:      comment,
-		cst:          nil,
+		span:         unknownSourceSpan(),
 	}
 }
 
-// newPatternMessageWithCST creates a new pattern message with CST reference
-func newPatternMessageWithCST(declarations []Declaration, pattern Pattern, comment string, cst cst.Node) *PatternMessage {
+// newPatternMessageWithCST creates a new pattern message with source position from CST.
+func newPatternMessageWithCST(declarations []Declaration, pattern Pattern, comment string, cst sourcePosition) *PatternMessage {
 	return &PatternMessage{
 		declarations: cloneDeclarations(declarations),
 		pattern:      clonePattern(pattern),
 		comment:      comment,
-		cst:          cst,
+		span:         sourceSpanFromPosition(cst),
 	}
 }
 
@@ -236,19 +267,19 @@ func (pm *PatternMessage) Type() string {
 }
 
 func (pm *PatternMessage) Declarations() []Declaration {
-	return pm.declarations
+	return cloneDeclarations(pm.declarations)
 }
 
 func (pm *PatternMessage) Pattern() Pattern {
-	return pm.pattern
+	return clonePattern(pm.pattern)
 }
 
 func (pm *PatternMessage) Comment() string {
 	return pm.comment
 }
 
-func (pm *PatternMessage) cstNode() cst.Node {
-	return pm.cst
+func (pm *PatternMessage) GetPosition() (start, end int) {
+	return pm.span.getPosition()
 }
 
 // SelectMessage represents a message with variants for selection
@@ -276,7 +307,7 @@ type SelectMessage struct {
 	selectors    []VariableRef
 	variants     []Variant
 	comment      string
-	cst          cst.Node // [cstKey]?: CST.SelectMessage
+	span         sourceSpan // Source position from [cstKey]?: CST.SelectMessage
 }
 
 // NewSelectMessage creates a new select message
@@ -286,18 +317,18 @@ func NewSelectMessage(declarations []Declaration, selectors []VariableRef, varia
 		selectors:    cloneVariableRefs(selectors),
 		variants:     cloneVariants(variants),
 		comment:      comment,
-		cst:          nil,
+		span:         unknownSourceSpan(),
 	}
 }
 
-// newSelectMessageWithCST creates a new select message with CST reference
-func newSelectMessageWithCST(declarations []Declaration, selectors []VariableRef, variants []Variant, comment string, cst cst.Node) *SelectMessage {
+// newSelectMessageWithCST creates a new select message with source position from CST.
+func newSelectMessageWithCST(declarations []Declaration, selectors []VariableRef, variants []Variant, comment string, cst sourcePosition) *SelectMessage {
 	return &SelectMessage{
 		declarations: cloneDeclarations(declarations),
 		selectors:    cloneVariableRefs(selectors),
 		variants:     cloneVariants(variants),
 		comment:      comment,
-		cst:          cst,
+		span:         sourceSpanFromPosition(cst),
 	}
 }
 
@@ -306,23 +337,23 @@ func (sm *SelectMessage) Type() string {
 }
 
 func (sm *SelectMessage) Declarations() []Declaration {
-	return sm.declarations
+	return cloneDeclarations(sm.declarations)
 }
 
 func (sm *SelectMessage) Selectors() []VariableRef {
-	return sm.selectors
+	return cloneVariableRefs(sm.selectors)
 }
 
 func (sm *SelectMessage) Variants() []Variant {
-	return sm.variants
+	return cloneVariants(sm.variants)
 }
 
 func (sm *SelectMessage) Comment() string {
 	return sm.comment
 }
 
-func (sm *SelectMessage) cstNode() cst.Node {
-	return sm.cst
+func (sm *SelectMessage) GetPosition() (start, end int) {
+	return sm.span.getPosition()
 }
 
 // Declaration represents variable declarations
@@ -350,7 +381,7 @@ type Declaration interface {
 type InputDeclaration struct {
 	name  string
 	value *VariableRefExpression // Expression<VariableRef> in TypeScript
-	cst   cst.Node               // [cstKey]?: CST.Declaration
+	span  sourceSpan             // Source position from [cstKey]?: CST.Declaration
 }
 
 // VariableRefExpression represents an Expression with VariableRef constraint
@@ -360,7 +391,7 @@ type VariableRefExpression struct {
 	arg         *VariableRef // Must be VariableRef (not optional)
 	functionRef *FunctionRef // Optional function reference
 	attributes  Attributes   // Optional attributes
-	cst         cst.Node     // [cstKey]?: CST.Expression
+	span        sourceSpan   // Source position from [cstKey]?: CST.Expression
 }
 
 // NewVariableRefExpression creates a new variable reference expression
@@ -369,17 +400,17 @@ func NewVariableRefExpression(arg *VariableRef, functionRef *FunctionRef, attrib
 		arg:         arg,
 		functionRef: functionRef,
 		attributes:  cloneAttributes(attributes),
-		cst:         nil,
+		span:        unknownSourceSpan(),
 	}
 }
 
-// newVariableRefExpressionWithCST creates a new variable reference expression with CST reference
-func newVariableRefExpressionWithCST(arg *VariableRef, functionRef *FunctionRef, attributes Attributes, cst cst.Node) *VariableRefExpression {
+// newVariableRefExpressionWithCST creates a new variable reference expression with source position from CST.
+func newVariableRefExpressionWithCST(arg *VariableRef, functionRef *FunctionRef, attributes Attributes, cst sourcePosition) *VariableRefExpression {
 	return &VariableRefExpression{
 		arg:         arg,
 		functionRef: functionRef,
 		attributes:  cloneAttributes(attributes),
-		cst:         cst,
+		span:        sourceSpanFromPosition(cst),
 	}
 }
 
@@ -396,11 +427,11 @@ func (vre *VariableRefExpression) FunctionRef() *FunctionRef {
 }
 
 func (vre *VariableRefExpression) Attributes() Attributes {
-	return vre.attributes
+	return cloneAttributes(vre.attributes)
 }
 
-func (vre *VariableRefExpression) cstNode() cst.Node {
-	return vre.cst
+func (vre *VariableRefExpression) GetPosition() (start, end int) {
+	return vre.span.getPosition()
 }
 
 // NewInputDeclaration creates a new input declaration
@@ -408,16 +439,16 @@ func NewInputDeclaration(name string, value *VariableRefExpression) *InputDeclar
 	return &InputDeclaration{
 		name:  name,
 		value: value,
-		cst:   nil,
+		span:  unknownSourceSpan(),
 	}
 }
 
-// newInputDeclarationWithCST creates a new input declaration with CST reference
-func newInputDeclarationWithCST(name string, value *VariableRefExpression, cst cst.Node) *InputDeclaration {
+// newInputDeclarationWithCST creates a new input declaration with source position from CST.
+func newInputDeclarationWithCST(name string, value *VariableRefExpression, cst sourcePosition) *InputDeclaration {
 	return &InputDeclaration{
 		name:  name,
 		value: value,
-		cst:   cst,
+		span:  sourceSpanFromPosition(cst),
 	}
 }
 
@@ -433,8 +464,8 @@ func (id *InputDeclaration) Value() *VariableRefExpression {
 	return id.value
 }
 
-func (id *InputDeclaration) cstNode() cst.Node {
-	return id.cst
+func (id *InputDeclaration) GetPosition() (start, end int) {
+	return id.span.getPosition()
 }
 
 func (id *InputDeclaration) declaration() {}
@@ -452,7 +483,7 @@ func (id *InputDeclaration) declaration() {}
 type LocalDeclaration struct {
 	name  string
 	value *Expression
-	cst   cst.Node // [cstKey]?: CST.Declaration
+	span  sourceSpan // Source position from [cstKey]?: CST.Declaration
 }
 
 // NewLocalDeclaration creates a new local declaration
@@ -460,15 +491,16 @@ func NewLocalDeclaration(name string, value *Expression) *LocalDeclaration {
 	return &LocalDeclaration{
 		name:  name,
 		value: value,
+		span:  unknownSourceSpan(),
 	}
 }
 
-// newLocalDeclarationWithCST creates a new local declaration with CST reference
-func newLocalDeclarationWithCST(name string, value *Expression, cst cst.Node) *LocalDeclaration {
+// newLocalDeclarationWithCST creates a new local declaration with source position from CST.
+func newLocalDeclarationWithCST(name string, value *Expression, cst sourcePosition) *LocalDeclaration {
 	return &LocalDeclaration{
 		name:  name,
 		value: value,
-		cst:   cst,
+		span:  sourceSpanFromPosition(cst),
 	}
 }
 
@@ -484,8 +516,8 @@ func (ld *LocalDeclaration) Value() *Expression {
 	return ld.value
 }
 
-func (ld *LocalDeclaration) cstNode() cst.Node {
-	return ld.cst
+func (ld *LocalDeclaration) GetPosition() (start, end int) {
+	return ld.span.getPosition()
 }
 
 func (ld *LocalDeclaration) declaration() {}
@@ -503,7 +535,7 @@ func (ld *LocalDeclaration) declaration() {}
 type Variant struct {
 	keys  []VariantKey
 	value Pattern
-	cst   cst.Node // [cstKey]?: CST.Variant
+	span  sourceSpan // Source position from [cstKey]?: CST.Variant
 }
 
 // NewVariant creates a new variant
@@ -511,28 +543,29 @@ func NewVariant(keys []VariantKey, value Pattern) *Variant {
 	return &Variant{
 		keys:  cloneVariantKeys(keys),
 		value: clonePattern(value),
+		span:  unknownSourceSpan(),
 	}
 }
 
-// newVariantWithCST creates a new variant with CST reference
-func newVariantWithCST(keys []VariantKey, value Pattern, cst cst.Node) *Variant {
+// newVariantWithCST creates a new variant with source position from CST.
+func newVariantWithCST(keys []VariantKey, value Pattern, cst sourcePosition) *Variant {
 	return &Variant{
 		keys:  cloneVariantKeys(keys),
 		value: clonePattern(value),
-		cst:   cst,
+		span:  sourceSpanFromPosition(cst),
 	}
 }
 
 func (v *Variant) Keys() []VariantKey {
-	return v.keys
+	return cloneVariantKeys(v.keys)
 }
 
 func (v *Variant) Value() Pattern {
-	return v.value
+	return clonePattern(v.value)
 }
 
-func (v *Variant) cstNode() cst.Node {
-	return v.cst
+func (v Variant) GetPosition() (start, end int) {
+	return v.span.getPosition()
 }
 
 // VariantKey represents keys in variants (Literal or CatchallKey)
@@ -554,22 +587,22 @@ type VariantKey interface {
 //	}
 type CatchallKey struct {
 	value string
-	cst   cst.Node // [cstKey]?: CST.CatchallKey
+	span  sourceSpan // Source position from [cstKey]?: CST.CatchallKey
 }
 
 // NewCatchallKey creates a new catchall key
 func NewCatchallKey(value string) *CatchallKey {
 	return &CatchallKey{
 		value: value,
-		cst:   nil,
+		span:  unknownSourceSpan(),
 	}
 }
 
-// newCatchallKeyWithCST creates a new catchall key with CST reference
-func newCatchallKeyWithCST(value string, cst cst.Node) *CatchallKey {
+// newCatchallKeyWithCST creates a new catchall key with source position from CST.
+func newCatchallKeyWithCST(value string, cst sourcePosition) *CatchallKey {
 	return &CatchallKey{
 		value: value,
-		cst:   cst,
+		span:  sourceSpanFromPosition(cst),
 	}
 }
 
@@ -588,8 +621,8 @@ func (ck *CatchallKey) String() string {
 	return "*"
 }
 
-func (ck *CatchallKey) cstNode() cst.Node {
-	return ck.cst
+func (ck *CatchallKey) GetPosition() (start, end int) {
+	return ck.span.getPosition()
 }
 
 func (ck *CatchallKey) variantKey() {}
@@ -615,7 +648,10 @@ func NewPattern(elements []PatternElement) Pattern {
 // Elements returns the pattern elements
 // TypeScript original code: Pattern array access
 func (p Pattern) Elements() []PatternElement {
-	return []PatternElement(p)
+	if p == nil {
+		return []PatternElement{}
+	}
+	return slices.Clone([]PatternElement(p))
 }
 
 // Add adds an element to the pattern
@@ -649,22 +685,22 @@ type PatternElement interface {
 // TextElement represents literal text in patterns
 type TextElement struct {
 	value string
-	cst   cst.Node // CST reference for text elements
+	span  sourceSpan // Source position for text elements
 }
 
 // NewTextElement creates a new text element
 func NewTextElement(value string) *TextElement {
 	return &TextElement{
 		value: value,
-		cst:   nil,
+		span:  unknownSourceSpan(),
 	}
 }
 
-// newTextElementWithCST creates a new text element with CST reference
-func newTextElementWithCST(value string, cst cst.Node) *TextElement {
+// newTextElementWithCST creates a new text element with source position from CST.
+func newTextElementWithCST(value string, cst sourcePosition) *TextElement {
 	return &TextElement{
 		value: value,
-		cst:   cst,
+		span:  sourceSpanFromPosition(cst),
 	}
 }
 
@@ -676,8 +712,8 @@ func (te *TextElement) Value() string {
 	return te.value
 }
 
-func (te *TextElement) cstNode() cst.Node {
-	return te.cst
+func (te *TextElement) GetPosition() (start, end int) {
+	return te.span.getPosition()
 }
 
 func (te *TextElement) patternElement() {}
@@ -706,7 +742,7 @@ type Expression struct {
 	arg         ExpressionArg // Literal, VariableRef, or nil
 	functionRef *FunctionRef
 	attributes  Attributes // Attributes instead of map[string]interface{}
-	cst         cst.Node   // [cstKey]?: CST.Expression
+	span        sourceSpan // Source position from [cstKey]?: CST.Expression
 }
 
 // NewExpression creates a new expression
@@ -715,17 +751,17 @@ func NewExpression(arg ExpressionArg, functionRef *FunctionRef, attributes Attri
 		arg:         arg,
 		functionRef: functionRef,
 		attributes:  cloneAttributes(attributes),
-		cst:         nil,
+		span:        unknownSourceSpan(),
 	}
 }
 
-// newExpressionWithCST creates a new expression with CST reference
-func newExpressionWithCST(arg ExpressionArg, functionRef *FunctionRef, attributes Attributes, cst cst.Node) *Expression {
+// newExpressionWithCST creates a new expression with source position from CST.
+func newExpressionWithCST(arg ExpressionArg, functionRef *FunctionRef, attributes Attributes, cst sourcePosition) *Expression {
 	return &Expression{
 		arg:         arg,
 		functionRef: functionRef,
 		attributes:  cloneAttributes(attributes),
-		cst:         cst,
+		span:        sourceSpanFromPosition(cst),
 	}
 }
 
@@ -742,11 +778,11 @@ func (e *Expression) FunctionRef() *FunctionRef {
 }
 
 func (e *Expression) Attributes() Attributes {
-	return e.attributes
+	return cloneAttributes(e.attributes)
 }
 
-func (e *Expression) cstNode() cst.Node {
-	return e.cst
+func (e *Expression) GetPosition() (start, end int) {
+	return e.span.getPosition()
 }
 
 func (e *Expression) patternElement() {}
@@ -768,22 +804,22 @@ func (e *Expression) patternElement() {}
 //	}
 type Literal struct {
 	value string
-	cst   cst.Node // [cstKey]?: CST.Literal
+	span  sourceSpan // Source position from [cstKey]?: CST.Literal
 }
 
 // NewLiteral creates a new literal
 func NewLiteral(value string) *Literal {
 	return &Literal{
 		value: value,
-		cst:   nil,
+		span:  unknownSourceSpan(),
 	}
 }
 
-// newLiteralWithCST creates a new literal with CST reference
-func newLiteralWithCST(value string, cst cst.Node) *Literal {
+// newLiteralWithCST creates a new literal with source position from CST.
+func newLiteralWithCST(value string, cst sourcePosition) *Literal {
 	return &Literal{
 		value: value,
-		cst:   cst,
+		span:  sourceSpanFromPosition(cst),
 	}
 }
 
@@ -799,8 +835,8 @@ func (l *Literal) String() string {
 	return l.value
 }
 
-func (l *Literal) cstNode() cst.Node {
-	return l.cst
+func (l *Literal) GetPosition() (start, end int) {
+	return l.span.getPosition()
 }
 
 func (l *Literal) expressionArg() {}
@@ -825,22 +861,22 @@ func (l *Literal) variantKey() {}
 //	}
 type VariableRef struct {
 	name string
-	cst  cst.Node // [cstKey]?: CST.VariableRef
+	span sourceSpan // Source position from [cstKey]?: CST.VariableRef
 }
 
 // NewVariableRef creates a new variable reference
 func NewVariableRef(name string) *VariableRef {
 	return &VariableRef{
 		name: name,
-		cst:  nil,
+		span: unknownSourceSpan(),
 	}
 }
 
-// newVariableRefWithCST creates a new variable reference with CST reference
-func newVariableRefWithCST(name string, cst cst.Node) *VariableRef {
+// newVariableRefWithCST creates a new variable reference with source position from CST.
+func newVariableRefWithCST(name string, cst sourcePosition) *VariableRef {
 	return &VariableRef{
 		name: name,
-		cst:  cst,
+		span: sourceSpanFromPosition(cst),
 	}
 }
 
@@ -856,8 +892,8 @@ func (vr *VariableRef) String() string {
 	return vr.name
 }
 
-func (vr *VariableRef) cstNode() cst.Node {
-	return vr.cst
+func (vr VariableRef) GetPosition() (start, end int) {
+	return vr.span.getPosition()
 }
 
 func (vr *VariableRef) expressionArg() {}
@@ -880,8 +916,8 @@ func (vr *VariableRef) optionValue() {}
 //	}
 type FunctionRef struct {
 	name    string
-	options Options  // Options instead of map[string]interface{}
-	cst     cst.Node // [cstKey]?: CST.FunctionRef
+	options Options    // Options instead of map[string]interface{}
+	span    sourceSpan // Source position from [cstKey]?: CST.FunctionRef
 }
 
 // NewFunctionRef creates a new function reference
@@ -889,16 +925,16 @@ func NewFunctionRef(name string, options Options) *FunctionRef {
 	return &FunctionRef{
 		name:    name,
 		options: cloneOptions(options),
-		cst:     nil,
+		span:    unknownSourceSpan(),
 	}
 }
 
-// newFunctionRefWithCST creates a new function reference with CST reference
-func newFunctionRefWithCST(name string, options Options, cst cst.Node) *FunctionRef {
+// newFunctionRefWithCST creates a new function reference with source position from CST.
+func newFunctionRefWithCST(name string, options Options, cst sourcePosition) *FunctionRef {
 	return &FunctionRef{
 		name:    name,
 		options: cloneOptions(options),
-		cst:     cst,
+		span:    sourceSpanFromPosition(cst),
 	}
 }
 
@@ -911,11 +947,11 @@ func (fr *FunctionRef) Name() string {
 }
 
 func (fr *FunctionRef) Options() Options {
-	return fr.options
+	return cloneOptions(fr.options)
 }
 
-func (fr *FunctionRef) cstNode() cst.Node {
-	return fr.cst
+func (fr *FunctionRef) GetPosition() (start, end int) {
+	return fr.span.getPosition()
 }
 
 // Markup represents markup placeholders
@@ -935,7 +971,7 @@ type Markup struct {
 	name       string
 	options    Options    // Options instead of map[string]interface{}
 	attributes Attributes // Attributes instead of map[string]interface{}
-	cst        cst.Node   // [cstKey]?: CST.Expression
+	span       sourceSpan // Source position from [cstKey]?: CST.Expression
 }
 
 // NewMarkup creates a new markup element
@@ -952,8 +988,8 @@ func validMarkupKind(kind MarkupKind) bool {
 	}
 }
 
-// newMarkupWithCST creates a new markup element with CST reference
-func newMarkupWithCST(kind MarkupKind, name string, options Options, attributes Attributes, cst cst.Node) (*Markup, error) {
+// newMarkupWithCST creates a new markup element with source position from CST.
+func newMarkupWithCST(kind MarkupKind, name string, options Options, attributes Attributes, cst sourcePosition) (*Markup, error) {
 	if !validMarkupKind(kind) {
 		return nil, ErrInvalidMarkupKind
 	}
@@ -962,7 +998,7 @@ func newMarkupWithCST(kind MarkupKind, name string, options Options, attributes 
 		name:       name,
 		options:    cloneOptions(options),
 		attributes: cloneAttributes(attributes),
-		cst:        cst,
+		span:       sourceSpanFromPosition(cst),
 	}, nil
 }
 
@@ -979,15 +1015,15 @@ func (m *Markup) Name() string {
 }
 
 func (m *Markup) Options() Options {
-	return m.options
+	return cloneOptions(m.options)
 }
 
 func (m *Markup) Attributes() Attributes {
-	return m.attributes
+	return cloneAttributes(m.attributes)
 }
 
-func (m *Markup) cstNode() cst.Node {
-	return m.cst
+func (m *Markup) GetPosition() (start, end int) {
+	return m.span.getPosition()
 }
 
 func (m *Markup) patternElement() {}
@@ -1003,7 +1039,7 @@ func ConvertExpressionToVariableRefExpression(expr *Expression) *VariableRefExpr
 
 	// Check if the arg is a VariableRef
 	if varRef, ok := expr.arg.(*VariableRef); ok {
-		return newVariableRefExpressionWithCST(varRef, expr.functionRef, expr.attributes, expr.cst)
+		return newVariableRefExpressionWithCST(varRef, expr.functionRef, expr.attributes, expr.span)
 	}
 
 	// If not a VariableRef, we can't convert - this should not happen for InputDeclaration

@@ -229,6 +229,94 @@ func TestConstructorsCloneInputCollections(t *testing.T) {
 	assert.Equal(t, "before", markup.Attributes()["title"].String())
 }
 
+func TestAccessorsReturnCollectionSnapshots(t *testing.T) {
+	firstDecl := NewLocalDeclaration("first", NewExpression(NewLiteral("one"), nil, nil))
+	secondDecl := NewLocalDeclaration("second", NewExpression(NewLiteral("two"), nil, nil))
+	patternMessage := NewPatternMessage(
+		[]Declaration{firstDecl},
+		NewPattern([]PatternElement{NewTextElement("before")}),
+		"",
+	)
+
+	declarations := patternMessage.Declarations()
+	declarations[0] = secondDecl
+	pattern := patternMessage.Pattern()
+	pattern[0] = NewTextElement("after")
+
+	assert.Same(t, firstDecl, patternMessage.Declarations()[0])
+	requireTextValue(t, "before", patternMessage.Pattern()[0])
+
+	selector := NewVariableRef("count")
+	otherSelector := NewVariableRef("other")
+	fallbackVariant := NewVariant(
+		[]VariantKey{NewCatchallKey("")},
+		NewPattern([]PatternElement{NewTextElement("fallback")}),
+	)
+	otherVariant := NewVariant(
+		[]VariantKey{NewLiteral("one")},
+		NewPattern([]PatternElement{NewTextElement("one")}),
+	)
+	selectMessage := NewSelectMessage(
+		nil,
+		[]VariableRef{*selector},
+		[]Variant{*fallbackVariant},
+		"",
+	)
+
+	selectors := selectMessage.Selectors()
+	selectors[0] = *otherSelector
+	variants := selectMessage.Variants()
+	variants[0] = *otherVariant
+
+	assert.Equal(t, "count", selectMessage.Selectors()[0].Name())
+	assert.True(t, IsCatchallKey(selectMessage.Variants()[0].Keys()[0]))
+
+	keys := fallbackVariant.Keys()
+	keys[0] = NewLiteral("changed")
+	value := fallbackVariant.Value()
+	value[0] = NewTextElement("changed")
+
+	assert.Equal(t, "*", fallbackVariant.Keys()[0].String())
+	requireTextValue(t, "fallback", fallbackVariant.Value()[0])
+
+	elements := patternMessage.Pattern().Elements()
+	elements[0] = NewTextElement("changed")
+
+	requireTextValue(t, "before", patternMessage.Pattern().Elements()[0])
+
+	functionRef := NewFunctionRef("number", ConvertMapToOptions(map[string]any{"style": "currency"}))
+	options := functionRef.Options()
+	options["style"] = NewLiteral("decimal")
+
+	assert.Equal(t, "currency", functionRef.Options()["style"].String())
+
+	attrs := ConvertMapToAttributes(map[string]any{"id": "before"})
+	expression := NewExpression(NewLiteral("value"), nil, attrs)
+	variableExpression := NewVariableRefExpression(NewVariableRef("name"), nil, attrs)
+	exprAttrs := expression.Attributes()
+	varExprAttrs := variableExpression.Attributes()
+	exprAttrs["id"] = NewLiteral("after")
+	varExprAttrs["id"] = NewLiteral("after")
+
+	assert.Equal(t, "before", expression.Attributes()["id"].String())
+	assert.Equal(t, "before", variableExpression.Attributes()["id"].String())
+
+	markup := mustMarkup(
+		t,
+		"open",
+		"a",
+		ConvertMapToOptions(map[string]any{"href": "before"}),
+		ConvertMapToAttributes(map[string]any{"title": "before"}),
+	)
+	markupOptions := markup.Options()
+	markupAttributes := markup.Attributes()
+	markupOptions["href"] = NewLiteral("after")
+	markupAttributes["title"] = NewLiteral("after")
+
+	assert.Equal(t, "before", markup.Options()["href"].String())
+	assert.Equal(t, "before", markup.Attributes()["title"].String())
+}
+
 func requireTextValue(t *testing.T, want string, element PatternElement) {
 	t.Helper()
 
@@ -287,7 +375,7 @@ func TestPatternOperations(t *testing.T) {
 	assert.Nil(t, pattern.Get(1))
 }
 
-func TestWithCSTConstructorsPreserveReference(t *testing.T) {
+func TestWithCSTConstructorsPreserveSourcePosition(t *testing.T) {
 	t.Parallel()
 
 	textCST := cst.NewText(0, 6, "source")
@@ -322,25 +410,35 @@ func TestWithCSTConstructorsPreserveReference(t *testing.T) {
 	require.NoError(t, err)
 	booleanAttr := newBooleanAttributeWithCST(booleanCST)
 
-	assert.Same(t, literalCST, literal.cstNode())
+	assertPosition(t, literalCST, literal)
 	assert.Equal(t, "hello", literal.String())
-	assert.Same(t, variableCST, variable.cstNode())
+	assertPosition(t, variableCST, *variable)
 	assert.Equal(t, "name", variable.String())
-	assert.Same(t, functionCST, functionRef.cstNode())
-	assert.Same(t, expressionCST, expression.cstNode())
-	assert.Same(t, expressionCST, variableExpression.cstNode())
-	assert.Same(t, inputCST, input.cstNode())
-	assert.Same(t, localCST, local.cstNode())
-	assert.Same(t, textCST, text.cstNode())
-	assert.Same(t, messageCST, message.cstNode())
+	assertPosition(t, functionCST, functionRef)
+	assertPosition(t, expressionCST, expression)
+	assertPosition(t, expressionCST, variableExpression)
+	assertPosition(t, inputCST, input)
+	assertPosition(t, localCST, local)
+	assertPosition(t, textCST, text)
+	assertPosition(t, messageCST, message)
 	assert.Equal(t, "comment", message.Comment())
-	assert.Same(t, selectCST, selectMessage.cstNode())
+	assertPosition(t, selectCST, selectMessage)
 	assert.Equal(t, "select comment", selectMessage.Comment())
-	assert.Same(t, variantCST, variant.cstNode())
-	assert.Same(t, catchallCST, catchall.cstNode())
+	assertPosition(t, variantCST, *variant)
+	assertPosition(t, catchallCST, catchall)
 	assert.Equal(t, "*", catchall.String())
-	assert.Same(t, markupCST, markup.cstNode())
-	assert.Same(t, booleanCST, booleanAttr.cstNode())
+	assertPosition(t, markupCST, markup)
+	assertPosition(t, booleanCST, booleanAttr)
 	assert.Equal(t, "boolean", booleanAttr.Type())
 	assert.Equal(t, "true", booleanAttr.String())
+}
+
+func assertPosition(t *testing.T, want sourcePosition, got interface {
+	GetPosition() (start, end int)
+}) {
+	t.Helper()
+
+	start, end := got.GetPosition()
+	assert.Equal(t, want.Start(), start)
+	assert.Equal(t, want.End(), end)
 }

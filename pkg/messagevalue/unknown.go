@@ -2,6 +2,7 @@ package messagevalue
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 )
@@ -67,6 +68,17 @@ func (uv *UnknownValue) Options() map[string]any {
 }
 
 func (uv *UnknownValue) ToString() (string, error) {
+	if uv.value == nil {
+		return "null", nil
+	}
+	value := reflect.ValueOf(uv.value)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		if value.IsNil() {
+			return "null", nil
+		}
+	default:
+	}
 	return fmt.Sprintf("%v", uv.value), nil // TypeScript: toString: () => String(input)
 }
 

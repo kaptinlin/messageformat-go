@@ -49,7 +49,7 @@ func main() {
 
 	// Example 1: FormatToParts - Structured output
 	fmt.Println("1. Structured Output with FormatToParts:")
-	mf1, err := messageformat.Parse([]string{"en"}, "Hello, {$name}! You have {$count :number} new messages.", messageformat.WithBidiIsolation(messageformat.BidiNone))
+	mf1, err := messageformat.Parse([]string{"en"}, "Hello, {$name}! You have {$count :number} new messages.")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -71,9 +71,8 @@ func main() {
 	// Example 2: Bidirectional text support
 	fmt.Println("2. Bidirectional Text Support:")
 
-	// English with Arabic name
+	// English with Arabic name using the default bidi isolation.
 	mf2a, err := messageformat.Parse([]string{"en"}, "User {$name} sent a message",
-		messageformat.WithBidiIsolation(messageformat.BidiDefault),
 		messageformat.WithDir(messageformat.DirLTR),
 	)
 	if err != nil {

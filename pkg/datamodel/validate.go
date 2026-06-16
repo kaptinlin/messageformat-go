@@ -39,30 +39,24 @@ func ValidateMessage(msg Message, onError func(string, any)) (*ValidationResult,
 	var validationErrors []error
 	errorHandler := func(errType string, node any) {
 		var err error
+		start := 0
 		end := 1
+		if nodeImpl, ok := node.(pkgerrors.Node); ok {
+			start, end = nodeImpl.GetPosition()
+		}
 		switch errType {
 		case "key-mismatch":
-			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeKeyMismatch, 0, &end, nil)
+			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeKeyMismatch, start, &end, nil)
 		case "missing-fallback":
-			// Try to use convenience constructor if node implements Node interface
-			if nodeImpl, ok := node.(pkgerrors.Node); ok {
-				err = pkgerrors.NewMissingFallbackError(nodeImpl)
-			} else {
-				err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeMissingFallback, 0, &end, nil)
-			}
+			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeMissingFallback, start, &end, nil)
 		case "missing-selector-annotation":
-			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeMissingSelectorAnnotation, 0, &end, nil)
+			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeMissingSelectorAnnotation, start, &end, nil)
 		case "duplicate-declaration":
-			// Try to use convenience constructor if node implements Node interface
-			if nodeImpl, ok := node.(pkgerrors.Node); ok {
-				err = pkgerrors.NewDuplicateDeclarationError(nodeImpl)
-			} else {
-				err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeDuplicateDeclaration, 0, &end, nil)
-			}
+			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeDuplicateDeclaration, start, &end, nil)
 		case "duplicate-variant":
-			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeDuplicateVariant, 0, &end, nil)
+			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeDuplicateVariant, start, &end, nil)
 		default:
-			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeParseError, 0, &end, nil)
+			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeParseError, start, &end, nil)
 		}
 		validationErrors = append(validationErrors, err)
 		onError(errType, node)

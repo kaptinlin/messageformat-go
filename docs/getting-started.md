@@ -128,19 +128,19 @@ Key rule:
 
 The package keeps the default path simple:
 
-- `BidiIsolation` defaults to `messageformat.BidiNone`
+- `BidiIsolation` defaults to `messageformat.BidiDefault`
 - `LocaleMatcher` defaults to `messageformat.LocaleBestFit`
 - instances are safe for concurrent use after construction
 
-That means basic formatting does not insert bidi isolation markers unless you opt in.
+Formatted placeholders are bidi-isolated by default.
 
-If you need explicit isolation for mixed-direction output:
+If you need plain output without bidi isolation markers:
 
 ```go
 mf, err := messageformat.Parse(
 	[]string{"ar"},
 	"مرحبا {$name}!",
-	messageformat.WithBidiIsolation(messageformat.BidiDefault),
+	messageformat.WithBidiIsolation(messageformat.BidiNone),
 )
 ```
 

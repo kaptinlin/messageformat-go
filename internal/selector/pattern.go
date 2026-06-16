@@ -3,7 +3,6 @@
 package selector
 
 import (
-	"maps"
 	"slices"
 
 	"github.com/kaptinlin/messageformat-go/internal/resolve"
@@ -127,9 +126,68 @@ func SelectPattern(context *resolve.Context, message datamodel.Message) datamode
 //	  keys: null as Set<string> | null
 //	}
 type selectorContext struct {
-	selectKey func(map[string]bool) *string // matches TypeScript selectKey function
-	best      *string                       // matches TypeScript: best: null as string | null
-	keys      map[string]bool               // matches TypeScript: keys: null as Set<string> | null
+	selectKey func([]string) *string // matches TypeScript selectKey function
+	best      *string                // matches TypeScript: best: null as string | null
+	keys      *orderedKeySet         // matches TypeScript: keys: null as Set<string> | null
+}
+
+type selectionCapability interface {
+	CanSelect() bool
+}
+
+type orderedKeySet struct {
+	keys []string
+	seen map[string]bool
+}
+
+// newOrderedKeySet creates a selector key set that preserves first-seen order.
+// TypeScript original code:
+// sc.keys = new Set();
+func newOrderedKeySet() *orderedKeySet {
+	return &orderedKeySet{
+		seen: make(map[string]bool),
+	}
+}
+
+// add records key once, preserving insertion order.
+// TypeScript original code:
+// sc.keys.add(key.value);
+func (s *orderedKeySet) add(key string) {
+	if s.seen[key] {
+		return
+	}
+	s.seen[key] = true
+	s.keys = append(s.keys, key)
+}
+
+// delete removes key from the ordered set.
+// TypeScript original code:
+// prev.keys?.delete(prev.best);
+func (s *orderedKeySet) delete(key string) {
+	if !s.seen[key] {
+		return
+	}
+	delete(s.seen, key)
+	for i, candidate := range s.keys {
+		if candidate == key {
+			s.keys = append(s.keys[:i], s.keys[i+1:]...)
+			return
+		}
+	}
+}
+
+// len returns the number of keys in the set.
+// TypeScript original code:
+// sc.keys.size
+func (s *orderedKeySet) len() int {
+	return len(s.keys)
+}
+
+// values returns the keys in insertion order.
+// TypeScript original code:
+// sc.selectKey(sc.keys)
+func (s *orderedKeySet) values() []string {
+	return slices.Clone(s.keys)
 }
 
 // selectVariantPattern selects the best matching variant pattern
@@ -144,29 +202,26 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 		// matches TypeScript: const selector = resolveVariableRef(context, sel);
 		mv := resolve.ResolveVariableRef(context, &selector)
 
-		var selectKeyFunc func(map[string]bool) *string
+		var selectKeyFunc func([]string) *string
 		// matches TypeScript: if (typeof selector.selectKey === 'function')
 		if selector, ok := mv.(messagevalue.Selector); ok {
-			if _, err := selector.SelectKeys([]string{"test"}); err != nil {
+			if capability, ok := mv.(selectionCapability); ok && !capability.CanSelect() {
 				if context.OnError != nil {
 					context.OnError(errors.NewMessageSelectionError(
 						errors.ErrorTypeBadSelector,
-						err,
+						messagevalue.ErrNotSelectable,
 					))
 				}
-				selectKeyFunc = func(map[string]bool) *string { return nil }
+				selectKeyFunc = func([]string) *string { return nil }
 			} else {
 				// matches TypeScript: selectKey = selector.selectKey.bind(selector);
-				selectKeyFunc = func(availableKeys map[string]bool) *string {
-					// Convert map to slice for selection
-					keySlice := slices.Collect(maps.Keys(availableKeys))
-
-					if len(keySlice) == 0 {
+				selectKeyFunc = func(keys []string) *string {
+					if len(keys) == 0 {
 						return nil
 					}
 
 					// Call the MessageValue's SelectKeys method
-					selectedKeys, err := selector.SelectKeys(keySlice)
+					selectedKeys, err := selector.SelectKeys(keys)
 					if err != nil || len(selectedKeys) == 0 {
 						if err != nil && context.OnError != nil {
 							context.OnError(errors.NewMessageSelectionError(
@@ -189,7 +244,7 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 					nil,
 				))
 			}
-			selectKeyFunc = func(map[string]bool) *string { return nil }
+			selectKeyFunc = func([]string) *string { return nil }
 		}
 
 		// matches TypeScript: return { selectKey, best: null as string | null, keys: null as Set<string> | null };
@@ -207,7 +262,7 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 
 		// matches TypeScript: if (!sc.keys) { sc.keys = new Set(); ... }
 		if sc.keys == nil {
-			sc.keys = make(map[string]bool)
+			sc.keys = newOrderedKeySet()
 			// matches TypeScript: for (const { keys } of candidates) { const key = keys[i]; ... }
 			for _, variant := range candidates {
 				keys := variant.Keys()
@@ -219,7 +274,7 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 				// matches TypeScript: if (key.type !== '*') sc.keys.add(key.value);
 				if !datamodel.IsCatchallKey(key) {
 					if literal, ok := key.(*datamodel.Literal); ok {
-						sc.keys[literal.Value()] = true
+						sc.keys.add(literal.Value())
 					}
 				}
 			}
@@ -237,14 +292,14 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 						))
 					}
 					// matches TypeScript: sc.selectKey = () => null; sc.best = null;
-					sc.selectKey = func(map[string]bool) *string { return nil }
+					sc.selectKey = func([]string) *string { return nil }
 					sc.best = nil
 				}
 			}()
 
 			// matches TypeScript: sc.best = sc.keys.size ? sc.selectKey(sc.keys) : null;
-			if len(sc.keys) > 0 {
-				sc.best = sc.selectKey(sc.keys)
+			if sc.keys.len() > 0 {
+				sc.best = sc.selectKey(sc.keys.values())
 			}
 		}()
 
@@ -286,7 +341,7 @@ func selectVariantPattern(context *resolve.Context, msg *datamodel.SelectMessage
 			if prev.best == nil {
 				prev.keys = nil // equivalent to clear()
 			} else {
-				delete(prev.keys, *prev.best)
+				prev.keys.delete(*prev.best)
 			}
 
 			// matches TypeScript: for (let j = i; j < ctx.length; ++j) ctx[j].keys = null;

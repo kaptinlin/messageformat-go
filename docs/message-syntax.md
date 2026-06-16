@@ -4,7 +4,7 @@ Syntax reference for the MessageFormat Go v2 package, based on Unicode MessageFo
 
 Reference spec: <https://unicode.org/reports/tr35/tr35-messageFormat.html>
 
-The implementation is verified against the official MessageFormat Working Group test suite in `tests/messageformat-wg/`. The repository also tracks the TypeScript reference implementation in `.reference/messageformat` for API and behavior comparisons.
+The implementation is verified against the official MessageFormat Working Group test suite in `tests/messageformat-wg/`.
 
 This page focuses on the syntax the package accepts and the defaults that affect what formatted output looks like.
 
@@ -75,7 +75,7 @@ if err != nil {
 fmt.Println(out)
 ```
 
-By default, the package returns clean output without bidi isolation markers. If you need isolation markers, opt in with `WithBidiIsolation(messageformat.BidiDefault)`.
+By default, the package applies bidi isolation to formatted placeholders. Use `WithBidiIsolation(messageformat.BidiNone)` only when you need plain output without isolation markers.
 
 ## Literals
 
@@ -251,10 +251,10 @@ When you need literal values inside expressions, prefer pipe literals:
 
 ## Bidirectional Text
 
-The package supports bidirectional text, but the default is intentionally simple:
+The package supports bidirectional text with the documented defaults:
 
-- default: `messageformat.BidiNone`
-- opt-in isolation: `messageformat.BidiDefault`
+- default isolation: `messageformat.BidiDefault`
+- opt-out plain output: `messageformat.BidiNone`
 
 Default behavior:
 
@@ -262,13 +262,13 @@ Default behavior:
 mf, err := messageformat.Parse([]string{"ar"}, "مرحبا {$name}!")
 ```
 
-Opt-in isolation:
+Opt-out isolation:
 
 ```go
 mf, err := messageformat.Parse(
 	[]string{"ar"},
 	"مرحبا {$name}!",
-	messageformat.WithBidiIsolation(messageformat.BidiDefault),
+	messageformat.WithBidiIsolation(messageformat.BidiNone),
 )
 ```
 
@@ -282,7 +282,7 @@ mf, err := messageformat.Parse(
 )
 ```
 
-Use typed options instead of old string literals. Prefer:
+Typed options are convenient in Go; string helpers remain available for TS-compatible configuration loading. Prefer typed constants in ordinary Go code:
 
 - `messageformat.BidiNone`
 - `messageformat.BidiDefault`

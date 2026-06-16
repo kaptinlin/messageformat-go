@@ -342,21 +342,21 @@ func TestFormat(t *testing.T) {
 			source:   "Hello {$name}",
 			values:   map[string]any{"name": "Alice"},
 			onError:  nil,
-			expected: "Hello Alice", // Changed: No bidi isolation by default (KISS principle)
+			expected: "Hello \u2068Alice\u2069",
 		},
 		{
 			name:     "missing variable",
 			source:   "Hello {$missing}",
 			values:   map[string]any{},
 			onError:  nil,
-			expected: "Hello {$missing}", // Changed: No bidi isolation by default
+			expected: "Hello \u2068{$missing}\u2069",
 		},
 		{
 			name:     "nil values",
 			source:   "Hello {$name}",
 			values:   nil,
 			onError:  nil,
-			expected: "Hello {$name}", // Changed: No bidi isolation by default
+			expected: "Hello \u2068{$name}\u2069",
 		},
 		{
 			name:     "number formatting",
@@ -377,7 +377,7 @@ func TestFormat(t *testing.T) {
 			source:   "Value: {$value :string}",
 			values:   map[string]any{"value": 123},
 			onError:  nil,
-			expected: "Value: 123", // Changed: No bidi isolation by default
+			expected: "Value: \u2068123\u2069",
 		},
 		{
 			name:     "empty pattern",
@@ -420,15 +420,15 @@ func TestFormatToPartsAPI(t *testing.T) {
 			name:          "with variable",
 			source:        "Hello {$name}",
 			values:        map[string]any{"name": "Alice"},
-			expectedParts: 2,                          // Changed: No bidi isolation parts by default
-			expectedTypes: []string{"text", "string"}, // Changed: Clean output
+			expectedParts: 4,
+			expectedTypes: []string{"text", "bidiIsolation", "string", "bidiIsolation"},
 		},
 		{
 			name:          "missing variable",
 			source:        "Hello {$missing}",
 			values:        map[string]any{},
-			expectedParts: 2,                            // Changed: No bidi isolation parts by default
-			expectedTypes: []string{"text", "fallback"}, // Changed: Clean output
+			expectedParts: 4,
+			expectedTypes: []string{"text", "bidiIsolation", "fallback", "bidiIsolation"},
 		},
 	}
 
@@ -486,7 +486,43 @@ func TestFormatFocusedBehaviors(t *testing.T) {
 
 		formatted, err := mf.Format(map[string]any{"value": "ignored"})
 		require.NoError(t, err)
-		assert.Equal(t, "Value 42", formatted)
+		assert.Equal(t, "Value \u206842\u2069", formatted)
+	})
+
+	t.Run("nil unknown formats as null while parts preserve nil", func(t *testing.T) {
+		t.Parallel()
+
+		mf, err := Parse([]string{"en"}, "Value {$value}")
+		require.NoError(t, err)
+
+		formatted, err := mf.Format(map[string]any{"value": nil})
+		require.NoError(t, err)
+		assert.Equal(t, "Value \u2068null\u2069", formatted)
+
+		parts, err := mf.FormatToParts(map[string]any{"value": nil})
+		require.NoError(t, err)
+		require.Len(t, parts, 4)
+		assert.Equal(t, "unknown", parts[2].Type())
+		assert.Nil(t, parts[2].Value())
+	})
+
+	t.Run("format is deterministic for same message and input", func(t *testing.T) {
+		t.Parallel()
+
+		source := ".input {$count :number select=cardinal}\n.match $count\none {{One}}\n* {{Other {$count :number}}}"
+		mf, err := Parse([]string{"en"}, source)
+		require.NoError(t, err)
+
+		values := map[string]any{"count": 2}
+		first, err := mf.Format(values)
+		require.NoError(t, err)
+
+		for range 20 {
+			got, err := mf.Format(values)
+			require.NoError(t, err)
+			assert.Equal(t, first, got)
+		}
+		assert.Equal(t, "Other 2", first)
 	})
 
 	t.Run("ToParts errors produce fallback part and callback", func(t *testing.T) {
@@ -507,9 +543,9 @@ func TestFormatFocusedBehaviors(t *testing.T) {
 		var resolutionErr *pkgerrors.MessageResolutionError
 		require.ErrorAs(t, captured[0], &resolutionErr)
 		assert.Equal(t, pkgerrors.ErrorTypeBadOperand, resolutionErr.ErrorType())
-		require.Len(t, parts, 2)
-		assert.Equal(t, "fallback", parts[1].Type())
-		assert.Equal(t, "{$value}", parts[1].Value())
+		require.Len(t, parts, 4)
+		assert.Equal(t, "fallback", parts[2].Type())
+		assert.Equal(t, "{$value}", parts[2].Value())
 	})
 
 	t.Run("RTL locale enables default bidi isolation", func(t *testing.T) {
@@ -565,7 +601,7 @@ func TestMessageFormatOptions(t *testing.T) {
 		{
 			name:            "nil options (defaults)",
 			options:         nil,
-			expectedBidi:    false, // Changed: Default is now BidiNone (KISS principle)
+			expectedBidi:    true,
 			expectedDir:     "ltr",
 			expectedMatcher: "best fit",
 		},
@@ -583,7 +619,7 @@ func TestMessageFormatOptions(t *testing.T) {
 			options: &MessageFormatOptions{
 				Dir: DirRTL,
 			},
-			expectedBidi:    false, // Changed: Default BidiIsolation is now BidiNone
+			expectedBidi:    true,
 			expectedDir:     "rtl",
 			expectedMatcher: "best fit",
 		},
@@ -592,7 +628,7 @@ func TestMessageFormatOptions(t *testing.T) {
 			options: &MessageFormatOptions{
 				LocaleMatcher: LocaleLookup,
 			},
-			expectedBidi:    false, // Changed: Default BidiIsolation is now BidiNone
+			expectedBidi:    true,
 			expectedDir:     "ltr",
 			expectedMatcher: "lookup",
 		},
@@ -830,13 +866,13 @@ func TestErrorCallback(t *testing.T) {
 	// Valid case - no errors should be captured
 	result, err := mf.Format(map[string]any{"name": "World"}, WithErrorHandler(onError))
 	require.NoError(t, err)
-	assert.Equal(t, "Hello World", result)
+	assert.Equal(t, "Hello \u2068World\u2069", result)
 	assert.Empty(t, capturedErrors)
 
 	// Missing variable case - should still work with fallback
 	result, err = mf.Format(map[string]any{}, WithErrorHandler(onError))
 	require.NoError(t, err)
-	assert.Equal(t, "Hello {$name}", result)
+	assert.Equal(t, "Hello \u2068{$name}\u2069", result)
 	// Error callback behavior may vary based on implementation
 }
 
@@ -1011,7 +1047,7 @@ func TestTypeScriptCompatibility(t *testing.T) {
 		// Should resolve options properly like TypeScript
 		resolved := mf.ResolvedOptions()
 		assert.Equal(t, "best fit", string(resolved.LocaleMatcher))
-		assert.Equal(t, "none", string(resolved.BidiIsolation)) // Changed: Go defaults to "none" for simplicity
+		assert.Equal(t, "default", string(resolved.BidiIsolation))
 	})
 
 	t.Run("function registry behavior", func(t *testing.T) {
@@ -1254,19 +1290,19 @@ func TestMissingVariableHandlingFixes(t *testing.T) {
 			name:     "simple missing variable",
 			source:   "Hello {$name}!",
 			values:   map[string]any{}, // missing 'name'
-			expected: "Hello {$name}!",
+			expected: "Hello \u2068{$name}\u2069!",
 		},
 		{
 			name:     "null variable value",
 			source:   "Hello {$name}!",
 			values:   map[string]any{"name": nil},
-			expected: "Hello {$name}!",
+			expected: "Hello \u2068null\u2069!",
 		},
 		{
 			name:     "missing variable with function",
 			source:   "Count: {$count :integer}",
 			values:   map[string]any{}, // missing 'count'
-			expected: "Count: {$count}",
+			expected: "Count: \u2068{$count}\u2069",
 		},
 		{
 			name:     "missing variable in selector falls back to catchall",
@@ -1278,7 +1314,7 @@ func TestMissingVariableHandlingFixes(t *testing.T) {
 			name:     "missing local variable reference",
 			source:   ".local $missing = {$undefined :string}\n{{Result: {$missing}}}",
 			values:   map[string]any{}, // missing 'undefined'
-			expected: "Result: ",       // Local variable with missing dependency resolves to empty
+			expected: "Result: \u2068\u2069",
 		},
 	}
 
@@ -1310,37 +1346,37 @@ func TestExpressionParsingFixes(t *testing.T) {
 			name:     "simple variable reference",
 			source:   "{$name}",
 			values:   map[string]any{"name": "Alice"},
-			expected: "Alice",
+			expected: "\u2068Alice\u2069",
 		},
 		{
 			name:     "variable with underscore",
 			source:   "{$user_name}",
 			values:   map[string]any{"user_name": "john_doe"},
-			expected: "john_doe",
+			expected: "\u2068john_doe\u2069",
 		},
 		{
 			name:     "variable with number",
 			source:   "{$item1}",
 			values:   map[string]any{"item1": "First Item"},
-			expected: "First Item",
+			expected: "\u2068First Item\u2069",
 		},
 		{
 			name:     "explicit variable reference",
 			source:   "{$name}",
 			values:   map[string]any{"name": "Bob"},
-			expected: "Bob",
+			expected: "\u2068Bob\u2069",
 		},
 		{
 			name:     "quoted literal",
 			source:   "{|literal text|}",
 			values:   map[string]any{},
-			expected: "literal text",
+			expected: "\u2068literal text\u2069",
 		},
 		{
 			name:     "numeric literal",
 			source:   "{123}",
 			values:   map[string]any{},
-			expected: "123",
+			expected: "\u2068123\u2069",
 		},
 		{
 			name:     "function call on variable",

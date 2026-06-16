@@ -27,7 +27,7 @@ var (
 	ErrSelectionFailed      = errors.New("selection failed")
 )
 
-func newFunctionError(errorType string, cause error, format string, args ...any) error {
+func newFunctionError(errorType pkgerrors.ErrorKind, cause error, format string, args ...any) error {
 	err := pkgerrors.NewMessageFunctionError(errorType, fmt.Sprintf(format, args...))
 	err.SetCause(cause)
 	return err

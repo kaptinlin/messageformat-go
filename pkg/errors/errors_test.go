@@ -36,6 +36,12 @@ func TestMessageError(t *testing.T) {
 		assert.Equal(t, ErrorTypeUnknownFunction, err.ErrorType())
 	})
 
+	t.Run("Kind returns typed error identity", func(t *testing.T) {
+		err := NewMessageError(ErrorTypeUnknownFunction, "test message")
+		assert.Equal(t, ErrorKind(ErrorTypeUnknownFunction), err.Kind())
+		assert.Equal(t, ErrorTypeUnknownFunction, err.Kind().String())
+	})
+
 	t.Run("Is returns true for same error type", func(t *testing.T) {
 		err1 := NewMessageError(ErrorTypeUnknownFunction, "msg1")
 		err2 := NewMessageError(ErrorTypeUnknownFunction, "msg2")
@@ -126,6 +132,10 @@ func TestMessageDataModelError(t *testing.T) {
 		require.NotNil(t, err)
 		require.NotNil(t, err.MessageSyntaxError)
 		assert.Equal(t, ErrorTypeKeyMismatch, err.Type)
+
+		var syntaxErr *MessageSyntaxError
+		require.True(t, errors.As(err, &syntaxErr))
+		assert.Equal(t, ErrorTypeKeyMismatch, syntaxErr.Type)
 	})
 }
 
@@ -428,7 +438,7 @@ func TestErrorIntegration(t *testing.T) {
 
 func TestAllSyntaxErrorTypes(t *testing.T) {
 	testCases := []struct {
-		errorType string
+		errorType ErrorKind
 		name      string
 	}{
 		{ErrorTypeEmptyToken, "empty token"},
@@ -450,15 +460,16 @@ func TestAllSyntaxErrorTypes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := NewMessageSyntaxError(tc.errorType, 5, nil, nil)
 			require.NotNil(t, err)
-			assert.Equal(t, tc.errorType, err.Type)
-			assert.Contains(t, err.Error(), tc.errorType)
+			assert.Equal(t, tc.errorType.String(), err.Type)
+			assert.Equal(t, tc.errorType, err.Kind())
+			assert.Contains(t, err.Error(), tc.errorType.String())
 		})
 	}
 }
 
 func TestAllResolutionErrorTypes(t *testing.T) {
 	testCases := []struct {
-		errorType string
+		errorType ErrorKind
 		name      string
 	}{
 		{ErrorTypeBadFunctionResult, "bad function result"},
@@ -472,8 +483,9 @@ func TestAllResolutionErrorTypes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := NewMessageResolutionError(tc.errorType, "test message", "source")
 			require.NotNil(t, err)
-			assert.Equal(t, tc.errorType, err.Type)
-			assert.Contains(t, err.Error(), tc.errorType)
+			assert.Equal(t, tc.errorType.String(), err.Type)
+			assert.Equal(t, tc.errorType, err.Kind())
+			assert.Contains(t, err.Error(), tc.errorType.String())
 		})
 	}
 }

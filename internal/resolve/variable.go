@@ -11,6 +11,7 @@ import (
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
+	"golang.org/x/text/unicode/norm"
 )
 
 // UnresolvedExpression represents an unresolved expression
@@ -81,16 +82,16 @@ func isScope(scope any) bool {
 //
 //	  return undefined;
 //	}
-func getValue(scope any, name string) any {
+func getValue(scope any, name string) (any, bool) {
 	if !isScope(scope) {
-		return nil
+		return nil, false
 	}
 
 	// Handle map types
 	if m, ok := scope.(map[string]any); ok {
 		// Direct lookup - matches TypeScript: if (name in scope) return scope[name];
 		if value, exists := m[name]; exists {
-			return value
+			return value, true
 		}
 
 		// Dotted property access - matches TypeScript parts logic
@@ -104,15 +105,21 @@ func getValue(scope any, name string) any {
 				}
 			}
 		}
+
+		for key, value := range m {
+			if norm.NFC.String(key) == name {
+				return value, true
+			}
+		}
 	}
 	// Handle map[interface{}]interface{} types
 	if m, ok := scope.(map[any]any); ok {
 		if value, exists := m[name]; exists {
-			return value
+			return value, true
 		}
 	}
 
-	return nil
+	return nil, false
 }
 
 // lookupVariableRef looks up a variable reference and resolves it
@@ -135,11 +142,11 @@ func getValue(scope any, name string) any {
 //	  }
 //	  return value;
 //	}
-func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) any {
+func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) (any, bool) {
 	name := ref.Name()
-	value := getValue(ctx.Scope, name)
+	value, found := getValue(ctx.Scope, name)
 
-	if value == nil {
+	if !found {
 		source := "$" + name
 		msg := fmt.Sprintf("variable not available: %s", source)
 		if ctx.OnError != nil {
@@ -149,13 +156,13 @@ func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) any {
 				source,
 			))
 		}
-		return nil
+		return nil, false
 	}
 
 	// Handle unresolved expressions - matches TypeScript: value instanceof UnresolvedExpression
 	if unresolvedExpr, ok := value.(*UnresolvedExpression); ok {
 		if originalValue, ok := unresolvedInputValue(unresolvedExpr); ok {
-			return originalValue
+			return originalValue, true
 		}
 
 		// Check for circular reference by looking if we're already resolving this variable
@@ -173,7 +180,7 @@ func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) any {
 					source,
 				))
 			}
-			return messagevalue.NewFallbackValue(source, functions.GetFirstLocale(ctx.Locales))
+			return messagevalue.NewFallbackValue(source, functions.GetFirstLocale(ctx.Locales)), true
 		}
 
 		// Mark this variable as being resolved
@@ -197,10 +204,10 @@ func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) any {
 		ctx.Scope[name] = local
 		ctx.LocalVars[local] = true
 
-		return local
+		return local, true
 	}
 
-	return value
+	return value, true
 }
 
 func unresolvedInputValue(unresolvedExpr *UnresolvedExpression) (any, bool) {
@@ -270,7 +277,10 @@ func unresolvedInputValue(unresolvedExpr *UnresolvedExpression) (any, bool) {
 //	}
 func ResolveVariableRef(ctx *Context, ref *datamodel.VariableRef) messagevalue.MessageValue {
 	source := "$" + ref.Name()
-	value := lookupVariableRef(ctx, ref)
+	value, found := lookupVariableRef(ctx, ref)
+	if !found {
+		return messagevalue.NewFallbackValue(source, functions.GetFirstLocale(ctx.Locales))
+	}
 
 	// Determine type - matches TypeScript: let type = typeof value;
 	valueType := getValueType(value)
@@ -332,14 +342,7 @@ func ResolveVariableRef(ctx *Context, ref *datamodel.VariableRef) messagevalue.M
 		}
 	}
 
-	// matches TypeScript: return value === undefined ? fallback(source) : unknown(source, value);
-	if value == nil {
-		return messagevalue.NewFallbackValue(source, functions.GetFirstLocale(ctx.Locales))
-	}
-
-	// For unknown types, create a string representation (equivalent to TypeScript unknown function)
-	// TypeScript unknown function typically converts to string representation
-	return messagevalue.NewStringValue(fmt.Sprintf("%v", value), functions.GetFirstLocale(ctx.Locales), source)
+	return messagevalue.NewUnknownValue(source, value, functions.GetFirstLocale(ctx.Locales))
 }
 
 // getValueType determines the type of a value similar to TypeScript typeof

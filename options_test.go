@@ -86,12 +86,12 @@ func TestStringFunctionalOptions(t *testing.T) {
 			wantAccessDir: "ltr",
 		},
 		{
-			name:          "unknown strings use defaults",
+			name:          "unknown strings follow TypeScript runtime",
 			options:       []Option{WithBidiIsolationString("unexpected"), WithDirString("unexpected"), WithLocaleMatcherString("unexpected")},
 			wantBidi:      BidiDefault,
-			wantDir:       DirLTR,
-			wantMatcher:   LocaleBestFit,
-			wantAccessDir: "ltr",
+			wantDir:       Direction("unexpected"),
+			wantMatcher:   LocaleMatcher("unexpected"),
+			wantAccessDir: "unexpected",
 		},
 	}
 
