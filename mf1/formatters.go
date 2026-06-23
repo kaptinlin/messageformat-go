@@ -95,7 +95,7 @@ func NumberCurrency(value any, lc string, currencyCode string) string {
 	loc := intlbridge.ParseLocale(lc)
 	nf, err := numberformat.New(loc, numberformat.Options{
 		Style:                 numberformat.CurrencyStyle,
-		Currency:              numberformat.CurrencyCode(currencyCode),
+		Currency:              numberformat.Currency(currencyCode),
 		MinimumFractionDigits: intPtr(2),
 		MaximumFractionDigits: intPtr(2),
 	})

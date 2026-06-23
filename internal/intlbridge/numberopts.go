@@ -3,6 +3,7 @@ package intlbridge
 import (
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/agentable/go-intl/numberformat"
 )
@@ -44,7 +45,7 @@ func NumberOptions(opts map[string]any) numberformat.Options {
 			}
 		case "currency":
 			if s, ok := asOptString(raw); ok {
-				out.Currency = numberformat.CurrencyCode(s)
+				out.Currency = numberformat.Currency(strings.ToUpper(s))
 			}
 		case "currencyDisplay":
 			if s, ok := asOptString(raw); ok {
@@ -56,7 +57,7 @@ func NumberOptions(opts map[string]any) numberformat.Options {
 			}
 		case "unit":
 			if s, ok := asOptString(raw); ok {
-				out.Unit = numberformat.UnitIdentifier(s)
+				out.Unit = numberformat.Unit(s)
 			}
 		case "unitDisplay":
 			if s, ok := asOptString(raw); ok {

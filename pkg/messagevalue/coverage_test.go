@@ -192,7 +192,7 @@ func TestDateTimeValueAdditionalBehaviors(t *testing.T) {
 		timeOnly := NewDateTimeValue(testTime, "en-US", "source", map[string]any{"timePrecision": "minute", "timeZoneStyle": "none"})
 		formatted, err = timeOnly.ToString()
 		require.NoError(t, err)
-		assert.Equal(t, "3:04\u202fPM", formatted)
+		assert.Equal(t, "3:04 PM", formatted)
 
 		// Invalid dateFields/timePrecision drop those expansions, leaving only the
 		// timeZoneStyle hint. go-intl pulls in default date+time fields when no
@@ -215,7 +215,7 @@ func TestDateTimeValueAdditionalBehaviors(t *testing.T) {
 		timeOnly := NewDateTimeValue(testTime, "en-US", "source", map[string]any{"timeStyle": "long"})
 		formatted, err = timeOnly.ToString()
 		require.NoError(t, err)
-		assert.Equal(t, "3:04:05\u202fPM GMT", formatted)
+		assert.Equal(t, "3:04:05 PM GMT", formatted)
 
 		defaulted := NewDateTimeValue(testTime, "en-US", "source", nil)
 		formatted, err = defaulted.ToString()
@@ -230,7 +230,7 @@ func TestTimePrecisionHour(t *testing.T) {
 	hourValue := NewDateTimeValue(time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC), "en-US", "source", map[string]any{"timePrecision": "hour"})
 	formatted, err := hourValue.ToString()
 	require.NoError(t, err)
-	assert.Equal(t, "3\u202fPM", formatted)
+	assert.Equal(t, "3 PM", formatted)
 }
 
 func TestFallbackValueWithDir(t *testing.T) {

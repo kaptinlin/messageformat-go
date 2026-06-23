@@ -1,6 +1,6 @@
 # MessageFormat Go
 
-[![Go Version](https://img.shields.io/badge/go-%3E%3D1.26-blue)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/go-%3E%3D1.26.4-blue)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/github.com/kaptinlin/messageformat-go.svg)](https://pkg.go.dev/github.com/kaptinlin/messageformat-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kaptinlin/messageformat-go)](https://goreportcard.com/report/github.com/kaptinlin/messageformat-go)
@@ -23,7 +23,7 @@ A Go implementation of Unicode MessageFormat 2.0 for parsing, validating, and fo
 go get github.com/kaptinlin/messageformat-go
 ```
 
-Requires **Go 1.26+**.
+Requires **Go 1.26.4+**.
 
 For ICU MessageFormat v1 compatibility, import:
 

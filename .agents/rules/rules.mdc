@@ -33,7 +33,7 @@ This repository contains **dual implementations**:
 - **Error Handling**: Static error definitions, err113 compliant
 - **Testing**: >80% coverage with comprehensive test suites and performance regression detection
 - **CI/CD**: Multi-version workflows with automated testing and releases
-- **Go Version**: 1.26.2 (unified across both versions)
+- **Go Version**: 1.26.4 (unified across both versions)
 
 ## Import Paths
 

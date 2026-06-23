@@ -103,6 +103,11 @@ tasks:
           go work sync
         fi
 
+
+  deps:submodules:
+    desc: Initialize required nested submodules
+    cmds:
+      - task: submodules
   test:
     desc: Run all tests with race detection
     deps:

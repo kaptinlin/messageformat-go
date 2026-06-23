@@ -166,11 +166,25 @@ func numberFormatValue(v any) (numberformat.Value, bool) {
 	case big.Int:
 		return numberformat.BigInt(&x), true
 	case *big.Float:
-		return numberformat.BigFloat(x), true
+		return bigFloatNumberFormatValue(x)
 	case big.Float:
-		return numberformat.BigFloat(&x), true
+		return bigFloatNumberFormatValue(&x)
 	}
 	return numberformat.Value{}, false
+}
+
+func bigFloatNumberFormatValue(v *big.Float) (numberformat.Value, bool) {
+	if v == nil {
+		return numberformat.Value{}, false
+	}
+	if f, accuracy := v.Float64(); accuracy == big.Exact {
+		return numberformat.Float(f), true
+	}
+	value, err := numberformat.Decimal(v.Text('g', -1))
+	if err != nil {
+		return numberformat.Value{}, false
+	}
+	return value, true
 }
 
 func numberAsFloat(v any) (float64, bool) {

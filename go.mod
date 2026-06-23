@@ -1,13 +1,13 @@
 module github.com/kaptinlin/messageformat-go
 
-go 1.26.3
+go 1.26.4
 
 require (
-	github.com/agentable/go-intl v0.2.7
-	github.com/go-json-experiment/json v0.0.0-20260520185125-572e7c383686
+	github.com/agentable/go-intl v0.2.8
+	github.com/go-json-experiment/json v0.0.0-20260601182631-00ed12fed2a6
 	github.com/google/go-cmp v0.7.0
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/text v0.37.0
+	golang.org/x/text v0.38.0
 )
 
 require (

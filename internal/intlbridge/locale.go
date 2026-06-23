@@ -21,13 +21,13 @@ import (
 // `new Intl.Locale("en")` as the implicit fallback.
 func ParseLocale(tag string) locale.List {
 	if tag == "" {
-		return locale.List{locale.MustParse("en")}
+		return englishLocaleList()
 	}
 	normalized := strings.ReplaceAll(tag, "_", "-")
 	if loc, err := locale.Parse(normalized); err == nil {
 		return locale.List{loc}
 	}
-	return locale.List{locale.MustParse("en")}
+	return englishLocaleList()
 }
 
 // FirstLocale picks the first non-empty tag from a slice and wraps it in a
@@ -39,5 +39,10 @@ func FirstLocale(tags []string) locale.List {
 			return ParseLocale(t)
 		}
 	}
-	return locale.List{locale.MustParse("en")}
+	return englishLocaleList()
+}
+
+func englishLocaleList() locale.List {
+	loc, _ := locale.Parse("en")
+	return locale.List{loc}
 }

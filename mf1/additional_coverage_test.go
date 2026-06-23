@@ -229,10 +229,10 @@ func TestFormatterHelpers(t *testing.T) {
 			{name: "int64 short", value: millis, size: "short", want: localShort},
 			{name: "int long", value: int(millis), size: "long", want: localLong},
 			{name: "float full", value: float64(millis), size: "full", want: localLong},
-			{name: "date string", value: "2026-05-04", size: "", want: "12:00:00\u202fAM"},
-			{name: "rfc3339", value: instant.Format(time.RFC3339), size: "", want: "3:30:45\u202fPM"},
+			{name: "date string", value: "2026-05-04", size: "", want: "12:00:00 AM"},
+			{name: "rfc3339", value: instant.Format(time.RFC3339), size: "", want: "3:30:45 PM"},
 			{name: "timestamp string", value: fmt.Sprint(millis), size: "", want: localMedium},
-			{name: "time", value: instant, size: "", want: "3:30:45\u202fPM"},
+			{name: "time", value: instant, size: "", want: "3:30:45 PM"},
 		}
 
 		for _, tc := range tests {

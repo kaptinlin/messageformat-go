@@ -1,9 +1,12 @@
 package messagevalue
 
 import (
+	"math/big"
 	"testing"
 	"time"
 
+	"github.com/agentable/go-intl/locale"
+	"github.com/agentable/go-intl/numberformat"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -140,6 +143,23 @@ func TestNumberValueTypes(t *testing.T) {
 			assert.Equal(t, tt.expected, str)
 		})
 	}
+}
+
+func TestNumberFormatValueBigFloatDecimal(t *testing.T) {
+	t.Parallel()
+
+	decimal, _, err := big.ParseFloat("0.1", 10, 256, big.ToNearestEven)
+	require.NoError(t, err)
+	_, accuracy := decimal.Float64()
+	require.NotEqual(t, big.Exact, accuracy)
+
+	value, ok := numberFormatValue(decimal)
+	require.True(t, ok)
+	loc, err := locale.Parse("en")
+	require.NoError(t, err)
+	formatter, err := numberformat.New(locale.List{loc}, numberformat.Options{})
+	require.NoError(t, err)
+	assert.Equal(t, "0.1", formatter.Format(value))
 }
 
 func TestNumberValueSelectKeys(t *testing.T) {
