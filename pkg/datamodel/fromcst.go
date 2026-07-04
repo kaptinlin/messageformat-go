@@ -47,10 +47,7 @@ func FromCST(input any) (Message, error) {
 
 	// Check for CST errors first
 	if len(msg.Errors()) > 0 {
-		// Return the first error
-		firstError := msg.Errors()[0]
-		end := firstError.End
-		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, firstError.Start, &end, nil)
+		return nil, msg.Errors()[0]
 	}
 
 	declarations, err := asDeclarations(msg)

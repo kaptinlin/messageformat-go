@@ -81,7 +81,7 @@ task examples
 
 ## Conformance
 
-The package is verified against the official Unicode MessageFormat Working Group test suite vendored at `tests/messageformat-wg/`. All 477 subtests pass — covering bidi, data-model errors, fallback, pattern selection, syntax, `u:` options, and every REQUIRED/RECOMMENDED function (`:currency`, `:date`, `:datetime`, `:integer`, `:number`, `:offset`, `:percent`, `:string`, `:time`). Run `task test-official` to reproduce.
+The package is verified against the official Unicode MessageFormat Working Group test suite vendored at `tests/messageformat-wg/`. All 477 subtests pass — covering bidi, data-model errors, fallback, pattern selection, syntax, `u:` options, stable default functions (`:currency`, `:integer`, `:number`, `:offset`, `:percent`, `:string`), and draft functions supplied explicitly by the test harness (`:date`, `:datetime`, `:time`, `:unit`). Run `task test-official` to reproduce.
 
 ## Development and Verification
 

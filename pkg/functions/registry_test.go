@@ -1,6 +1,8 @@
 package functions
 
 import (
+	"maps"
+	"slices"
 	"testing"
 
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
@@ -94,7 +96,7 @@ func TestFunctionRegistryListReturnsRegisteredNames(t *testing.T) {
 
 	registry.Register("custom", customFunc)
 
-	assert.ElementsMatch(t, []string{"integer", "number", "offset", "string", "custom"}, registry.List())
+	assert.ElementsMatch(t, []string{"currency", "integer", "number", "offset", "percent", "string", "custom"}, registry.List())
 }
 
 func TestFunctionRegistryGet(t *testing.T) {
@@ -163,26 +165,25 @@ func TestFunctionRegistryMerge(t *testing.T) {
 }
 
 func TestDefaultFunctions(t *testing.T) {
-	// Test that default functions map contains expected functions
 	defaults := DefaultFunctionMap()
-	assert.Contains(t, defaults, "number")
-	assert.Contains(t, defaults, "integer")
-	assert.Contains(t, defaults, "string")
-	assert.Contains(t, defaults, "offset")
-	assert.Equal(t, 4, len(defaults))
+	assert.ElementsMatch(t, []string{
+		"currency",
+		"integer",
+		"number",
+		"offset",
+		"percent",
+		"string",
+	}, slices.Collect(maps.Keys(defaults)))
 }
 
 func TestDraftFunctions(t *testing.T) {
-	// Test that draft functions map contains expected functions
 	drafts := DraftFunctionMap()
-	assert.Contains(t, drafts, "currency")
-	assert.Contains(t, drafts, "date")
-	assert.Contains(t, drafts, "datetime")
-	assert.Contains(t, drafts, "math")
-	assert.Contains(t, drafts, "percent")
-	assert.Contains(t, drafts, "time")
-	assert.Contains(t, drafts, "unit")
-	assert.Equal(t, 7, len(drafts))
+	assert.ElementsMatch(t, []string{
+		"date",
+		"datetime",
+		"time",
+		"unit",
+	}, slices.Collect(maps.Keys(drafts)))
 }
 
 func TestFunctionMapsReturnSnapshots(t *testing.T) {
@@ -191,14 +192,14 @@ func TestFunctionMapsReturnSnapshots(t *testing.T) {
 
 	delete(defaults, "string")
 	defaults["custom"] = StringFunction
-	delete(drafts, "currency")
+	delete(drafts, "date")
 	drafts["custom"] = StringFunction
 
 	freshDefaults := DefaultFunctionMap()
 	freshDrafts := DraftFunctionMap()
 	assert.Contains(t, freshDefaults, "string")
 	assert.NotContains(t, freshDefaults, "custom")
-	assert.Contains(t, freshDrafts, "currency")
+	assert.Contains(t, freshDrafts, "date")
 	assert.NotContains(t, freshDrafts, "custom")
 
 	registry := NewFunctionRegistryWithDraft()

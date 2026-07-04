@@ -28,19 +28,19 @@ func DateTimeOptions(opts map[string]any) datetimeformat.Options {
 		switch name {
 		case "calendar":
 			if s, ok := asOptString(raw); ok {
-				out.Calendar = s
+				out.Calendar = stringPtr(s)
 			}
 		case "numberingSystem":
 			if s, ok := asOptString(raw); ok {
-				out.NumberingSystem = s
+				out.NumberingSystem = stringPtr(s)
 			}
 		case "localeMatcher":
 			if s, ok := asOptString(raw); ok {
-				out.LocaleMatcher = datetimeformat.LocaleMatcher(s)
+				out.LocaleMatcher = stringPtr(s)
 			}
 		case "timeZone":
 			if s, ok := asOptString(raw); ok {
-				out.TimeZone = s
+				out.TimeZone = stringPtr(s)
 			}
 		case "hour12":
 			if b, ok := raw.(bool); ok {
@@ -61,11 +61,11 @@ func DateTimeOptions(opts map[string]any) datetimeformat.Options {
 func applyLegacyStyle(out *datetimeformat.Options, opts map[string]any) bool {
 	applied := false
 	if s, ok := asOptString(opts["dateStyle"]); ok {
-		out.DateStyle = datetimeformat.Style(s)
+		out.DateStyle = stringPtr(s)
 		applied = true
 	}
 	if s, ok := asOptString(opts["timeStyle"]); ok {
-		out.TimeStyle = datetimeformat.Style(s)
+		out.TimeStyle = stringPtr(s)
 		applied = true
 	}
 	return applied
@@ -89,9 +89,9 @@ func applyLdmlFields(out *datetimeformat.Options, opts map[string]any) {
 	if tz, ok := asOptString(opts["timeZoneStyle"]); ok {
 		switch tz {
 		case "long":
-			out.TimeZoneName = datetimeformat.LongTimeZoneName
+			out.TimeZoneName = stringPtr(string(datetimeformat.LongTimeZoneName))
 		case "short":
-			out.TimeZoneName = datetimeformat.ShortTimeZoneName
+			out.TimeZoneName = stringPtr(string(datetimeformat.ShortTimeZoneName))
 		}
 	}
 }
@@ -104,45 +104,45 @@ func applyDateFields(out *datetimeformat.Options, fields, length string) {
 	switch length {
 	case "long":
 		if set["weekday"] {
-			out.Weekday = datetimeformat.LongFieldStyle
+			out.Weekday = stringPtr(string(datetimeformat.LongFieldStyle))
 		}
 		if set["month"] {
-			out.Month = datetimeformat.LongMonthStyle
+			out.Month = stringPtr(string(datetimeformat.LongMonthStyle))
 		}
 	case "short":
 		if set["weekday"] {
-			out.Weekday = datetimeformat.ShortFieldStyle
+			out.Weekday = stringPtr(string(datetimeformat.ShortFieldStyle))
 		}
 		if set["month"] {
-			out.Month = datetimeformat.NumericMonthStyle
+			out.Month = stringPtr(string(datetimeformat.NumericMonthStyle))
 		}
 	default: // "medium" and unset
 		if set["weekday"] {
-			out.Weekday = datetimeformat.ShortFieldStyle
+			out.Weekday = stringPtr(string(datetimeformat.ShortFieldStyle))
 		}
 		if set["month"] {
-			out.Month = datetimeformat.ShortMonthStyle
+			out.Month = stringPtr(string(datetimeformat.ShortMonthStyle))
 		}
 	}
 	if set["year"] {
-		out.Year = datetimeformat.NumericFieldStyle
+		out.Year = stringPtr(string(datetimeformat.NumericFieldStyle))
 	}
 	if set["day"] {
-		out.Day = datetimeformat.NumericFieldStyle
+		out.Day = stringPtr(string(datetimeformat.NumericFieldStyle))
 	}
 }
 
 func applyTimePrecision(out *datetimeformat.Options, precision string) {
 	switch precision {
 	case "hour":
-		out.Hour = datetimeformat.NumericFieldStyle
+		out.Hour = stringPtr(string(datetimeformat.NumericFieldStyle))
 	case "second":
-		out.Hour = datetimeformat.NumericFieldStyle
-		out.Minute = datetimeformat.NumericFieldStyle
-		out.Second = datetimeformat.NumericFieldStyle
+		out.Hour = stringPtr(string(datetimeformat.NumericFieldStyle))
+		out.Minute = stringPtr(string(datetimeformat.NumericFieldStyle))
+		out.Second = stringPtr(string(datetimeformat.NumericFieldStyle))
 	default: // "minute"
-		out.Hour = datetimeformat.NumericFieldStyle
-		out.Minute = datetimeformat.NumericFieldStyle
+		out.Hour = stringPtr(string(datetimeformat.NumericFieldStyle))
+		out.Minute = stringPtr(string(datetimeformat.NumericFieldStyle))
 	}
 }
 

@@ -41,62 +41,64 @@ func NumberOptions(opts map[string]any) numberformat.Options {
 		switch name {
 		case "style":
 			if s, ok := asOptString(raw); ok {
-				out.Style = numberformat.Style(s)
+				out.Style = stringPtr(s)
 			}
 		case "currency":
 			if s, ok := asOptString(raw); ok {
-				out.Currency = numberformat.Currency(strings.ToUpper(s))
+				out.Currency = stringPtr(strings.ToUpper(s))
 			}
 		case "currencyDisplay":
 			if s, ok := asOptString(raw); ok {
-				out.CurrencyDisplay = numberformat.CurrencyDisplay(s)
+				out.CurrencyDisplay = stringPtr(s)
 			}
 		case "currencySign":
 			if s, ok := asOptString(raw); ok {
-				out.CurrencySign = numberformat.CurrencySign(s)
+				out.CurrencySign = stringPtr(s)
 			}
 		case "unit":
 			if s, ok := asOptString(raw); ok {
-				out.Unit = numberformat.Unit(s)
+				out.Unit = stringPtr(s)
 			}
 		case "unitDisplay":
 			if s, ok := asOptString(raw); ok {
-				out.UnitDisplay = numberformat.UnitDisplay(s)
+				out.UnitDisplay = stringPtr(s)
 			}
 		case "notation":
 			if s, ok := asOptString(raw); ok {
-				out.Notation = numberformat.Notation(s)
+				out.Notation = stringPtr(s)
 			}
 		case "compactDisplay":
 			if s, ok := asOptString(raw); ok {
-				out.CompactDisplay = numberformat.CompactDisplay(s)
+				out.CompactDisplay = stringPtr(s)
 			}
 		case "signDisplay":
 			if s, ok := asOptString(raw); ok {
-				out.SignDisplay = numberformat.SignDisplay(s)
+				out.SignDisplay = stringPtr(s)
 			}
 		case "roundingMode":
 			if s, ok := asOptString(raw); ok {
-				out.RoundingMode = numberformat.RoundingMode(s)
+				out.RoundingMode = stringPtr(s)
 			}
 		case "roundingPriority":
 			if s, ok := asOptString(raw); ok {
-				out.RoundingPriority = numberformat.RoundingPriority(s)
+				out.RoundingPriority = stringPtr(s)
 			}
 		case "trailingZeroDisplay":
 			if s, ok := asOptString(raw); ok {
-				out.TrailingZeroDisplay = numberformat.TrailingZeroDisplay(s)
+				out.TrailingZeroDisplay = stringPtr(s)
 			}
 		case "numberingSystem":
 			if s, ok := asOptString(raw); ok {
-				out.NumberingSystem = s
+				out.NumberingSystem = stringPtr(s)
 			}
 		case "localeMatcher":
 			if s, ok := asOptString(raw); ok {
-				out.LocaleMatcher = numberformat.LocaleMatcher(s)
+				out.LocaleMatcher = stringPtr(s)
 			}
 		case "useGrouping":
-			out.UseGrouping = useGroupingFromAny(raw)
+			if useGrouping := useGroupingFromAny(raw); useGrouping != "" {
+				out.UseGrouping = stringPtr(string(useGrouping))
+			}
 		case "minimumIntegerDigits":
 			if n, ok := asOptInt(raw); ok {
 				out.MinimumIntegerDigits = intPtr(n)
@@ -159,6 +161,10 @@ func applySignificantDigits(out *numberformat.Options, minVal int, hasMin bool, 
 }
 
 func intPtr(v int) *int {
+	return &v
+}
+
+func stringPtr(v string) *string {
 	return &v
 }
 

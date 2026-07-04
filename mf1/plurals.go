@@ -198,8 +198,10 @@ func GetAllPlurals(defaultLocale string) ([]PluralObject, error) {
 // the legacy toNumber(int64) coercion. That semantics is preserved here.
 func getPluralRules(loc string) (PluralFunction, []PluralCategory, []PluralCategory, bool) {
 	parsed := intlbridge.ParseLocale(loc)
-	cardinal, _ := pluralrules.New(parsed, pluralrules.Options{Type: pluralrules.Cardinal})
-	ordinal, _ := pluralrules.New(parsed, pluralrules.Options{Type: pluralrules.Ordinal})
+	cardinalType := string(pluralrules.Cardinal)
+	ordinalType := string(pluralrules.Ordinal)
+	cardinal, _ := pluralrules.New(parsed, pluralrules.Options{Type: &cardinalType})
+	ordinal, _ := pluralrules.New(parsed, pluralrules.Options{Type: &ordinalType})
 
 	pluralFunc := func(value any, ord ...bool) (PluralCategory, error) {
 		num, err := toNumber(value)

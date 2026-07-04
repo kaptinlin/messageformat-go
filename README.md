@@ -119,7 +119,7 @@ if err != nil {
 fmt.Println(out)
 ```
 
-Built-in functions include `:number`, `:integer`, `:string`, `:offset`, `:currency`, `:date`, `:datetime`, `:percent`, `:time`, and `:unit`.
+Stable default functions include `:number`, `:integer`, `:string`, `:offset`, `:currency`, and `:percent`. Draft date/time/unit functions (`:date`, `:datetime`, `:time`, `:unit`) are available only when supplied explicitly with `WithFunctions(functions.DraftFunctionMap())`; `:math` is an extension function and must be supplied explicitly with `WithFunction`.
 
 ### Structured Parts
 

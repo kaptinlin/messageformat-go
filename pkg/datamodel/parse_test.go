@@ -52,7 +52,7 @@ func TestParseMessage_SyntaxError(t *testing.T) {
 
 	var syntaxErr *pkgerrors.MessageSyntaxError
 	require.ErrorAs(t, err, &syntaxErr)
-	assert.Equal(t, pkgerrors.ErrorTypeParseError, syntaxErr.ErrorType())
+	assert.Equal(t, pkgerrors.ErrorTypeMissingSyntax, syntaxErr.ErrorType())
 	assert.GreaterOrEqual(t, syntaxErr.Start, 0)
 	assert.GreaterOrEqual(t, syntaxErr.End, syntaxErr.Start)
 }

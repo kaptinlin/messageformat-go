@@ -48,7 +48,7 @@ messageformat-go/
 │   ├── cst/              # Concrete Syntax Tree parser
 │   ├── resolve/          # Expression resolution and context handling
 │   └── selector/         # Pattern selection for .match statements
-├── v1/                   # Supported MessageFormat v1 compatibility layer, kept as product code
+├── mf1/                  # Supported ICU MessageFormat v1 compatibility layer, kept as product code
 ├── tests/                # Official MessageFormat 2.0 test suite
 └── examples/             # Example programs
 ```
@@ -76,8 +76,9 @@ type MessageFunction func(
 ) messagevalue.MessageValue
 
 // Built-in function registry snapshots
-func DefaultFunctionMap() map[string]MessageFunction  // :integer, :number, :string, :offset
-func DraftFunctionMap() map[string]MessageFunction    // :currency, :date, :datetime, :percent, :time, :unit (MF2 RECOMMENDED) plus :math (TypeScript-compat extension, not in MF2 spec)
+func DefaultFunctionMap() map[string]MessageFunction  // :currency, :integer, :number, :offset, :percent, :string
+func DraftFunctionMap() map[string]MessageFunction    // :date, :datetime, :time, :unit
+// :math is an extension function, not in MF2 spec; supply it explicitly with WithFunction.
 ```
 
 ### Processing Flow
@@ -91,7 +92,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - **TypeScript API Compatibility** — Maintains identical method signatures and behavior with TypeScript reference implementation. Every function includes original TypeScript code in comments for traceability.
 - **Specification Compliance** — Strict adherence to Unicode MessageFormat 2.0 specification. Official test suite (git submodule at `tests/messageformat-wg/`, HEAD past LDML49 with PR #1104 well-formedness) is run by `task test-official` and passes 477 subtests covering bidi, data-model-errors, fallback, pattern-selection, syntax, u-options, and functions/{currency,date,datetime,integer,number,offset,percent,string,time}.
 - **Two-Phase Processing** — Clean separation: CST parsing → DataModel conversion → Resolution/Formatting. Each phase has clear boundaries and responsibilities.
-- **Keep `v1` Intact** — The `v1/` package is a supported compatibility surface, not legacy code. Do not prune, delete, sideline, or treat it as dead code during cleanup, modernization, or refactoring.
+- **Keep `mf1` Intact** — The `mf1/` package is a supported compatibility surface, not legacy code. Do not prune, delete, sideline, or treat it as dead code during cleanup, modernization, or refactoring.
 - **KISS** — Simple, focused implementations. No premature abstractions. Three similar lines are better than a helper used once.
 - **DRY** — Shared function registry, unified error types, reusable resolution context across all message types.
 - **YAGNI** — Only implement what's currently needed. Focus on spec compliance, not feature creep.
@@ -118,7 +119,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - **Static error definitions** — Define errors as package-level variables, never create dynamically
 - **Thread safety** — MessageFormat instances are immutable after construction, safe for concurrent use
 - **Error returns** — All errors returned via `error`, never panic in production code
-- **Preserve `v1` support** — Changes must keep `v1/` building and tested; do not remove or downgrade `v1` because it looks older than the root API
+- **Preserve `mf1` support** — Changes must keep `mf1/` building and tested; do not remove or downgrade `mf1` because it supports ICU MessageFormat v1
 - Follow Google Go Best Practices: <https://google.github.io/go-style/best-practices>
 - Follow Google Go Style Decisions: <https://google.github.io/go-style/decisions>
 
@@ -138,7 +139,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - No dynamic error creation — use static error variables for lint compliance
 - No premature abstraction — implement only what's currently needed
 - No breaking changes to TypeScript-compatible API — maintain method signature compatibility
-- Do not classify `v1/` as legacy, deprecated, or prune-only code unless the user explicitly requests a product-level deprecation plan
+- Do not classify `mf1/` as legacy, deprecated, or prune-only code unless the user explicitly requests a product-level deprecation plan
 
 ## Testing
 
@@ -199,7 +200,7 @@ golangci-lint pinned via `.golangci.version`. Config in `.golangci.yml`.
 - Strict configuration with standard linters enabled
 - Test files excluded from certain rules (funlen, gosec)
 - Examples and internal packages have relaxed rules
-- The `//go:fix inline` directive is incompatible with `govet inline` on generic functions and must not be applied to generic helpers (see `v1/types.go::Ptr`).
+- The `//go:fix inline` directive is incompatible with `govet inline` on generic functions and must not be applied to generic helpers (see `mf1/types.go::Ptr`).
 
 ## CI
 

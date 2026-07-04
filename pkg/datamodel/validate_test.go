@@ -774,6 +774,17 @@ func TestValidateMessageErrorTypes(t *testing.T) {
 			wantType: "duplicate-declaration",
 		},
 		{
+			name: "local option self reference",
+			message: NewPatternMessage(
+				[]Declaration{
+					NewLocalDeclaration("formatted", NewExpression(NewLiteral("value"), NewFunctionRef("string", ConvertMapToOptions(map[string]any{"case": NewVariableRef("formatted")})), nil)),
+				},
+				NewPattern([]PatternElement{NewTextElement("test")}),
+				"",
+			),
+			wantType: "duplicate-declaration",
+		},
+		{
 			name: "select without fallback",
 			message: NewSelectMessage(
 				[]Declaration{

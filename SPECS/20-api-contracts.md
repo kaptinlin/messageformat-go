@@ -114,8 +114,10 @@ type MessageFunction func(
 Built-in function registry rules:
 
 - `DefaultFunctionMap()` and `DraftFunctionMap()` return detached snapshots.
+- `DefaultFunctionMap()` contains stable defaults: `:currency`, `:integer`, `:number`, `:offset`, `:percent`, and `:string`.
+- `DraftFunctionMap()` contains draft functions: `:date`, `:datetime`, `:time`, and `:unit`; callers opt in with `WithFunctions`.
 - `FunctionRegistry` is the mutable extension point.
-- `:math` is an extension function, not an MF2 spec function.
+- `:math` is an extension function, not an MF2 spec function; callers opt in with `WithFunction`.
 
 ## Message Values and Parts
 

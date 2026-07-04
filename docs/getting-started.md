@@ -67,13 +67,14 @@ mf, err := messageformat.Parse(
 
 ## Formatting Values
 
-Built-in functions are attached inline:
+Stable default functions are attached inline:
 
 ```text
 {$count :number}
 {$amount :currency currency=USD}
-{$createdAt :datetime dateStyle=full}
 ```
+
+Draft functions such as `:datetime`, `:date`, `:time`, and `:unit` require explicit opt-in with `messageformat.WithFunctions(functions.DraftFunctionMap())`.
 
 Example:
 

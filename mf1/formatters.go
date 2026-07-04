@@ -94,8 +94,8 @@ func NumberCurrency(value any, lc string, currencyCode string) string {
 
 	loc := intlbridge.ParseLocale(lc)
 	nf, err := numberformat.New(loc, numberformat.Options{
-		Style:                 numberformat.CurrencyStyle,
-		Currency:              numberformat.Currency(currencyCode),
+		Style:                 stringPtr(string(numberformat.CurrencyStyle)),
+		Currency:              stringPtr(currencyCode),
 		MinimumFractionDigits: intPtr(2),
 		MaximumFractionDigits: intPtr(2),
 	})
@@ -141,7 +141,7 @@ func NumberPercent(value any, lc string) string {
 
 	loc := intlbridge.ParseLocale(lc)
 	nf, err := numberformat.New(loc, numberformat.Options{
-		Style: numberformat.PercentStyle,
+		Style: stringPtr(string(numberformat.PercentStyle)),
 	})
 	if err != nil {
 		return fmt.Sprintf("%v", value)
@@ -162,6 +162,10 @@ func formatNumberDefault(value float64, lc string) string {
 }
 
 func intPtr(v int) *int {
+	return &v
+}
+
+func stringPtr(v string) *string {
 	return &v
 }
 
@@ -279,11 +283,13 @@ func coerceDateTimeInput(value any, wrapInvalid func(any) error) (time.Time, err
 func formatDateTimeWithSize(t time.Time, lc, size string, isTime bool) (string, error) {
 	loc := intlbridge.ParseLocale(lc)
 	opts := dateTimeOptionsForSize(size, isTime)
-	if opts.TimeZone == "" {
+	if opts.TimeZone == nil {
 		// Preserve the input time's location so date-only formatting doesn't
 		// slide a day in non-UTC runtimes, and time-only formatting reflects
 		// the caller's intended wall clock.
-		opts.TimeZone = timeZoneName(t.Location())
+		if timeZone := timeZoneName(t.Location()); timeZone != "" {
+			opts.TimeZone = stringPtr(timeZone)
+		}
 	}
 	f, err := datetimeformat.New(loc, opts)
 	if err != nil {
@@ -300,21 +306,21 @@ func dateTimeOptionsForSize(size string, isTime bool) datetimeformat.Options {
 		switch size {
 		case "short":
 			return datetimeformat.Options{
-				Hour:   datetimeformat.NumericFieldStyle,
-				Minute: datetimeformat.TwoDigitFieldStyle,
+				Hour:   stringPtr(string(datetimeformat.NumericFieldStyle)),
+				Minute: stringPtr(string(datetimeformat.TwoDigitFieldStyle)),
 			}
 		case "long", "full":
 			return datetimeformat.Options{
-				Hour:         datetimeformat.NumericFieldStyle,
-				Minute:       datetimeformat.TwoDigitFieldStyle,
-				Second:       datetimeformat.TwoDigitFieldStyle,
-				TimeZoneName: datetimeformat.ShortTimeZoneName,
+				Hour:         stringPtr(string(datetimeformat.NumericFieldStyle)),
+				Minute:       stringPtr(string(datetimeformat.TwoDigitFieldStyle)),
+				Second:       stringPtr(string(datetimeformat.TwoDigitFieldStyle)),
+				TimeZoneName: stringPtr(string(datetimeformat.ShortTimeZoneName)),
 			}
 		default:
 			return datetimeformat.Options{
-				Hour:   datetimeformat.NumericFieldStyle,
-				Minute: datetimeformat.TwoDigitFieldStyle,
-				Second: datetimeformat.TwoDigitFieldStyle,
+				Hour:   stringPtr(string(datetimeformat.NumericFieldStyle)),
+				Minute: stringPtr(string(datetimeformat.TwoDigitFieldStyle)),
+				Second: stringPtr(string(datetimeformat.TwoDigitFieldStyle)),
 			}
 		}
 	}
@@ -323,16 +329,16 @@ func dateTimeOptionsForSize(size string, isTime bool) datetimeformat.Options {
 		// Numeric Y/M/D mirrors the original Go behavior ("5/4/2026") rather
 		// than ECMA-402 DateStyle=short, which uses 2-digit years in en-US.
 		return datetimeformat.Options{
-			Year:  datetimeformat.NumericFieldStyle,
-			Month: datetimeformat.NumericMonthStyle,
-			Day:   datetimeformat.NumericFieldStyle,
+			Year:  stringPtr(string(datetimeformat.NumericFieldStyle)),
+			Month: stringPtr(string(datetimeformat.NumericMonthStyle)),
+			Day:   stringPtr(string(datetimeformat.NumericFieldStyle)),
 		}
 	case "long":
-		return datetimeformat.Options{DateStyle: datetimeformat.LongDateTimeStyle}
+		return datetimeformat.Options{DateStyle: stringPtr(string(datetimeformat.LongDateTimeStyle))}
 	case "full":
-		return datetimeformat.Options{DateStyle: datetimeformat.FullDateTimeStyle}
+		return datetimeformat.Options{DateStyle: stringPtr(string(datetimeformat.FullDateTimeStyle))}
 	default:
-		return datetimeformat.Options{DateStyle: datetimeformat.MediumDateTimeStyle}
+		return datetimeformat.Options{DateStyle: stringPtr(string(datetimeformat.MediumDateTimeStyle))}
 	}
 }
 

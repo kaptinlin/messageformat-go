@@ -117,7 +117,8 @@ func newOfficialMessageFormat(tc mfwg.Test) (*messageformat.MessageFormat, error
 }
 
 func officialFunctionRegistry() map[string]functions.MessageFunction {
-	fns := make(map[string]functions.MessageFunction, len(functions.DraftFunctionMap())+4)
+	fns := make(map[string]functions.MessageFunction, len(functions.DefaultFunctionMap())+len(functions.DraftFunctionMap())+4)
+	maps.Copy(fns, functions.DefaultFunctionMap())
 	maps.Copy(fns, functions.DraftFunctionMap())
 	maps.Copy(fns, TestFunctions())
 	return fns

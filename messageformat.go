@@ -406,12 +406,11 @@ func (mf *MessageFormat) BidiIsolation() bool {
 	return mf.bidiIsolation
 }
 
-// addDefaultFunctions adds default and draft functions to the function map.
+// addDefaultFunctions adds stable default functions to the function map.
 // TypeScript original code:
 // this.#functions = options?.functions ? Object.assign(Object.create(null), DefaultFunctions, options.functions) : DefaultFunctions;
 func addDefaultFunctions(functionMap map[string]functions.MessageFunction) {
 	maps.Copy(functionMap, functions.DefaultFunctionMap())
-	maps.Copy(functionMap, functions.DraftFunctionMap())
 }
 
 // ResolvedMessageFormatOptions represents the resolved options for a MessageFormat instance

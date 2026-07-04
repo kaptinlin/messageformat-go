@@ -87,217 +87,217 @@ func ValidateMessage(msg Message, onError func(string, any)) (*ValidationResult,
 //	  visit(msg, { ... });
 //	}
 func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
-	// Add nil check to prevent null pointer dereference
 	if msg == nil {
-		// Call onError to report the nil message error
 		onError("invalid-message", nil)
-		// Return empty result since we can't validate a nil message
 		return &ValidationResult{
 			Functions: []string{},
 			Variables: []string{},
 		}
 	}
 
-	selectorCount := 0
-	var missingFallback any
+	state := newValidationState(onError)
+	state.scanDeclarations(msg.Declarations())
 
-	// Tracks directly & indirectly annotated variables for missing-selector-annotation
-	annotated := make(map[string]bool)
+	switch m := msg.(type) {
+	case *PatternMessage:
+		state.visitPattern(m.Pattern())
+	case *SelectMessage:
+		state.validateSelectMessage(m)
+	}
 
-	// Tracks declared variables for duplicate-declaration
-	declared := make(map[string]bool)
+	return state.result()
+}
 
-	functions := make(map[string]bool)
-	localVars := make(map[string]bool)
-	variables := make(map[string]bool)
-	variantHashSeed := maphash.MakeSeed()
-	variants := make(map[uint64][][]any)
+type validationState struct {
+	onError func(string, any)
 
-	// Visit all declarations first and check for cyclic/forward references
-	// TypeScript: visit(msg, { declaration(decl) { ... } })
+	annotated map[string]bool
+	declared  map[string]bool
+	functions map[string]bool
+	localVars map[string]bool
+	variables map[string]bool
 
-	// Process declarations in order and check for invalid references
-	for i, decl := range msg.Declarations() {
-		// Skip all ReservedStatement
+	variantHashSeed maphash.Seed
+	variants        map[uint64][][]any
+}
+
+func newValidationState(onError func(string, any)) *validationState {
+	return &validationState{
+		onError:         onError,
+		annotated:       make(map[string]bool),
+		declared:        make(map[string]bool),
+		functions:       make(map[string]bool),
+		localVars:       make(map[string]bool),
+		variables:       make(map[string]bool),
+		variantHashSeed: maphash.MakeSeed(),
+		variants:        make(map[uint64][][]any),
+	}
+}
+
+func (state *validationState) scanDeclarations(declarations []Declaration) {
+	for i, decl := range declarations {
 		if decl.Name() == "" {
 			continue
 		}
-
-		// Check for self-reference in local declarations
-		if IsLocalDeclaration(decl) {
-			if localDecl, ok := decl.(*LocalDeclaration); ok && localDecl.value != nil {
-				// Check for direct self-reference: .local $foo = {$foo}
-				if localDecl.value.Arg() != nil {
-					if varRef, ok := localDecl.value.Arg().(*VariableRef); ok {
-						if varRef.Name() == localDecl.Name() {
-							// Self-reference detected
-							onError("duplicate-declaration", decl)
-							continue
-						}
-					}
-				}
-
-				// Check for forward references in local declarations
-				// A local variable can only reference variables declared before it
-				if localDecl.value.Arg() != nil {
-					if varRef, ok := localDecl.value.Arg().(*VariableRef); ok {
-						// Check if this variable is declared later (forward reference)
-						foundLater := false
-						for j := i + 1; j < len(msg.Declarations()); j++ {
-							laterDecl := msg.Declarations()[j]
-							if laterDecl.Name() == varRef.Name() && IsLocalDeclaration(laterDecl) {
-								foundLater = true
-								break
-							}
-						}
-						if foundLater {
-							// Forward reference detected
-							onError("duplicate-declaration", decl)
-							continue
-						}
-					}
-				}
-
-				// Check for forward references in function options
-				if localDecl.value.FunctionRef() != nil && localDecl.value.FunctionRef().Options() != nil {
-					for _, optValue := range localDecl.value.FunctionRef().Options() {
-						if varRef, ok := optValue.(*VariableRef); ok {
-							// Check if this variable is declared later (forward reference)
-							foundLater := false
-							for j := i + 1; j < len(msg.Declarations()); j++ {
-								laterDecl := msg.Declarations()[j]
-								if laterDecl.Name() == varRef.Name() && IsLocalDeclaration(laterDecl) {
-									foundLater = true
-									break
-								}
-							}
-							if foundLater || varRef.Name() == localDecl.Name() {
-								// Forward reference or self-reference in options
-								onError("duplicate-declaration", decl)
-								break
-							}
-						}
-					}
-				}
-			}
+		if state.hasInvalidLocalArgumentReference(declarations, i, decl) {
+			continue
 		}
+		state.reportInvalidLocalOptionReferences(declarations, i, decl)
+		state.recordAnnotation(decl)
+		state.recordLocalVariable(decl)
+		visitExpression(decl, state.functions, state.variables)
+		state.recordDeclaration(decl)
+	}
+}
 
-		// TypeScript: if (decl.value.functionRef || (decl.type === 'local' && ...))
-		if (IsInputDeclaration(decl) && hasFunction(decl)) ||
-			(IsLocalDeclaration(decl) && (hasFunction(decl) || referencesAnnotatedVariable(decl, annotated))) {
-			annotated[decl.Name()] = true
-		}
-
-		// TypeScript: if (decl.type === 'local') localVars.add(decl.name);
-		if IsLocalDeclaration(decl) {
-			localVars[decl.Name()] = true
-		}
-
-		// Visit expression in declaration
-		visitExpression(decl, functions, variables)
-
-		// Check for duplicate declaration
-		if declared[decl.Name()] {
-			onError("duplicate-declaration", decl)
-		} else {
-			declared[decl.Name()] = true
-		}
+func (state *validationState) hasInvalidLocalArgumentReference(declarations []Declaration, index int, decl Declaration) bool {
+	localDecl, ok := decl.(*LocalDeclaration)
+	if !ok || localDecl.value == nil || localDecl.value.Arg() == nil {
+		return false
 	}
 
-	// Visit message pattern or selectors/variants
-	switch m := msg.(type) {
-	case *PatternMessage:
-		visitPattern(m.Pattern(), functions, variables)
-	case *SelectMessage:
-		// Visit selectors
-		// TypeScript: case 'selector': selectorCount += 1; missingFallback = value; ...
-		for _, selector := range m.Selectors() {
-			selectorCount++
-			missingFallback = selector
-			variables[selector.Name()] = true
+	varRef, ok := localDecl.value.Arg().(*VariableRef)
+	if !ok {
+		return false
+	}
+	if varRef.Name() == localDecl.Name() || referencesLaterLocal(declarations, index, varRef.Name()) {
+		state.onError("duplicate-declaration", decl)
+		return true
+	}
+	return false
+}
 
-			// A selector is annotated if it comes from an annotated declaration or
-			// from an inline `{variable :function}` expression in the .match clause.
-			if !annotated[selector.Name()] && selectorHasFunction(selector) {
-				annotated[selector.Name()] = true
-			}
-			if !annotated[selector.Name()] {
-				onError("missing-selector-annotation", selector)
-			}
-		}
-
-		// Visit variants
-		// TypeScript: variant(variant) { ... }
-		for _, variant := range m.Variants() {
-			keys := variant.Keys()
-
-			// Check key count matches selector count
-			if len(keys) != selectorCount {
-				onError("key-mismatch", variant)
-			}
-
-			// Check for duplicate variants
-			// TypeScript: const strKeys = JSON.stringify(keys.map(key => (key.type === 'literal' ? key.value : 0)));
-			keyStrs := make([]any, len(keys))
-			allCatchall := true
-			for i, key := range keys {
-				switch {
-				case IsCatchallKey(key):
-					keyStrs[i] = 0
-				case IsLiteral(key):
-					// Apply Unicode NFC normalization to literal keys for comparison
-					// This matches the MessageFormat 2.0 specification requirement
-					normalizedValue := norm.NFC.String(key.(*Literal).Value())
-					keyStrs[i] = normalizedValue
-					allCatchall = false
-				default:
-					keyStrs[i] = 0
-					allCatchall = false
-				}
-			}
-
-			keyHash := hashVariantKeys(variantHashSeed, keyStrs)
-			if existing, ok := variants[keyHash]; ok {
-				if variantKeysContain(existing, keyStrs) {
-					onError("duplicate-variant", variant)
-				} else {
-					// Hash collision with a different key tuple; append to bucket.
-					variants[keyHash] = append(existing, keyStrs)
-				}
-			} else {
-				variants[keyHash] = [][]any{keyStrs}
-			}
-
-			// TypeScript: missingFallback &&= keys.every(key => key.type === '*') ? null : variant;
-			if allCatchall {
-				missingFallback = nil
-			} else if missingFallback != nil {
-				missingFallback = variant
-			}
-
-			// Visit variant pattern
-			visitPattern(variant.Value(), functions, variables)
-		}
-
-		// Check for missing fallback
-		// TypeScript: if (missingFallback) onError('missing-fallback', missingFallback);
-		if missingFallback != nil {
-			onError("missing-fallback", missingFallback)
-		}
+func (state *validationState) reportInvalidLocalOptionReferences(declarations []Declaration, index int, decl Declaration) {
+	localDecl, ok := decl.(*LocalDeclaration)
+	if !ok || localDecl.value == nil || localDecl.value.FunctionRef() == nil {
+		return
 	}
 
-	// TypeScript: for (const lv of localVars) variables.delete(lv);
-	maps.DeleteFunc(variables, func(name string, _ bool) bool {
-		return localVars[name]
+	for _, optValue := range localDecl.value.FunctionRef().Options() {
+		varRef, ok := optValue.(*VariableRef)
+		if !ok {
+			continue
+		}
+		if varRef.Name() == localDecl.Name() || referencesLaterLocal(declarations, index, varRef.Name()) {
+			state.onError("duplicate-declaration", decl)
+			return
+		}
+	}
+}
+
+func referencesLaterLocal(declarations []Declaration, index int, name string) bool {
+	for _, laterDecl := range declarations[index+1:] {
+		if laterDecl.Name() == name && IsLocalDeclaration(laterDecl) {
+			return true
+		}
+	}
+	return false
+}
+
+func (state *validationState) recordAnnotation(decl Declaration) {
+	if (IsInputDeclaration(decl) && hasFunction(decl)) ||
+		(IsLocalDeclaration(decl) && (hasFunction(decl) || referencesAnnotatedVariable(decl, state.annotated))) {
+		state.annotated[decl.Name()] = true
+	}
+}
+
+func (state *validationState) recordLocalVariable(decl Declaration) {
+	if IsLocalDeclaration(decl) {
+		state.localVars[decl.Name()] = true
+	}
+}
+
+func (state *validationState) recordDeclaration(decl Declaration) {
+	if state.declared[decl.Name()] {
+		state.onError("duplicate-declaration", decl)
+		return
+	}
+	state.declared[decl.Name()] = true
+}
+
+func (state *validationState) validateSelectMessage(message *SelectMessage) {
+	selectorCount, missingFallback := state.validateSelectors(message.Selectors())
+	missingFallback = state.validateVariants(message.Variants(), selectorCount, missingFallback)
+	if missingFallback != nil {
+		state.onError("missing-fallback", missingFallback)
+	}
+}
+
+func (state *validationState) validateSelectors(selectors []VariableRef) (int, any) {
+	var missingFallback any
+	for _, selector := range selectors {
+		missingFallback = selector
+		state.variables[selector.Name()] = true
+		if !state.annotated[selector.Name()] {
+			state.onError("missing-selector-annotation", selector)
+		}
+	}
+	return len(selectors), missingFallback
+}
+
+func (state *validationState) validateVariants(variants []Variant, selectorCount int, missingFallback any) any {
+	for _, variant := range variants {
+		keys := variant.Keys()
+		if len(keys) != selectorCount {
+			state.onError("key-mismatch", variant)
+		}
+
+		keyStrs, allCatchall := normalizedVariantKeys(keys)
+		state.recordVariantKeys(variant, keyStrs)
+
+		if allCatchall {
+			missingFallback = nil
+		} else if missingFallback != nil {
+			missingFallback = variant
+		}
+		state.visitPattern(variant.Value())
+	}
+	return missingFallback
+}
+
+func normalizedVariantKeys(keys []VariantKey) ([]any, bool) {
+	keyStrs := make([]any, len(keys))
+	allCatchall := true
+	for i, key := range keys {
+		switch {
+		case IsCatchallKey(key):
+			keyStrs[i] = 0
+		case IsLiteral(key):
+			keyStrs[i] = norm.NFC.String(key.(*Literal).Value())
+			allCatchall = false
+		default:
+			keyStrs[i] = 0
+			allCatchall = false
+		}
+	}
+	return keyStrs, allCatchall
+}
+
+func (state *validationState) recordVariantKeys(variant Variant, keyStrs []any) {
+	keyHash := hashVariantKeys(state.variantHashSeed, keyStrs)
+	if existing, ok := state.variants[keyHash]; ok {
+		if variantKeysContain(existing, keyStrs) {
+			state.onError("duplicate-variant", variant)
+			return
+		}
+		state.variants[keyHash] = append(existing, keyStrs)
+		return
+	}
+	state.variants[keyHash] = [][]any{keyStrs}
+}
+
+func (state *validationState) visitPattern(pattern Pattern) {
+	visitPattern(pattern, state.functions, state.variables)
+}
+
+func (state *validationState) result() *ValidationResult {
+	maps.DeleteFunc(state.variables, func(name string, _ bool) bool {
+		return state.localVars[name]
 	})
 
-	// Convert sets to slices using slices.Collect (Go 1.23+)
-	functionList := slices.Collect(maps.Keys(functions))
-	variableList := slices.Collect(maps.Keys(variables))
-
 	return &ValidationResult{
-		Functions: functionList,
-		Variables: variableList,
+		Functions: slices.Collect(maps.Keys(state.functions)),
+		Variables: slices.Collect(maps.Keys(state.variables)),
 	}
 }
 
@@ -382,10 +382,6 @@ func visitFunctionOptions(funcRef *FunctionRef, variables map[string]bool) {
 			}
 		}
 	}
-}
-
-func selectorHasFunction(selector VariableRef) bool {
-	return false
 }
 
 // visitPattern visits a pattern for expressions

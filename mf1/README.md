@@ -1,8 +1,8 @@
-# MessageFormat Go `v1`
+# MessageFormat Go `mf1`
 
 Supported ICU MessageFormat v1 compatibility package for this repository.
 
-`v1` is a package inside the root module, not a standalone Go module. Import it as:
+`mf1` is the package for ICU MessageFormat v1 compatibility. Import it as:
 
 ```go
 import mf "github.com/kaptinlin/messageformat-go/mf1"
@@ -62,10 +62,11 @@ func main() {
 Run examples from the repository root:
 
 ```bash
-go run ./v1/examples/basic
-go run ./v1/examples/ecommerce
-go run ./v1/examples/multilingual
-go run ./v1/examples/performance
+go run ./mf1/examples/basic
+go run ./mf1/examples/basic
+go run ./mf1/examples/ecommerce
+go run ./mf1/examples/multilingual
+go run ./mf1/examples/performance
 ```
 
 ## Documentation
@@ -76,6 +77,6 @@ go run ./v1/examples/performance
 
 ## Notes
 
-- `v1` is not deprecated inside this repository.
-- `v1` must not be pruned during cleanup or refactoring.
-- Release tags apply to the root module; `v1` ships as part of that module.
+- `mf1` is not deprecated inside this repository.
+- `mf1` must not be pruned during cleanup or refactoring.
+- Release tags apply to the root module; `mf1` ships as part of that module.

@@ -690,10 +690,130 @@ func TestDefaultFunctions(t *testing.T) {
 	mf, err := Parse([]string{"en"}, "Hello")
 	require.NoError(t, err)
 
-	expectedFunctions := []string{"string", "number", "integer"}
+	expectedFunctions := []string{"currency", "string", "number", "integer", "offset", "percent"}
 	for _, funcName := range expectedFunctions {
 		assert.Contains(t, mf.functions, funcName, "Default function %s should be available", funcName)
 	}
+}
+
+func TestDraftFunctionsRequireExplicitOptIn(t *testing.T) {
+	mf, err := Parse([]string{"en"}, "Date {$value :date}", WithBidiIsolation(BidiNone))
+	require.NoError(t, err)
+
+	var captured []error
+	result, err := mf.Format(map[string]any{"value": "2024-01-02"}, WithErrorHandler(func(err error) {
+		captured = append(captured, err)
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "Date {$value}", result)
+	require.Len(t, captured, 1)
+	var resolutionErr *pkgerrors.MessageResolutionError
+	require.ErrorAs(t, captured[0], &resolutionErr)
+	assert.Equal(t, pkgerrors.ErrorTypeUnknownFunction, resolutionErr.ErrorType())
+
+	mf, err = Parse(
+		[]string{"en"},
+		"Date {$value :date}",
+		WithBidiIsolation(BidiNone),
+		WithFunctions(functions.DraftFunctionMap()),
+	)
+	require.NoError(t, err)
+	captured = nil
+	result, err = mf.Format(map[string]any{"value": "2024-01-02"}, WithErrorHandler(func(err error) {
+		captured = append(captured, err)
+	}))
+	require.NoError(t, err)
+	assert.Empty(t, captured)
+	assert.NotEqual(t, "Date {$value}", result)
+}
+
+func TestMathFunctionRequiresExplicitFunction(t *testing.T) {
+	mf, err := Parse(
+		[]string{"en"},
+		"Value {1 :math add=2}",
+		WithBidiIsolation(BidiNone),
+		WithFunctions(functions.DraftFunctionMap()),
+	)
+	require.NoError(t, err)
+
+	var captured []error
+	result, err := mf.Format(nil, WithErrorHandler(func(err error) {
+		captured = append(captured, err)
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "Value {|1|}", result)
+	require.Len(t, captured, 1)
+	var resolutionErr *pkgerrors.MessageResolutionError
+	require.ErrorAs(t, captured[0], &resolutionErr)
+	assert.Equal(t, pkgerrors.ErrorTypeUnknownFunction, resolutionErr.ErrorType())
+
+	mf, err = Parse(
+		[]string{"en"},
+		"Value {1 :math add=2}",
+		WithBidiIsolation(BidiNone),
+		WithFunction("math", functions.MathFunction),
+	)
+	require.NoError(t, err)
+	captured = nil
+	result, err = mf.Format(nil, WithErrorHandler(func(err error) {
+		captured = append(captured, err)
+	}))
+	require.NoError(t, err)
+	assert.Empty(t, captured)
+	assert.Equal(t, "Value 3", result)
+}
+
+func TestDatamodelParseMessagePreservesCSTSyntaxErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		source   string
+		wantType pkgerrors.ErrorKind
+	}{
+		{
+			name:     "bad selector",
+			source:   ".match {$count}\n* {{ok}}",
+			wantType: pkgerrors.ErrorTypeBadSelector,
+		},
+		{
+			name:     "missing syntax",
+			source:   "Hello {$name",
+			wantType: pkgerrors.ErrorTypeMissingSyntax,
+		},
+		{
+			name:     "bad escape",
+			source:   `Hello \n`,
+			wantType: pkgerrors.ErrorTypeBadEscape,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, rootErr := Parse([]string{"en"}, tt.source)
+			_, helperErr := datamodel.ParseMessage(tt.source)
+			require.Error(t, rootErr)
+			require.Error(t, helperErr)
+
+			rootSyntax := requireSyntaxError(t, rootErr)
+			helperSyntax := requireSyntaxError(t, helperErr)
+			assert.Equal(t, tt.wantType, rootSyntax.Kind())
+			assert.Equal(t, rootSyntax.Kind(), helperSyntax.Kind())
+			assert.Equal(t, rootSyntax.Start, helperSyntax.Start)
+			assert.Equal(t, rootSyntax.End, helperSyntax.End)
+			assert.Equal(t, rootSyntax.Error(), helperSyntax.Error())
+		})
+	}
+}
+
+func requireSyntaxError(t *testing.T, err error) *pkgerrors.MessageSyntaxError {
+	t.Helper()
+
+	var syntaxErr *pkgerrors.MessageSyntaxError
+	require.ErrorAs(t, err, &syntaxErr)
+	return syntaxErr
 }
 
 // TestCustomFunctionsAPI tests custom function integration

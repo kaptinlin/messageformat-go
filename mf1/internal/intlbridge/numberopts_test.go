@@ -33,20 +33,20 @@ func TestNumberOptions_Strings(t *testing.T) {
 		"numberingSystem":     "arab",
 		"localeMatcher":       "lookup",
 	})
-	assert.Equal(t, numberformat.CurrencyStyle, got.Style)
-	assert.Equal(t, numberformat.Currency("USD"), got.Currency)
-	assert.Equal(t, numberformat.CurrencyDisplayName, got.CurrencyDisplay)
-	assert.Equal(t, numberformat.AccountingCurrencySign, got.CurrencySign)
-	assert.Equal(t, numberformat.Unit("kilometer"), got.Unit)
-	assert.Equal(t, numberformat.LongUnitDisplay, got.UnitDisplay)
-	assert.Equal(t, numberformat.CompactNotation, got.Notation)
-	assert.Equal(t, numberformat.ShortCompactDisplay, got.CompactDisplay)
-	assert.Equal(t, numberformat.ExceptZeroSignDisplay, got.SignDisplay)
-	assert.Equal(t, numberformat.HalfEvenRoundingMode, got.RoundingMode)
-	assert.Equal(t, numberformat.MorePrecisionRoundingPriority, got.RoundingPriority)
-	assert.Equal(t, numberformat.StripIfIntegerTrailingZeroDisplay, got.TrailingZeroDisplay)
-	assert.Equal(t, "arab", got.NumberingSystem)
-	assert.Equal(t, numberformat.LookupLocaleMatcher, got.LocaleMatcher)
+	assertStringPtr(t, string(numberformat.CurrencyStyle), got.Style)
+	assertStringPtr(t, "USD", got.Currency)
+	assertStringPtr(t, string(numberformat.CurrencyDisplayName), got.CurrencyDisplay)
+	assertStringPtr(t, string(numberformat.AccountingCurrencySign), got.CurrencySign)
+	assertStringPtr(t, "kilometer", got.Unit)
+	assertStringPtr(t, string(numberformat.LongUnitDisplay), got.UnitDisplay)
+	assertStringPtr(t, string(numberformat.CompactNotation), got.Notation)
+	assertStringPtr(t, string(numberformat.ShortCompactDisplay), got.CompactDisplay)
+	assertStringPtr(t, string(numberformat.ExceptZeroSignDisplay), got.SignDisplay)
+	assertStringPtr(t, string(numberformat.HalfEvenRoundingMode), got.RoundingMode)
+	assertStringPtr(t, string(numberformat.MorePrecisionRoundingPriority), got.RoundingPriority)
+	assertStringPtr(t, string(numberformat.StripIfIntegerTrailingZeroDisplay), got.TrailingZeroDisplay)
+	assertStringPtr(t, "arab", got.NumberingSystem)
+	assertStringPtr(t, string(numberformat.LookupLocaleMatcher), got.LocaleMatcher)
 }
 
 func TestNumberOptions_IntegerCounts(t *testing.T) {
@@ -108,7 +108,7 @@ func TestNumberOptions_UseGrouping(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := NumberOptions(map[string]any{"useGrouping": tc.in})
-			assert.Equal(t, tc.want, got.UseGrouping)
+			assertOptionalStringPtr(t, string(tc.want), got.UseGrouping)
 		})
 	}
 }
@@ -210,6 +210,22 @@ func TestNumberOptions_IntCoercionRejectsMalformedValues(t *testing.T) {
 }
 
 func assertIntPtr(t *testing.T, want int, got *int) {
+	t.Helper()
+	if assert.NotNil(t, got) {
+		assert.Equal(t, want, *got)
+	}
+}
+
+func assertOptionalStringPtr(t *testing.T, want string, got *string) {
+	t.Helper()
+	if want == "" {
+		assert.Nil(t, got)
+		return
+	}
+	assertStringPtr(t, want, got)
+}
+
+func assertStringPtr(t *testing.T, want string, got *string) {
 	t.Helper()
 	if assert.NotNil(t, got) {
 		assert.Equal(t, want, *got)

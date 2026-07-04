@@ -130,8 +130,10 @@ func (dtv *DateTimeValue) Time() time.Time {
 func (dtv *DateTimeValue) newFormatter() (*datetimeformat.DateTimeFormat, bool) {
 	loc := intlbridge.ParseLocale(dtv.locale)
 	opts := intlbridge.DateTimeOptions(dtv.options)
-	if opts.TimeZone == "" {
-		opts.TimeZone = timeZoneFromValue(dtv.value)
+	if opts.TimeZone == nil {
+		if timeZone := timeZoneFromValue(dtv.value); timeZone != "" {
+			opts.TimeZone = stringPtr(timeZone)
+		}
 	}
 	if f, err := datetimeformat.New(loc, opts); err == nil {
 		return f, true

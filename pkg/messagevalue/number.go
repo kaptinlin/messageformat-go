@@ -126,9 +126,9 @@ func (nv *NumberValue) newFormatter() (*numberformat.NumberFormat, numberformat.
 	if err == nil {
 		return f, value, true, nil
 	}
-	opts.Style = ""
-	opts.Currency = ""
-	opts.Unit = ""
+	opts.Style = nil
+	opts.Currency = nil
+	opts.Unit = nil
 	if f2, err2 := numberformat.New(loc, opts); err2 == nil {
 		return f2, value, true, nil
 	}
@@ -185,6 +185,10 @@ func bigFloatNumberFormatValue(v *big.Float) (numberformat.Value, bool) {
 		return numberformat.Value{}, false
 	}
 	return value, true
+}
+
+func stringPtr(v string) *string {
+	return &v
 }
 
 func numberAsFloat(v any) (float64, bool) {
@@ -341,8 +345,9 @@ func getPluralCategory(num float64, options map[string]any, loc string) string {
 	// already been handled by SelectKeys before plural rules are reached.
 
 	parsed := intlbridge.ParseLocale(loc)
+	ruleTypeString := string(ruleType)
 
-	rules, err := pluralrules.New(parsed, pluralrules.Options{Type: ruleType})
+	rules, err := pluralrules.New(parsed, pluralrules.Options{Type: &ruleTypeString})
 	if err != nil || rules == nil {
 		return "other"
 	}

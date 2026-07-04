@@ -4,7 +4,6 @@ package datamodel
 
 import (
 	"github.com/kaptinlin/messageformat-go/internal/cst"
-	"github.com/kaptinlin/messageformat-go/pkg/errors"
 )
 
 // ParseMessage parses a MessageFormat 2.0 source string into a Message
@@ -22,9 +21,7 @@ func ParseMessage(source string) (Message, error) {
 	cstMessage := cst.ParseCST(source, false)
 
 	if len(cstMessage.Errors()) > 0 {
-		firstError := cstMessage.Errors()[0]
-		end := firstError.End
-		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, firstError.Start, &end, nil)
+		return nil, cstMessage.Errors()[0]
 	}
 
 	message, err := FromCST(cstMessage)

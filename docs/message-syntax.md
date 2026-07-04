@@ -186,17 +186,20 @@ Each variant key position corresponds to one selector position.
 
 ## Built-in Functions
 
-Common built-in annotations:
+Stable default annotations:
 
 - `:number`
 - `:integer`
 - `:string`
-- `:datetime`
-- `:date`
-- `:time`
 - `:currency`
 - `:percent`
 - `:offset`
+
+Draft annotations require explicit opt-in with `WithFunctions(functions.DraftFunctionMap())`:
+
+- `:datetime`
+- `:date`
+- `:time`
 - `:unit`
 
 Examples:

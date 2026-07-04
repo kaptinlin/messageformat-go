@@ -17,10 +17,10 @@ func TestDateTimeOptions_LegacyStyle(t *testing.T) {
 		"dateStyle": "full",
 		"timeStyle": "short",
 	})
-	assert.Equal(t, datetimeformat.FullDateTimeStyle, got.DateStyle)
-	assert.Equal(t, datetimeformat.ShortDateTimeStyle, got.TimeStyle)
-	assert.Equal(t, datetimeformat.MonthStyle(""), got.Month)
-	assert.Equal(t, datetimeformat.FieldStyle(""), got.Weekday)
+	assertStringPtr(t, string(datetimeformat.FullDateTimeStyle), got.DateStyle)
+	assertStringPtr(t, string(datetimeformat.ShortDateTimeStyle), got.TimeStyle)
+	assert.Nil(t, got.Month)
+	assert.Nil(t, got.Weekday)
 }
 
 func TestDateTimeOptions_LegacyTakesPrecedence(t *testing.T) {
@@ -29,10 +29,10 @@ func TestDateTimeOptions_LegacyTakesPrecedence(t *testing.T) {
 		"dateFields": "year-month-day",
 		"dateLength": "long",
 	})
-	assert.Equal(t, datetimeformat.MediumDateTimeStyle, got.DateStyle)
-	assert.Equal(t, datetimeformat.NumericStyle(""), got.Year)
-	assert.Equal(t, datetimeformat.MonthStyle(""), got.Month)
-	assert.Equal(t, datetimeformat.NumericStyle(""), got.Day)
+	assertStringPtr(t, string(datetimeformat.MediumDateTimeStyle), got.DateStyle)
+	assert.Nil(t, got.Year)
+	assert.Nil(t, got.Month)
+	assert.Nil(t, got.Day)
 }
 
 func TestDateTimeOptions_DateFields(t *testing.T) {
@@ -40,17 +40,17 @@ func TestDateTimeOptions_DateFields(t *testing.T) {
 		name      string
 		fields    string
 		length    string
-		wantYear  datetimeformat.NumericStyle
-		wantMonth datetimeformat.MonthStyle
-		wantDay   datetimeformat.NumericStyle
-		wantWk    datetimeformat.FieldStyle
+		wantYear  string
+		wantMonth string
+		wantDay   string
+		wantWk    string
 	}{
-		{"year-month-day medium", "year-month-day", "medium", datetimeformat.NumericFieldStyle, datetimeformat.ShortMonthStyle, datetimeformat.NumericFieldStyle, ""},
-		{"year-month-day long", "year-month-day", "long", datetimeformat.NumericFieldStyle, datetimeformat.LongMonthStyle, datetimeformat.NumericFieldStyle, ""},
-		{"year-month-day short", "year-month-day", "short", datetimeformat.NumericFieldStyle, datetimeformat.NumericMonthStyle, datetimeformat.NumericFieldStyle, ""},
-		{"weekday-year-month-day long", "weekday-year-month-day", "long", datetimeformat.NumericFieldStyle, datetimeformat.LongMonthStyle, datetimeformat.NumericFieldStyle, datetimeformat.LongFieldStyle},
-		{"weekday only", "weekday", "long", "", "", "", datetimeformat.LongFieldStyle},
-		{"default length", "year-month-day", "", datetimeformat.NumericFieldStyle, datetimeformat.ShortMonthStyle, datetimeformat.NumericFieldStyle, ""},
+		{"year-month-day medium", "year-month-day", "medium", string(datetimeformat.NumericFieldStyle), string(datetimeformat.ShortMonthStyle), string(datetimeformat.NumericFieldStyle), ""},
+		{"year-month-day long", "year-month-day", "long", string(datetimeformat.NumericFieldStyle), string(datetimeformat.LongMonthStyle), string(datetimeformat.NumericFieldStyle), ""},
+		{"year-month-day short", "year-month-day", "short", string(datetimeformat.NumericFieldStyle), string(datetimeformat.NumericMonthStyle), string(datetimeformat.NumericFieldStyle), ""},
+		{"weekday-year-month-day long", "weekday-year-month-day", "long", string(datetimeformat.NumericFieldStyle), string(datetimeformat.LongMonthStyle), string(datetimeformat.NumericFieldStyle), string(datetimeformat.LongFieldStyle)},
+		{"weekday only", "weekday", "long", "", "", "", string(datetimeformat.LongFieldStyle)},
+		{"default length", "year-month-day", "", string(datetimeformat.NumericFieldStyle), string(datetimeformat.ShortMonthStyle), string(datetimeformat.NumericFieldStyle), ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -59,10 +59,10 @@ func TestDateTimeOptions_DateFields(t *testing.T) {
 				opts["dateLength"] = tc.length
 			}
 			got := DateTimeOptions(opts)
-			assert.Equal(t, tc.wantYear, got.Year)
-			assert.Equal(t, tc.wantMonth, got.Month)
-			assert.Equal(t, tc.wantDay, got.Day)
-			assert.Equal(t, tc.wantWk, got.Weekday)
+			assertOptionalStringPtr(t, tc.wantYear, got.Year)
+			assertOptionalStringPtr(t, tc.wantMonth, got.Month)
+			assertOptionalStringPtr(t, tc.wantDay, got.Day)
+			assertOptionalStringPtr(t, tc.wantWk, got.Weekday)
 		})
 	}
 }
@@ -70,34 +70,34 @@ func TestDateTimeOptions_DateFields(t *testing.T) {
 func TestDateTimeOptions_TimePrecision(t *testing.T) {
 	cases := []struct {
 		precision  string
-		wantHour   datetimeformat.NumericStyle
-		wantMinute datetimeformat.NumericStyle
-		wantSecond datetimeformat.NumericStyle
+		wantHour   string
+		wantMinute string
+		wantSecond string
 	}{
-		{"hour", datetimeformat.NumericFieldStyle, "", ""},
-		{"minute", datetimeformat.NumericFieldStyle, datetimeformat.NumericFieldStyle, ""},
-		{"second", datetimeformat.NumericFieldStyle, datetimeformat.NumericFieldStyle, datetimeformat.NumericFieldStyle},
+		{"hour", string(datetimeformat.NumericFieldStyle), "", ""},
+		{"minute", string(datetimeformat.NumericFieldStyle), string(datetimeformat.NumericFieldStyle), ""},
+		{"second", string(datetimeformat.NumericFieldStyle), string(datetimeformat.NumericFieldStyle), string(datetimeformat.NumericFieldStyle)},
 	}
 	for _, tc := range cases {
 		t.Run(tc.precision, func(t *testing.T) {
 			got := DateTimeOptions(map[string]any{"timePrecision": tc.precision})
-			assert.Equal(t, tc.wantHour, got.Hour)
-			assert.Equal(t, tc.wantMinute, got.Minute)
-			assert.Equal(t, tc.wantSecond, got.Second)
+			assertOptionalStringPtr(t, tc.wantHour, got.Hour)
+			assertOptionalStringPtr(t, tc.wantMinute, got.Minute)
+			assertOptionalStringPtr(t, tc.wantSecond, got.Second)
 		})
 	}
 }
 
 func TestDateTimeOptions_TimeZoneStyle(t *testing.T) {
-	cases := map[string]datetimeformat.TimeZoneName{
-		"long":  datetimeformat.LongTimeZoneName,
-		"short": datetimeformat.ShortTimeZoneName,
+	cases := map[string]string{
+		"long":  string(datetimeformat.LongTimeZoneName),
+		"short": string(datetimeformat.ShortTimeZoneName),
 		"none":  "",
 	}
 	for in, want := range cases {
 		t.Run(in, func(t *testing.T) {
 			got := DateTimeOptions(map[string]any{"timeZoneStyle": in})
-			assert.Equal(t, want, got.TimeZoneName)
+			assertOptionalStringPtr(t, want, got.TimeZoneName)
 		})
 	}
 }
@@ -110,10 +110,10 @@ func TestDateTimeOptions_Scalars(t *testing.T) {
 		"timeZone":        "Asia/Shanghai",
 		"hour12":          true,
 	})
-	assert.Equal(t, "buddhist", got.Calendar)
-	assert.Equal(t, "arab", got.NumberingSystem)
-	assert.Equal(t, datetimeformat.LookupLocaleMatcher, got.LocaleMatcher)
-	assert.Equal(t, "Asia/Shanghai", got.TimeZone)
+	assertStringPtr(t, "buddhist", got.Calendar)
+	assertStringPtr(t, "arab", got.NumberingSystem)
+	assertStringPtr(t, string(datetimeformat.LookupLocaleMatcher), got.LocaleMatcher)
+	assertStringPtr(t, "Asia/Shanghai", got.TimeZone)
 	if assert.NotNil(t, got.Hour12) {
 		assert.True(t, *got.Hour12)
 	}
@@ -125,9 +125,9 @@ func TestDateTimeOptions_InvalidTypesDropped(t *testing.T) {
 		"timePrecision": 123,
 		"timeZoneStyle": "long",
 	})
-	assert.Equal(t, datetimeformat.NumericStyle(""), got.Year)
-	assert.Equal(t, datetimeformat.NumericStyle(""), got.Hour)
-	assert.Equal(t, datetimeformat.LongTimeZoneName, got.TimeZoneName)
+	assert.Nil(t, got.Year)
+	assert.Nil(t, got.Hour)
+	assertStringPtr(t, string(datetimeformat.LongTimeZoneName), got.TimeZoneName)
 }
 
 func TestDateTimeOptions_ScalarsDropInvalidValues(t *testing.T) {
@@ -141,9 +141,9 @@ func TestDateTimeOptions_ScalarsDropInvalidValues(t *testing.T) {
 		"hour12":          "true",
 	})
 
-	assert.Empty(t, got.Calendar)
-	assert.Empty(t, got.NumberingSystem)
-	assert.Empty(t, got.LocaleMatcher)
-	assert.Empty(t, got.TimeZone)
+	assert.Nil(t, got.Calendar)
+	assert.Nil(t, got.NumberingSystem)
+	assert.Nil(t, got.LocaleMatcher)
+	assert.Nil(t, got.TimeZone)
 	assert.Nil(t, got.Hour12)
 }

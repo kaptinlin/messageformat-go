@@ -538,7 +538,7 @@ func TestFromCSTErrorHandling(t *testing.T) {
 			name:          "CST with errors is propagated",
 			input:         "{unclosed",
 			wantError:     true,
-			errorContains: "parse",
+			errorContains: "missing",
 		},
 	}
 

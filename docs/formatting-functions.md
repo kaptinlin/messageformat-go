@@ -2,6 +2,8 @@
 
 Reference for the built-in formatting functions available in MessageFormat Go v2.
 
+Stable default functions are `:number`, `:integer`, `:string`, `:offset`, `:currency`, and `:percent`. Draft functions `:date`, `:datetime`, `:time`, and `:unit` are available by explicitly passing `messageformat.WithFunctions(functions.DraftFunctionMap())`. The `:math` function is an extension and is only available when supplied explicitly with `WithFunction`.
+
 These functions are used inside expressions such as:
 
 ```text
@@ -24,7 +26,7 @@ General form:
 {$variable :function option=value}
 ```
 
-## Common Built-in Functions
+## Stable Default Functions
 
 ### `:string`
 
@@ -90,6 +92,18 @@ Formats numeric values as integers.
 
 ```text
 {$count :integer}
+```
+
+## Draft Functions
+
+Draft functions require explicit opt-in:
+
+```go
+mf, err := messageformat.Parse(
+	[]string{"en"},
+	"Created {$createdAt :datetime dateStyle=full timeStyle=short}",
+	messageformat.WithFunctions(functions.DraftFunctionMap()),
+)
 ```
 
 ### `:datetime`, `:date`, `:time`

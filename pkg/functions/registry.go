@@ -6,18 +6,21 @@ import (
 	"sync"
 )
 
-// defaultFunctions stores the built-in REQUIRED functions as defined in
-// LDML 48 MessageFormat specification.
+// defaultFunctions stores the stable built-in functions as defined in
+// LDML 48 MessageFormat.
 // Reference: https://www.unicode.org/reports/tr35/tr35-76/tr35-messageFormat.html#contents-of-part-9-messageformat
 //
 // These functions are stable and covered by stability guarantees.
-// They include: :integer, :number, :offset, and :string
+// They include :currency, :integer, :number, :offset, :percent, and :string.
 //
 // TypeScript original code:
 //
 //	export let DefaultFunctions = {
+//	  currency,
 //	  integer,
 //	  number,
+//	  offset,
+//	  percent,
 //	  string
 //	};
 //
@@ -27,13 +30,15 @@ import (
 //
 // );
 var defaultFunctions = map[string]MessageFunction{
-	"integer": IntegerFunction,
-	"number":  NumberFunction,
-	"string":  StringFunction,
-	"offset":  OffsetFunction,
+	"currency": CurrencyFunction,
+	"integer":  IntegerFunction,
+	"number":   NumberFunction,
+	"offset":   OffsetFunction,
+	"percent":  PercentFunction,
+	"string":   StringFunction,
 }
 
-// DefaultFunctionMap returns a snapshot of the built-in REQUIRED functions.
+// DefaultFunctionMap returns a snapshot of the stable built-in functions.
 //
 // TypeScript original code:
 // DefaultFunctions = Object.freeze(
@@ -45,29 +50,16 @@ func DefaultFunctionMap() map[string]MessageFunction {
 	return maps.Clone(defaultFunctions)
 }
 
-// draftFunctions stores functions classified as DRAFT by the
-// LDML 48 MessageFormat specification.
+// draftFunctions stores functions classified as DRAFT by LDML 48 MessageFormat.
 // Reference: https://www.unicode.org/reports/tr35/tr35-76/tr35-messageFormat.html#contents-of-part-9-messageformat
 //
 // These functions are liable to change and are NOT covered by stability guarantees.
 //
-// Note: As of LDML 48, :currency and :percent have been finalized and are now stable.
-// However, they remain in this collection for backward compatibility.
-// The :unit function is still in DRAFT status.
-//
-// `:math` is NOT part of the MF2 spec function set
-// (tests/messageformat-wg/spec/functions/README.md). It is included here
-// solely for parity with the TypeScript reference implementation, which
-// ships it as an extension. Downstream users should not rely on it being
-// available across other MF2 implementations.
-//
 // TypeScript original code:
 //
 //	export let DraftFunctions = {
-//	  currency,
 //	  date,
 //	  datetime,
-//	  math,
 //	  time,
 //	  unit
 //	};
@@ -78,11 +70,8 @@ func DefaultFunctionMap() map[string]MessageFunction {
 //
 // );
 var draftFunctions = map[string]MessageFunction{
-	"currency": CurrencyFunction,
 	"date":     DateFunction,
 	"datetime": DatetimeFunction,
-	"math":     MathFunction, // TypeScript-compat extension, not in MF2 spec
-	"percent":  PercentFunction,
 	"time":     TimeFunction,
 	"unit":     UnitFunction,
 }
