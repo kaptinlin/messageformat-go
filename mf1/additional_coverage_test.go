@@ -637,21 +637,15 @@ func TestLexerAndParserHelpers(t *testing.T) {
 func TestMessageFormatPublicBehavior(t *testing.T) {
 	t.Parallel()
 
-	t.Run("SupportedLocalesOf accepts generic slices and reports invalid inputs", func(t *testing.T) {
+	t.Run("SupportedLocalesOf preserves supported input order", func(t *testing.T) {
 		t.Parallel()
 
-		got, err := SupportedLocalesOf([]any{"en", "xx", "pt-BR"})
+		got, err := SupportedLocalesOf([]string{"en", "eo", "pt-BR"})
 		require.NoError(t, err)
 		want := []string{"en", "pt-BR"}
 		if diff := cmp.Diff(want, got); diff != "" {
 			t.Fatalf("SupportedLocalesOf() mismatch (-want +got):\n%s", diff)
 		}
-
-		_, err = SupportedLocalesOf([]any{"en", 42})
-		require.ErrorIs(t, err, ErrInvalidLocaleType)
-
-		_, err = SupportedLocalesOf(42)
-		require.ErrorIs(t, err, ErrInvalidLocalesType)
 	})
 
 	t.Run("custom plural function drives compiled plural selection", func(t *testing.T) {
@@ -660,7 +654,7 @@ func TestMessageFormatPublicBehavior(t *testing.T) {
 		pluralFn := PluralFunction(func(any, ...bool) (PluralCategory, error) {
 			return PluralMany, nil
 		})
-		mf, err := New(pluralFn, nil)
+		mf, err := NewWithPlural(pluralFn, nil)
 		require.NoError(t, err)
 		assert.Equal(t, "custom", mf.ResolvedOptions().Locale)
 
@@ -806,27 +800,6 @@ func TestMessagesPublicBehavior(t *testing.T) {
 func TestMessageFormatAdditionalBehavior(t *testing.T) {
 	t.Parallel()
 
-	t.Run("constructor accepts locale collections and wildcard", func(t *testing.T) {
-		t.Parallel()
-
-		mf, err := New([]any{"xx", "fr"}, nil)
-		require.NoError(t, err)
-		assert.Equal(t, "en", mf.ResolvedOptions().Locale)
-		require.Len(t, mf.ResolvedOptions().Plurals, 2)
-
-		mf, err = New([]string{"pt-PT", "fr"}, nil)
-		require.NoError(t, err)
-		assert.Equal(t, "pt-PT", mf.ResolvedOptions().Locale)
-
-		mf, err = New("*", nil)
-		require.NoError(t, err)
-		assert.Equal(t, "en", mf.ResolvedOptions().Locale)
-
-		mf, err = New(42, nil)
-		require.NoError(t, err)
-		assert.Equal(t, DefaultLocale, mf.ResolvedOptions().Locale)
-	})
-
 	t.Run("standard execution handles map string parameters and optional missing args", func(t *testing.T) {
 		t.Parallel()
 
@@ -953,27 +926,6 @@ func TestPluralHelpers(t *testing.T) {
 		require.ErrorIs(t, err, ErrInvalidNumberStr)
 		_, err = english.Func(struct{}{})
 		require.ErrorIs(t, err, ErrInvalidType)
-
-		customFn := PluralFunction(func(any, ...bool) (PluralCategory, error) {
-			return PluralMany, nil
-		})
-		custom, err := GetPlural(customFn)
-		require.NoError(t, err)
-		assert.Equal(t, "custom", custom.Locale)
-		category, err = custom.Func(10)
-		require.NoError(t, err)
-		assert.Equal(t, PluralMany, category)
-
-		_, err = GetPlural(42)
-		require.ErrorIs(t, err, ErrInvalidType)
-	})
-	t.Run("GetAllPlurals puts default locale first", func(t *testing.T) {
-		t.Parallel()
-
-		plurals, err := GetAllPlurals("fr")
-		require.NoError(t, err)
-		require.NotEmpty(t, plurals)
-		assert.Equal(t, "fr", plurals[0].Locale)
 	})
 }
 
@@ -995,8 +947,6 @@ func TestErrorWrappers(t *testing.T) {
 		{name: "missing argument", err: WrapMissingArgument("name"), want: ErrMissingArgument},
 		{name: "no matching case", err: WrapNoMatchingCase("count", "plural"), want: ErrNoMatchingCase},
 		{name: "invalid number string", err: WrapInvalidNumberStr("x"), want: ErrInvalidNumberStr},
-		{name: "invalid locale type", err: WrapInvalidLocaleType("int"), want: ErrInvalidLocaleType},
-		{name: "invalid locales type", err: WrapInvalidLocalesType("int"), want: ErrInvalidLocalesType},
 	}
 
 	for _, tc := range tests {

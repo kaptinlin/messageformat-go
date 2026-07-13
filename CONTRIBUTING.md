@@ -6,7 +6,7 @@ Thank you for your interest in contributing to the MessageFormat 2.0 Go implemen
 
 ### Prerequisites
 
-- Go 1.26.4 or later
+- The Go toolchain declared by `go.mod` and `mf1/go.mod`
 - Git
 - Basic understanding of MessageFormat 2.0 specification
 - Familiarity with Go conventions and best practices
@@ -17,7 +17,7 @@ Thank you for your interest in contributing to the MessageFormat 2.0 Go implemen
 
    ```bash
    # Fork the repository on GitHub, then clone your fork
-   git clone --recurse-submodules https://github.com/YOUR_USERNAME/messageformat-go.git
+   git clone https://github.com/YOUR_USERNAME/messageformat-go.git
    cd messageformat-go
 
    # Add upstream remote
@@ -28,20 +28,14 @@ Thank you for your interest in contributing to the MessageFormat 2.0 Go implemen
 
    ```bash
    # Required for official test suite
-   git submodule update --init --recursive
+   task submodules
    ```
 
 3. **Verify Setup**
 
    ```bash
-   # Run all tests to ensure everything works
-   go test ./...
-
-   # Check code formatting
-   go fmt ./...
-
-   # Run linter
-   go vet ./...
+   # Run read-only checks for both modules
+   task verify
    ```
 
 ## 📋 Development Workflow
@@ -68,20 +62,17 @@ git checkout -b feat/your-feature-name
 ### 3. Test Your Changes
 
 ```bash
-# Run all tests
-go test ./...
+# Run fresh race-enabled tests for both modules
+task test
 
-# Run with coverage
-go test -cover ./...
+# Run package and official MF2 tests
+task test-v2
 
-# Run official test suite specifically
-go test ./tests/
+# Check both module graphs and run linters
+task lint
 
-# Check formatting
-go fmt ./...
-
-# Run linter
-go vet ./...
+# Run all read-only verification gates
+task verify
 ```
 
 ### 4. Commit Your Changes
@@ -147,17 +138,18 @@ test(functions): add comprehensive number formatting tests
 2. **Package Structure**
 
    ```text
-   messageformat/
+   messageformat-go/
    ├── messageformat.go          # Main API
    ├── options.go               # Configuration options
-   ├── parts.go                 # Format parts implementation
    ├── pkg/                     # Public packages
    │   ├── datamodel/          # Data model types
    │   ├── functions/          # Built-in functions
-   │   └── messagevalue/       # Value types
-   └── internal/               # Internal packages
-       ├── cst/               # Concrete syntax tree
-       └── resolve/           # Resolution logic
+   │   ├── messagevalue/       # Value types
+   │   └── parts/              # Format parts
+   ├── internal/               # Internal packages
+   │   ├── cst/                # Concrete syntax tree
+   │   └── resolve/            # Resolution logic
+   └── mf1/                    # Independent ICU MessageFormat v1 module
    ```
 
 3. **Error Handling**
@@ -207,20 +199,20 @@ test(functions): add comprehensive number formatting tests
 ### Running Tests
 
 ```bash
-# All tests
-go test ./...
+# All root and MF1 tests
+task test
 
 # Specific package
 go test ./pkg/functions
 
-# With coverage
-go test -cover ./...
+# Root coverage report
+task test-coverage
 
-# Verbose output
-go test -v ./...
+# Root verbose output
+task test-verbose
 
 # Official test suite only
-go test ./tests/
+task test-official
 ```
 
 ### Writing Tests

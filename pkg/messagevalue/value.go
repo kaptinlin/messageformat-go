@@ -135,15 +135,19 @@ type MarkupPart struct {
 	kind    string // "open", "close", "standalone"
 	name    string
 	source  string
+	id      string
 	options map[string]any
 }
 
 // NewMarkupPart creates a new markup part
-func NewMarkupPart(kind, name, source string, options map[string]any) *MarkupPart {
+// TypeScript original code:
+// const part = { type: 'markup', kind, name, id, options };
+func NewMarkupPart(kind, name, source, id string, options map[string]any) *MarkupPart {
 	return &MarkupPart{
 		kind:    kind,
 		name:    name,
 		source:  source,
+		id:      id,
 		options: cloneOptions(options),
 	}
 }
@@ -156,7 +160,8 @@ func (mp *MarkupPart) Locale() string          { return "" }
 func (mp *MarkupPart) Dir() bidi.Direction     { return bidi.DirAuto }
 func (mp *MarkupPart) Kind() string            { return mp.kind }
 func (mp *MarkupPart) Name() string            { return mp.name }
-func (mp *MarkupPart) Options() map[string]any { return mp.options }
+func (mp *MarkupPart) ID() string              { return mp.id }
+func (mp *MarkupPart) Options() map[string]any { return cloneOptions(mp.options) }
 
 // FallbackPart represents fallback values for errors
 type FallbackPart struct {

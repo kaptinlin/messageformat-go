@@ -8,7 +8,6 @@ import (
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
-	"github.com/kaptinlin/messageformat-go/pkg/logger"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
@@ -73,7 +72,6 @@ func ResolveExpression(ctx *Context, expr *datamodel.Expression) messagevalue.Me
 		if node, ok := v.(datamodel.Node); ok {
 			errMsg = fmt.Sprintf("unsupported expression: %s", node.Type())
 		}
-		logger.Error("unsupported expression", "type", errMsg)
 		if ctx.OnError != nil {
 			ctx.OnError(errors.NewMessageResolutionError(
 				errors.ErrorTypeUnsupportedOperation,

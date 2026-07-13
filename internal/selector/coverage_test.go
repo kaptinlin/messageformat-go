@@ -70,20 +70,6 @@ func TestSelectPatternReportsNoMatchWhenNoVariantSurvives(t *testing.T) {
 	assertSelectorCoverageErrorType(t, errs[0], pkgerrors.ErrorTypeNoMatch)
 }
 
-func TestSelectPatternReportsBadSelectorForUnsupportedMessages(t *testing.T) {
-	t.Parallel()
-
-	var errs []error
-	ctx := newSelectorCoverageContext(nil, func(err error) {
-		errs = append(errs, err)
-	})
-
-	result := SelectPattern(ctx, unsupportedSelectorCoverageMessage{})
-	assert.Equal(t, 0, result.Len())
-	require.Len(t, errs, 1)
-	assertSelectorCoverageErrorType(t, errs[0], pkgerrors.ErrorTypeBadSelector)
-}
-
 func TestSelectPatternReportsBadSelectorForNonSelectableValues(t *testing.T) {
 	t.Parallel()
 
@@ -174,12 +160,6 @@ func assertSelectorCoverageErrorType(t *testing.T, err error, want string) {
 	require.ErrorAs(t, err, &selectionErr)
 	assert.Equal(t, want, selectionErr.Type)
 }
-
-type unsupportedSelectorCoverageMessage struct{}
-
-func (unsupportedSelectorCoverageMessage) Type() string                          { return "unsupported" }
-func (unsupportedSelectorCoverageMessage) Declarations() []datamodel.Declaration { return nil }
-func (unsupportedSelectorCoverageMessage) Comment() string                       { return "" }
 
 type panickingSelectorValue struct{}
 

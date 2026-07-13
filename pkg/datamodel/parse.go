@@ -24,7 +24,7 @@ func ParseMessage(source string) (Message, error) {
 		return nil, cstMessage.Errors()[0]
 	}
 
-	message, err := FromCST(cstMessage)
+	message, err := fromCST(cstMessage)
 	if err != nil {
 		return nil, err
 	}

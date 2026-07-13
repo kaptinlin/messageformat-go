@@ -39,23 +39,21 @@ func ValidateMessage(msg Message, onError func(string, any)) (*ValidationResult,
 	var validationErrors []error
 	errorHandler := func(errType string, node any) {
 		var err error
-		start := 0
-		end := 1
-		if nodeImpl, ok := node.(pkgerrors.Node); ok {
-			start, end = nodeImpl.GetPosition()
-		}
 		switch errType {
-		case "key-mismatch":
-			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeKeyMismatch, start, &end, nil)
-		case "missing-fallback":
-			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeMissingFallback, start, &end, nil)
-		case "missing-selector-annotation":
-			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeMissingSelectorAnnotation, start, &end, nil)
-		case "duplicate-declaration":
-			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeDuplicateDeclaration, start, &end, nil)
-		case "duplicate-variant":
-			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeDuplicateVariant, start, &end, nil)
+		case pkgerrors.ErrorTypeKeyMismatch,
+			pkgerrors.ErrorTypeMissingFallback,
+			pkgerrors.ErrorTypeMissingSelectorAnnotation,
+			pkgerrors.ErrorTypeDuplicateDeclaration,
+			pkgerrors.ErrorTypeDuplicateVariant,
+			pkgerrors.ErrorTypeInvalidMessage:
+			node, _ := node.(pkgerrors.Node)
+			err = pkgerrors.NewMessageDataModelError(pkgerrors.ErrorKind(errType), node)
 		default:
+			start := 0
+			end := 1
+			if node, ok := node.(pkgerrors.Node); ok {
+				start, end = node.GetPosition()
+			}
 			err = pkgerrors.NewMessageSyntaxError(pkgerrors.ErrorTypeParseError, start, &end, nil)
 		}
 		validationErrors = append(validationErrors, err)
@@ -87,8 +85,15 @@ func ValidateMessage(msg Message, onError func(string, any)) (*ValidationResult,
 //	  visit(msg, { ... });
 //	}
 func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
-	if msg == nil {
-		onError("invalid-message", nil)
+	invalid := msg == nil
+	switch message := msg.(type) {
+	case *PatternMessage:
+		invalid = message == nil
+	case *SelectMessage:
+		invalid = message == nil
+	}
+	if invalid {
+		onError(pkgerrors.ErrorTypeInvalidMessage, nil)
 		return &ValidationResult{
 			Functions: []string{},
 			Variables: []string{},

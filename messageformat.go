@@ -8,13 +8,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/kaptinlin/messageformat-go/internal/cst"
 	"github.com/kaptinlin/messageformat-go/internal/resolve"
 	"github.com/kaptinlin/messageformat-go/internal/selector"
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
-	"github.com/kaptinlin/messageformat-go/pkg/logger"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
@@ -77,8 +75,6 @@ type MessageFormatOptions struct {
 
 	// Logger for this MessageFormat instance. If nil, uses global logger.
 	Logger *slog.Logger `json:"-"`
-
-	bidiIsolationSet bool
 }
 
 // NewOptions creates a new MessageFormatOptions with defaults
@@ -124,12 +120,7 @@ type MessageFormat struct {
 
 // Parse creates a MessageFormat by parsing source text and applying options.
 func Parse(locales []string, source string, options ...Option) (*MessageFormat, error) {
-	cstMessage := cst.ParseCST(source, false)
-	if len(cstMessage.Errors()) > 0 {
-		return nil, cstMessage.Errors()[0]
-	}
-
-	message, err := datamodel.FromCST(cstMessage)
+	message, err := datamodel.ParseMessage(source)
 	if err != nil {
 		return nil, err
 	}
@@ -145,9 +136,10 @@ func Compile(locales []string, message datamodel.Message, options ...Option) (*M
 	if err != nil {
 		return nil, err
 	}
-	messageSnapshot := datamodel.CloneMessage(message)
-
 	opts := NewOptions(NewMessageFormatOptions(options...))
+	if err := validateMessageFormatOptions(opts); err != nil {
+		return nil, err
+	}
 	bidiIsolation := opts.BidiIsolation != BidiNone
 
 	dir := string(opts.Dir)
@@ -166,13 +158,13 @@ func Compile(locales []string, message datamodel.Message, options ...Option) (*M
 		maps.Copy(functionMap, opts.Functions)
 	}
 
-	instanceLogger := logger.GetLogger()
+	instanceLogger := slog.Default()
 	if opts.Logger != nil {
 		instanceLogger = opts.Logger
 	}
 
 	return &MessageFormat{
-		message:       messageSnapshot,
+		message:       message,
 		locales:       localeList,
 		functions:     functionMap,
 		bidiIsolation: bidiIsolation,

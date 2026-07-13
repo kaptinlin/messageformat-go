@@ -338,6 +338,7 @@ const (
 	ErrorTypeMissingFallback           = "missing-fallback"
 	ErrorTypeMissingSelectorAnnotation = "missing-selector-annotation"
 	ErrorTypeMissingSyntax             = "missing-syntax"
+	ErrorTypeInvalidMessage            = "invalid-message"
 )
 
 // Resolution error types

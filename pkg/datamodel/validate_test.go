@@ -1,8 +1,10 @@
 package datamodel
 
 import (
+	"errors"
 	"testing"
 
+	pkgerrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -242,7 +244,7 @@ func TestValidateMessage(t *testing.T) {
 				return msg
 			}(),
 			wantErrors:    true,
-			errorContains: "parse-error",
+			errorContains: "invalid-message",
 		},
 		{
 			name: "function in option value",
@@ -815,6 +817,86 @@ func TestValidateMessageErrorTypes(t *testing.T) {
 			require.Error(t, err)
 			require.Len(t, gotTypes, 1)
 			assert.Equal(t, tt.wantType, gotTypes[0])
+		})
+	}
+}
+
+func TestValidateMessageReturnsDataModelErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		source   string
+		wantType string
+	}{
+		{
+			name:     "variant key mismatch",
+			source:   ".input {$foo :x} .match $foo * * {{foo}}",
+			wantType: "key-mismatch",
+		},
+		{
+			name:     "missing fallback",
+			source:   ".input {$foo :x} .match $foo 1 {{_}}",
+			wantType: "missing-fallback",
+		},
+		{
+			name:     "missing selector annotation",
+			source:   ".input {$foo} .match $foo one {{one}} * {{other}}",
+			wantType: "missing-selector-annotation",
+		},
+		{
+			name:     "duplicate declaration",
+			source:   ".input {$foo} .input {$foo} {{_}}",
+			wantType: "duplicate-declaration",
+		},
+		{
+			name:     "duplicate variant",
+			source:   ".input {$var :string} .match $var * {{first}} * {{second}}",
+			wantType: "duplicate-variant",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			message, err := ParseMessage(tt.source)
+			require.NoError(t, err)
+
+			_, err = ValidateMessage(message, nil)
+			require.Error(t, err)
+
+			var modelErr *pkgerrors.MessageDataModelError
+			require.True(t, errors.As(err, &modelErr), "got %T: %v", err, err)
+			assert.Equal(t, tt.wantType, modelErr.ErrorType())
+			assert.LessOrEqual(t, modelErr.Start, modelErr.End)
+		})
+	}
+}
+
+func TestValidateMessageRejectsNilMessages(t *testing.T) {
+	t.Parallel()
+
+	var pattern *PatternMessage
+	var selectMessage *SelectMessage
+	tests := []struct {
+		name    string
+		message Message
+	}{
+		{name: "nil interface"},
+		{name: "nil pattern message", message: pattern},
+		{name: "nil select message", message: selectMessage},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := ValidateMessage(tt.message, nil)
+			require.Error(t, err)
+			var modelErr *pkgerrors.MessageDataModelError
+			require.ErrorAs(t, err, &modelErr)
+			assert.Equal(t, "invalid-message", modelErr.ErrorType())
 		})
 	}
 }

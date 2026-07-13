@@ -3,6 +3,7 @@ package v1
 import (
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,26 +18,87 @@ func TestStaticMessageFormat(t *testing.T) {
 	})
 
 	t.Run("should have a supportedLocalesOf() function", func(t *testing.T) {
-		result, err := SupportedLocalesOf("en")
+		result, err := SupportedLocalesOf([]string{"en"})
 		require.NoError(t, err)
 		require.NotNil(t, result)
 	})
 
 	t.Run("supportedLocalesOf([]string)", func(t *testing.T) {
-		lc, err := SupportedLocalesOf([]string{"fi", "xx", "en-CA"})
+		lc, err := SupportedLocalesOf([]string{"fi", "eo", "en-CA"})
 		require.NoError(t, err)
 		require.NotEmpty(t, lc)
 
-		hasUnsupported := slices.Contains(lc, "xx")
-		assert.False(t, hasUnsupported, "Should not include unsupported locale 'xx'")
+		hasUnsupported := slices.Contains(lc, "eo")
+		assert.False(t, hasUnsupported, "Should not include unsupported locale 'eo'")
 	})
 
 	t.Run("supportedLocalesOf(string)", func(t *testing.T) {
-		lc, err := SupportedLocalesOf("en")
+		lc, err := SupportedLocalesOf([]string{"en"})
 		require.NoError(t, err)
 		expected := []string{"en"}
 		assert.Equal(t, expected, lc)
 	})
+}
+
+func TestSupportedLocalesOfContract(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		locales []string
+		want    []string
+		wantErr error
+	}{
+		{name: "empty"},
+		{name: "preserves order", locales: []string{"fr", "en"}, want: []string{"fr", "en"}},
+		{name: "omits unsupported", locales: []string{"en", "eo", "fr"}, want: []string{"en", "fr"}},
+		{name: "preserves variant", locales: []string{"en-CA"}, want: []string{"en-CA"}},
+		{name: "rejects malformed", locales: []string{"en", "x"}, wantErr: ErrInvalidLocale},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := SupportedLocalesOf(tt.locales)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestGetPluralRejectsMalformedLocale(t *testing.T) {
+	t.Parallel()
+
+	_, err := GetPlural("lawlz")
+	require.ErrorIs(t, err, ErrInvalidLocale)
+}
+
+func TestGetPluralFallsBackUnsupportedLocaleVariants(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		locale     string
+		wantLocale string
+	}{
+		{name: "supported variant", locale: "en-CA", wantLocale: "en-CA"},
+		{name: "unsupported variant", locale: "eo-US", wantLocale: "en"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			plural, err := GetPlural(tt.locale)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantLocale, plural.Locale)
+		})
+	}
 }
 
 func TestMessageFormatConstructor(t *testing.T) {
@@ -60,19 +122,49 @@ func TestMessageFormatConstructor(t *testing.T) {
 		assert.NotEmpty(t, opts.Locale)
 	})
 
-	t.Run("should fallback on non-existing locales", func(t *testing.T) {
-		mf, err := New("lawlz", nil)
+	t.Run("should fallback on unsupported locales", func(t *testing.T) {
+		mf, err := New("eo", nil)
 		require.NoError(t, err)
 		opt := mf.ResolvedOptions()
 		assert.Equal(t, "en", opt.Locale)
 	})
+}
 
-	t.Run("should default to en when no locale is passed", func(t *testing.T) {
-		mf, err := New(nil, nil)
-		require.NoError(t, err)
-		opt := mf.ResolvedOptions()
-		assert.Equal(t, "en", opt.Locale)
-	})
+func TestMessageFormatRejectsWildcardLocale(t *testing.T) {
+	t.Parallel()
+
+	_, err := New("*", nil)
+	require.ErrorIs(t, err, ErrInvalidLocale)
+}
+
+func TestMessageFormatRejectsMalformedLocale(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		locale string
+	}{
+		{name: "empty", locale: ""},
+		{name: "short language tag", locale: "x"},
+		{name: "unknown language tag", locale: "xx"},
+		{name: "malformed language tag", locale: "lawlz"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := New(tt.locale, nil)
+			require.ErrorIs(t, err, ErrInvalidLocale)
+		})
+	}
+}
+
+func TestMessageFormatRejectsNilPluralFunction(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewWithPlural(nil, nil)
+	require.ErrorIs(t, err, ErrInvalidPluralFunction)
 }
 
 func TestMessageFormatOptions(t *testing.T) {
@@ -129,6 +221,111 @@ func TestMessageFormatOptions(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "HELLO", result)
 	})
+}
+
+func TestMessageFormatSnapshotsCustomFormatterInput(t *testing.T) {
+	t.Parallel()
+
+	formatters := map[string]any{
+		"change": CustomFormatter(func(value any, _ string, _ *string) any {
+			return strings.ToUpper(value.(string))
+		}),
+	}
+	mf, err := New("en", &MessageFormatOptions{CustomFormatters: formatters})
+	require.NoError(t, err)
+	compiled, err := mf.Compile("{value, change}")
+	require.NoError(t, err)
+
+	formatters["change"] = CustomFormatter(func(value any, _ string, _ *string) any {
+		return strings.ToLower(value.(string))
+	})
+	got, err := compiled(map[string]any{"value": "MiXeD"})
+	require.NoError(t, err)
+
+	assert.Equal(t, "MIXED", got)
+}
+
+func TestResolvedOptionsReturnsCustomFormatterSnapshot(t *testing.T) {
+	t.Parallel()
+
+	mf, err := New("en", &MessageFormatOptions{CustomFormatters: map[string]any{
+		"change": CustomFormatter(func(value any, _ string, _ *string) any {
+			return strings.ToUpper(value.(string))
+		}),
+	}})
+	require.NoError(t, err)
+	compiled, err := mf.Compile("{value, change}")
+	require.NoError(t, err)
+
+	resolved := mf.ResolvedOptions()
+	resolved.CustomFormatters["change"] = CustomFormatter(func(value any, _ string, _ *string) any {
+		return strings.ToLower(value.(string))
+	})
+	got, err := compiled(map[string]any{"value": "MiXeD"})
+	require.NoError(t, err)
+
+	assert.Equal(t, "MIXED", got)
+}
+
+func TestResolvedOptionsReturnsPluralSnapshot(t *testing.T) {
+	t.Parallel()
+
+	t.Run("plural objects", func(t *testing.T) {
+		t.Parallel()
+
+		mf, err := New("en", nil)
+		require.NoError(t, err)
+		resolved := mf.ResolvedOptions()
+		require.NotEmpty(t, resolved.Plurals)
+		resolved.Plurals[0].Locale = "fr"
+
+		assert.Equal(t, "en", mf.ResolvedOptions().Locale)
+	})
+
+	t.Run("plural categories", func(t *testing.T) {
+		t.Parallel()
+
+		mf, err := New("en", nil)
+		require.NoError(t, err)
+		resolved := mf.ResolvedOptions()
+		require.NotEmpty(t, resolved.Plurals)
+		original := slices.Clone(resolved.Plurals[0].Cardinals)
+		require.NotEmpty(t, original)
+		resolved.Plurals[0].Cardinals[0] = PluralZero
+
+		assert.Equal(t, original, mf.ResolvedOptions().Plurals[0].Cardinals)
+	})
+}
+
+func TestMessageFormatSnapshotSupportsConcurrentUse(t *testing.T) {
+	t.Parallel()
+
+	mf, err := New("en", &MessageFormatOptions{CustomFormatters: map[string]any{
+		"upper": CustomFormatter(func(value any, _ string, _ *string) any {
+			return strings.ToUpper(value.(string))
+		}),
+	}})
+	require.NoError(t, err)
+
+	var group sync.WaitGroup
+	for range 16 {
+		group.Go(func() {
+			compiled, err := mf.Compile("{value, upper}")
+			assert.NoError(t, err)
+			if err == nil {
+				got, err := compiled(map[string]any{"value": "text"})
+				assert.NoError(t, err)
+				assert.Equal(t, "TEXT", got)
+			}
+
+			resolved := mf.ResolvedOptions()
+			delete(resolved.CustomFormatters, "upper")
+			if len(resolved.Plurals) > 0 {
+				resolved.Plurals[0].Locale = "fr"
+			}
+		})
+	}
+	group.Wait()
 }
 
 func TestTypeSafeBasics(t *testing.T) {

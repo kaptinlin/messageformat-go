@@ -115,6 +115,50 @@ func TestMessageValueConstructorsCloneOptions(t *testing.T) {
 	assert.Equal(t, "short", dateTimeValue.Options()["dateStyle"])
 }
 
+func TestNumberValueOptionsReturnsSnapshot(t *testing.T) {
+	t.Parallel()
+
+	value := NewNumberValue(42, "en", "test", map[string]any{"style": "currency"})
+	options := value.Options()
+	options["style"] = "decimal"
+
+	assert.Equal(t, "currency", value.Options()["style"])
+}
+
+func TestOptionAccessorsReturnSnapshots(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		value OptionedValue
+	}{
+		{
+			name: "datetime value",
+			value: NewDateTimeValue(
+				time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC),
+				"en",
+				"test",
+				map[string]any{"style": "full"},
+			),
+		},
+		{
+			name:  "markup part",
+			value: NewMarkupPart("open", "strong", "test", "", map[string]any{"style": "full"}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			options := tt.value.Options()
+			options["style"] = "short"
+
+			assert.Equal(t, "full", tt.value.Options()["style"])
+		})
+	}
+}
+
 func TestNumberValueTypes(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -241,7 +285,7 @@ func TestBidiIsolationPart(t *testing.T) {
 
 func TestMarkupPart(t *testing.T) {
 	options := map[string]any{"class": "bold"}
-	mp := NewMarkupPart("open", "b", "<b>", options)
+	mp := NewMarkupPart("open", "b", "<b>", "part-id", options)
 
 	assert.Equal(t, "markup", mp.Type())
 	assert.Equal(t, "b", mp.Value())
@@ -250,6 +294,7 @@ func TestMarkupPart(t *testing.T) {
 	assert.Equal(t, bidi.DirAuto, mp.Dir())
 	assert.Equal(t, "open", mp.Kind())
 	assert.Equal(t, "b", mp.Name())
+	assert.Equal(t, "part-id", mp.ID())
 	assert.Equal(t, options, mp.Options())
 	assert.Equal(t, "b", mp.Text())
 	options["class"] = "changed"
@@ -257,7 +302,7 @@ func TestMarkupPart(t *testing.T) {
 }
 
 func TestMarkupPartNilOptions(t *testing.T) {
-	mp := NewMarkupPart("standalone", "br", "<br/>", nil)
+	mp := NewMarkupPart("standalone", "br", "<br/>", "", nil)
 
 	assert.NotNil(t, mp.Options())
 	assert.Empty(t, mp.Options())

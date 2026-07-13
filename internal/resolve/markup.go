@@ -7,7 +7,6 @@ import (
 
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
-	"github.com/kaptinlin/messageformat-go/pkg/logger"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
@@ -44,6 +43,7 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 		string(markup.Kind()),
 		markup.Name(),
 		"", // source will be set if needed
+		"",
 		make(map[string]any),
 	)
 
@@ -53,6 +53,7 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 	}
 
 	partOptions := make(map[string]any)
+	var id string
 	for name, value := range options {
 		if name == "u:dir" {
 			msg := fmt.Sprintf("option %s is not valid for markup", name)
@@ -77,7 +78,6 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 			var err error
 			rv, err = resolveValue(ctx, node)
 			if err != nil {
-				logger.Error("failed to resolve value in markup", "error", err)
 				if ctx.OnError != nil {
 					ctx.OnError(errors.NewMessageResolutionError(
 						errors.ErrorTypeUnsupportedOperation,
@@ -97,13 +97,18 @@ func FormatMarkup(ctx *Context, markup *datamodel.Markup) messagevalue.MessagePa
 			}
 		}
 
-		partOptions[name] = rv
+		if name == "u:id" {
+			id = fmt.Sprint(rv)
+		} else {
+			partOptions[name] = rv
+		}
 	}
 
 	return messagevalue.NewMarkupPart(
 		string(markup.Kind()),
 		markup.Name(),
 		"", // source
+		id,
 		partOptions,
 	)
 }

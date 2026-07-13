@@ -8,22 +8,22 @@ This repository validates the current Unicode MessageFormat 2.0 implementation t
 
 ## 🏆 Specification Compliance
 
-- **MessageFormat 2.0**: Passes the official MessageFormat 2.0 test suite
-- **Unified Management**: Single go.mod and versioning for the current implementation
+- **MessageFormat 2.0**: `task test-official` checks the implementation against the corpus pinned by `tests/messageformat-wg`
+- **Module Coverage**: Root MF2 and `mf1/` have independent `go.mod` files and are both covered by aggregate gates
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 ```bash
-# Initialize git submodules (required for official tests)
-git submodule update --init --recursive
+# Initialize the fixture required by official tests
+task submodules
 
 # Verify submodule initialization
 ls tests/messageformat-wg/test/tests/
 ```
 
-**Requirements**: Go 1.26.4+, Git
+**Requirements**: The Go toolchain declared by `go.mod` and `mf1/go.mod`, plus Git and Task
 
 ### Running Tests
 
@@ -33,10 +33,10 @@ ls tests/messageformat-wg/test/tests/
 # Run all tests with race detection
 task test
 
-# Run with coverage report
+# Run root tests with a coverage report
 task test-coverage
 
-# Run with verbose output
+# Run root tests with verbose output
 task test-verbose
 ```
 
@@ -67,26 +67,24 @@ task bench
 1. **Official Test Suite** (`./tests/`): Unicode MessageFormat Working Group tests
 2. **API Tests** (`messageformat_test.go`): Constructor and formatting methods
 3. **Package Tests** (`./pkg/`, `./internal/`): Component-specific functionality
-4. **Repository Regression Tests** (`legacy_pruning_test.go`): Ensure legacy surfaces stay removed
+4. **MF1 Module Tests** (`mf1/*_test.go`): ICU MessageFormat v1 behavior and examples
 
 ### File Organization
 
 ```text
 messageformat-go/
-├── legacy_pruning_test.go            # Legacy-surface regression coverage
-├── messageformat_test.go             # API tests
-├── tests/                            # Official test suite
-│   ├── basic_test.go                 # Core behavior coverage
-│   ├── bench_test.go                 # Benchmark helpers
-│   ├── features_test.go              # Feature compliance coverage
-│   ├── messageformat-wg/             # Git submodule
-│   ├── spec_test.go                  # Official suite runner
-│   └── utils/                        # Test helpers
-├── pkg/                              # Package tests
-│   └── */*_test.go                   # Component tests
-├── internal/                         # Internal tests
-│   └── */*_test.go                   # Internal tests
-└── examples/                         # Example programs
+├── messageformat_test.go             # Root public API tests
+├── tests/
+│   ├── official_test.go              # Pinned official corpus runner
+│   ├── messageformat-wg/             # Official corpus git submodule
+│   └── utils/mfwg_test.go            # Corpus adapter tests
+├── pkg/*/*_test.go                   # Public package tests
+├── internal/*/*_test.go              # Internal package tests
+├── examples/*/main_test.go           # Root example tests
+└── mf1/                              # Independent MF1 module
+    ├── go.mod
+    ├── *_test.go                     # MF1 API and behavior tests
+    └── examples/*/main_test.go        # MF1 example tests
 ```
 
 ## 🔧 Development Commands
@@ -94,13 +92,13 @@ messageformat-go/
 ### Code Quality
 
 ```bash
-# Format, vet, lint, and test
+# Read-only checks for root and MF1
 task verify
 
-# Individual checks
-task fmt          # Format code
-task vet          # Static analysis
-task lint         # Comprehensive linting
+# Explicit write and individual checks
+task fmt          # Rewrite Go formatting
+task vet          # Static analysis for both modules
+task lint         # Tidy and golangci-lint checks for both modules
 ```
 
 ### Coverage and Benchmarks
@@ -120,7 +118,7 @@ task bench
 **Submodule not initialized:**
 
 ```bash
-git submodule update --init --recursive
+task submodules
 ```
 
 **Test files missing:**
@@ -133,16 +131,14 @@ ls tests/messageformat-wg/test/tests/
 **Go module issues:**
 
 ```bash
-go mod download
-go mod verify
-go mod tidy
+task deps       # Explicitly download and tidy root dependencies
+task tidy-lint  # Check both module graphs without rewriting them
 ```
 
 **Linting tool missing:**
 
 ```bash
-# Install golangci-lint
-curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+task install-golangci-lint
 ```
 
 ### Debug Commands
@@ -152,7 +148,10 @@ curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/insta
 go test -v -count=1 ./...
 
 # Race detection
-go test -race ./...
+go test -race -count=1 ./...
+
+# MF1 module only
+(cd mf1 && go test -race -count=1 ./...)
 
 # Specific test
 go test -v -run TestSpecificFunction ./pkg/functions/
@@ -201,11 +200,11 @@ task bench          # Benchmarks
 task help           # Show all targets
 
 # Debug & troubleshoot
-git submodule update --init --recursive
-go test -v -race ./...
-go mod verify
+task submodules
+go test -v -race -count=1 ./...
+task tidy-lint
 ```
 
 ---
 
-**Ready to start testing?** Run `task test` to execute the complete test suite and verify MessageFormat 2.0 specification compliance.
+**Ready to start testing?** Run `task test` to execute fresh race-enabled tests for both modules.

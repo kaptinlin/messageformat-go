@@ -222,6 +222,7 @@ type Message interface {
 	Type() string
 	Declarations() []Declaration
 	Comment() string
+	message()
 }
 
 // PatternMessage represents a single message with no variants
@@ -281,6 +282,8 @@ func (pm *PatternMessage) Comment() string {
 func (pm *PatternMessage) GetPosition() (start, end int) {
 	return pm.span.getPosition()
 }
+
+func (pm *PatternMessage) message() {}
 
 // SelectMessage represents a message with variants for selection
 // SelectMessage generalises the plural, selectordinal and select
@@ -355,6 +358,8 @@ func (sm *SelectMessage) Comment() string {
 func (sm *SelectMessage) GetPosition() (start, end int) {
 	return sm.span.getPosition()
 }
+
+func (sm *SelectMessage) message() {}
 
 // Declaration represents variable declarations
 // A message may declare any number of input and local variables,

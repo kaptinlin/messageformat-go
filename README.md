@@ -1,6 +1,6 @@
 # MessageFormat Go
 
-[![Go Version](https://img.shields.io/badge/go-%3E%3D1.26.4-blue)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/go-%3E%3D1.26.5-blue)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/github.com/kaptinlin/messageformat-go.svg)](https://pkg.go.dev/github.com/kaptinlin/messageformat-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/kaptinlin/messageformat-go)](https://goreportcard.com/report/github.com/kaptinlin/messageformat-go)
@@ -14,8 +14,8 @@ A Go implementation of Unicode MessageFormat 2.0 for parsing, validating, and fo
 - **Locale-aware functions**: Format numbers, dates, currencies, percentages, offsets, strings, and units through [`github.com/agentable/go-intl`](https://github.com/agentable/go-intl).
 - **Custom formatters**: Register application functions with `WithFunction` or `WithFunctions`.
 - **Structured rendering**: Use `FormatToParts` for rich text, markup-aware rendering, and post-processing.
-- **Migration path**: Keep existing ICU MessageFormat v1 code on the supported `github.com/kaptinlin/messageformat-go/mf1` package.
-- **Official conformance**: Run the Unicode MessageFormat Working Group test suite with `task test-official` or `task test-v2`.
+- **Migration path**: Keep existing ICU MessageFormat v1 code on the supported `github.com/kaptinlin/messageformat-go/mf1` module.
+- **Pinned corpus verification**: Reproduce behavior against the checked-in Unicode MessageFormat Working Group corpus with `task test-official` or `task test-v2`.
 
 ## Installation
 
@@ -23,9 +23,15 @@ A Go implementation of Unicode MessageFormat 2.0 for parsing, validating, and fo
 go get github.com/kaptinlin/messageformat-go
 ```
 
-Requires **Go 1.26.4+**.
+Requires **Go 1.26.5+**.
 
-For ICU MessageFormat v1 compatibility, import:
+For ICU MessageFormat v1 compatibility, install its independent module:
+
+```bash
+go get github.com/kaptinlin/messageformat-go/mf1@latest
+```
+
+Then import:
 
 ```go
 import mf1 "github.com/kaptinlin/messageformat-go/mf1"
@@ -54,7 +60,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(out)
+	fmt.Println(out) // Hello, World!
 }
 ```
 
@@ -167,6 +173,31 @@ mf, err := messageformat.Parse(
 
 See [`docs/custom-functions.md`](docs/custom-functions.md) and [`examples/custom-functions`](examples/custom-functions) for complete examples.
 
+### Use ICU MessageFormat 1
+
+The independent `mf1` module keeps ICU MessageFormat v1 patterns on a typed Go boundary. Construct from one locale, compile once, and reuse the returned function:
+
+```go
+messageFormat, err := mf1.New("en", nil)
+if err != nil {
+	log.Fatal(err)
+}
+
+compiled, err := messageFormat.Compile("Hello, {name}!")
+if err != nil {
+	log.Fatal(err)
+}
+
+out, err := compiled(map[string]any{"name": "World"})
+if err != nil {
+	log.Fatal(err)
+}
+
+fmt.Println(out) // Hello, World!
+```
+
+Use `mf1.NewWithPlural` for a caller-supplied plural function. Malformed locale tags return an error; syntactically valid locales without plural data use the module's stable fallback locale.
+
 ## Configuration
 
 Use functional options for focused constructor changes:
@@ -178,7 +209,7 @@ Use functional options for focused constructor changes:
 | `WithLocaleMatcher(matcher)` | Select locale matching behavior | `LocaleBestFit` |
 | `WithFunction(name, fn)` | Register one custom function | Built-ins only |
 | `WithFunctions(funcs)` | Register multiple custom functions | Built-ins only |
-| `WithLogger(logger)` | Attach an instance logger | Package logger |
+| `WithLogger(logger)` | Attach an instance logger | `slog.Default()` |
 
 Example:
 
@@ -190,22 +221,24 @@ mf, err := messageformat.Parse(
 )
 ```
 
+`BidiIsolation`, `Direction`, and `LocaleMatcher` use closed typed vocabularies. `Parse` and `Compile` return an error matching `ErrInvalidOption` when a value is outside its exported constants.
+
 Use `messageformat.Options(...)` when a struct is more convenient:
 
 ```go
 mf, err := messageformat.Parse(
 	[]string{"en"},
-		"Hello, {$name}!",
-		messageformat.Options(messageformat.MessageFormatOptions{
-			BidiIsolation: messageformat.BidiDefault,
-			LocaleMatcher: messageformat.LocaleBestFit,
-		}),
-	)
+	"Hello, {$name}!",
+	messageformat.Options(messageformat.MessageFormatOptions{
+		BidiIsolation: messageformat.BidiDefault,
+		LocaleMatcher: messageformat.LocaleBestFit,
+	}),
+)
 ```
 
 ## Conformance
 
-This repository verifies behavior against the official Unicode MessageFormat Working Group test suite in `tests/messageformat-wg/`.
+The `tests/messageformat-wg` gitlink pins the official Unicode MessageFormat Working Group corpus used by this repository. A passing run describes that exact pin.
 
 ```bash
 task test-official  # Official MessageFormat 2.0 suite only
@@ -234,8 +267,8 @@ Runnable examples live in [`examples/`](examples/).
 task submodules      # Initialize official test suite submodule
 task test            # Run all tests with race detection
 task test-v2         # Run package tests and the official suite
-task lint            # Run golangci-lint and go mod tidy checks
-task verify          # Run deps, fmt, vet, lint, test, and vuln
+task lint            # Check tidy state and lint both modules
+task verify          # Run read-only vet, lint, test, and vuln checks for both modules
 task examples        # Run example programs
 ```
 

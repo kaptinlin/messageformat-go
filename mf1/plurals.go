@@ -94,51 +94,51 @@ func normalize(locale string) (string, error) {
 	return locale, nil
 }
 
-// GetPlural returns the PluralObject for a given locale
+// GetPlural returns the PluralObject for a given locale.
 // TypeScript original code:
 // export function getPlural(locale: string | PluralFunction): PluralObject | null
-func GetPlural(locale any) (PluralObject, error) {
-	switch v := locale.(type) {
-	case string:
-		normalized, err := normalize(v)
-		if err != nil {
-			return PluralObject{}, fmt.Errorf("failed to normalize locale %s: %w", v, err)
-		}
+func GetPlural(locale string) (PluralObject, error) {
+	if _, err := parseStrictLocale(locale); err != nil {
+		return PluralObject{}, WrapInvalidLocale(locale)
+	}
+	normalized, err := normalize(locale)
+	if err != nil {
+		return PluralObject{}, fmt.Errorf("failed to normalize locale %s: %w", locale, err)
+	}
 
-		pluralFunc, cardinals, ordinals, supported := getPluralRules(normalized)
+	pluralFunc, cardinals, ordinals, supported := getPluralRules(normalized)
 
-		// For TypeScript compatibility, preserve original locale if it's supported or looks like a locale variant
-		preserveLocale := supported || strings.Contains(v, "-") || strings.Contains(v, "_")
-		localeName := v
-		if !preserveLocale {
-			// Fallback to English for completely unknown locales
-			localeName = DefaultLocale
-		}
+	// Preserve variants only when their normalized locale has plural data.
+	preserveLocale := supported
+	localeName := locale
+	if !preserveLocale {
+		localeName = defaultLocale
+	}
 
-		return PluralObject{
-			IsDefault: normalized == DefaultLocale,
-			ID:        localeName,
-			LC:        localeName,
-			Locale:    localeName,
-			Func:      pluralFunc,
-			Cardinals: cardinals,
-			Ordinals:  ordinals,
-			Module:    fmt.Sprintf("make-plural/%s", normalized),
-		}, nil
+	return PluralObject{
+		IsDefault: normalized == defaultLocale,
+		ID:        localeName,
+		LC:        localeName,
+		Locale:    localeName,
+		Func:      pluralFunc,
+		Cardinals: cardinals,
+		Ordinals:  ordinals,
+		Module:    fmt.Sprintf("make-plural/%s", normalized),
+	}, nil
+}
 
-	case PluralFunction:
-		return PluralObject{
-			IsDefault: false,
-			ID:        "custom",
-			LC:        "custom",
-			Locale:    "custom",
-			Func:      v,
-			Cardinals: []PluralCategory{PluralOne, PluralOther}, // Default cardinals
-			Ordinals:  []PluralCategory{PluralOther},            // Default ordinals
-		}, nil
-
-	default:
-		return PluralObject{}, ErrInvalidType
+// newCustomPlural creates the plural metadata for a caller-supplied function.
+// TypeScript original code:
+// getPlural(pluralFunction)
+func newCustomPlural(plural PluralFunction) PluralObject {
+	return PluralObject{
+		IsDefault: false,
+		ID:        "custom",
+		LC:        "custom",
+		Locale:    "custom",
+		Func:      plural,
+		Cardinals: []PluralCategory{PluralOne, PluralOther},
+		Ordinals:  []PluralCategory{PluralOther},
 	}
 }
 
@@ -151,41 +151,6 @@ func HasPlural(locale string) bool {
 		return false
 	}
 	return hasPlural(normalized)
-}
-
-// GetAllPlurals returns all available plurals for a given default locale
-// TypeScript original code:
-// export function getAllPlurals(defaultLocale: string): PluralObject[]
-func GetAllPlurals(defaultLocale string) ([]PluralObject, error) {
-	// For now, return common locales
-	// In a full implementation, this would include all CLDR locales
-	commonLocales := []string{
-		"en", "fr", "de", "es", "it", "pt", "ru", "ja", "ko", "zh",
-		"ar", "he", "hi", "th", "vi", "id", "ms", "tl", "sw",
-	}
-
-	plurals := make([]PluralObject, 0, len(commonLocales))
-	for _, locale := range commonLocales {
-		plural, err := GetPlural(locale)
-		if err != nil {
-			continue
-		}
-		plurals = append(plurals, plural)
-	}
-
-	// Ensure default locale is first
-	defaultPlural, err := GetPlural(defaultLocale)
-	if err == nil {
-		var filtered []PluralObject
-		for _, p := range plurals {
-			if p.Locale != defaultLocale {
-				filtered = append(filtered, p)
-			}
-		}
-		plurals = append([]PluralObject{defaultPlural}, filtered...)
-	}
-
-	return plurals, nil
 }
 
 // getPluralRules builds the cardinal/ordinal plural function and category lists

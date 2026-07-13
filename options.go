@@ -2,11 +2,16 @@
 package messageformat
 
 import (
+	"errors"
+	"fmt"
 	"log/slog"
 	"maps"
 
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
 )
+
+// ErrInvalidOption indicates that a constructor option is outside its supported vocabulary.
+var ErrInvalidOption = errors.New("invalid MessageFormat option")
 
 // Option represents a functional option for MessageFormat constructor
 // TypeScript original code: MessageFormatOptions interface
@@ -32,6 +37,34 @@ func NewMessageFormatOptions(options ...Option) *MessageFormatOptions {
 	return opts
 }
 
+// validateMessageFormatOptions validates the closed constructor vocabularies.
+// TypeScript original code:
+//
+//	interface MessageFormatOptions {
+//	  bidiIsolation?: 'default' | 'none';
+//	  dir?: 'ltr' | 'rtl' | 'auto';
+//	  localeMatcher?: 'best fit' | 'lookup';
+//	}
+func validateMessageFormatOptions(options *MessageFormatOptions) error {
+	switch options.BidiIsolation {
+	case BidiDefault, BidiNone:
+	default:
+		return fmt.Errorf("%w: bidiIsolation %q", ErrInvalidOption, options.BidiIsolation)
+	}
+	switch options.Dir {
+	case DirLTR, DirRTL, DirAuto:
+	default:
+		return fmt.Errorf("%w: dir %q", ErrInvalidOption, options.Dir)
+	}
+	switch options.LocaleMatcher {
+	case LocaleBestFit, LocaleLookup:
+	default:
+		return fmt.Errorf("%w: localeMatcher %q", ErrInvalidOption, options.LocaleMatcher)
+	}
+
+	return nil
+}
+
 // NewFormatOptions applies functional options to a fresh FormatOptions value.
 func NewFormatOptions(options ...FormatOption) *FormatOptions {
 	opts := &FormatOptions{}
@@ -48,7 +81,6 @@ func NewFormatOptions(options ...FormatOption) *FormatOptions {
 func Options(options MessageFormatOptions) Option {
 	return func(opts *MessageFormatOptions) {
 		*opts = options
-		opts.bidiIsolationSet = options.BidiIsolation != ""
 	}
 }
 
@@ -58,19 +90,6 @@ func Options(options MessageFormatOptions) Option {
 func WithBidiIsolation(strategy BidiIsolation) Option {
 	return func(opts *MessageFormatOptions) {
 		opts.BidiIsolation = strategy
-		opts.bidiIsolationSet = true
-	}
-}
-
-// WithBidiIsolationString sets the bidi isolation strategy from string (for backward compatibility)
-func WithBidiIsolationString(strategy string) Option {
-	return func(opts *MessageFormatOptions) {
-		opts.bidiIsolationSet = true
-		if strategy == "none" {
-			opts.BidiIsolation = BidiNone
-			return
-		}
-		opts.BidiIsolation = BidiDefault
 	}
 }
 
@@ -83,26 +102,12 @@ func WithDir(direction Direction) Option {
 	}
 }
 
-// WithDirString sets the message's base direction from string (for backward compatibility)
-func WithDirString(direction string) Option {
-	return func(opts *MessageFormatOptions) {
-		opts.Dir = Direction(direction)
-	}
-}
-
 // WithLocaleMatcher sets the locale matching algorithm
 // TypeScript original code:
 // localeMatcher?: 'best fit' | 'lookup';
 func WithLocaleMatcher(matcher LocaleMatcher) Option {
 	return func(opts *MessageFormatOptions) {
 		opts.LocaleMatcher = matcher
-	}
-}
-
-// WithLocaleMatcherString sets the locale matching algorithm from string (for backward compatibility)
-func WithLocaleMatcherString(matcher string) Option {
-	return func(opts *MessageFormatOptions) {
-		opts.LocaleMatcher = LocaleMatcher(matcher)
 	}
 }
 

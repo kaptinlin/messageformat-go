@@ -52,10 +52,16 @@ tasks:
       - go clean -cache -testcache || true
 
   submodules:
-    desc: Initialize and update git submodules
+    desc: Initialize the official MessageFormat fixture
     cmds:
-      - echo "Initializing git submodules..."
-      - git submodule update --init --depth 1 tests/messageformat-wg .reference/messageformat || echo "Submodule init completed with warnings"
+      - echo "Initializing official MessageFormat fixtures..."
+      - git submodule update --init --depth 1 tests/messageformat-wg
+
+  require-official-fixtures:
+    internal: true
+    preconditions:
+      - sh: test -d tests/messageformat-wg/test/tests
+        msg: Official fixtures are missing; run 'task submodules' first
 
   deps:
     desc: Download Go module dependencies
@@ -110,33 +116,45 @@ tasks:
       - task: submodules
   test:
     desc: Run all tests with race detection
-    deps:
-      - submodules
     cmds:
-      - echo "Running all tests..."
-      - go test -race ./...
-      - (cd mf1 && go test -race ./...)
+      - task: test:root
+      - task: test:mf1
+
+  test:root:
+    desc: Run root module tests with race detection
+    deps:
+      - require-official-fixtures
+    cmds:
+      - echo "Running root module tests..."
+      - go test -race -count=1 ./...
+
+  test:mf1:
+    desc: Run MF1 module tests with race detection
+    dir: mf1
+    cmds:
+      - echo "Running MF1 module tests..."
+      - go test -race -count=1 ./...
 
   test-v2:
     desc: Run package tests and the official test suite
     deps:
-      - submodules
+      - require-official-fixtures
     cmds:
       - echo "Running package and official tests..."
-      - go test -race ./pkg/... ./internal/... ./tests/... .
+      - go test -race -count=1 ./pkg/... ./internal/... ./tests/... .
 
   test-official:
     desc: Run official MessageFormat 2.0 test suite only
     deps:
-      - submodules
+      - require-official-fixtures
     cmds:
       - echo "Running official test suite..."
-      - go test -race ./tests/
+      - go test -race -count=1 ./tests/
 
   test-coverage:
     desc: Run tests with coverage report
     deps:
-      - submodules
+      - require-official-fixtures
     cmds:
       - echo "Running tests with coverage..."
       - go test -race -coverprofile=coverage.out ./...
@@ -146,7 +164,7 @@ tasks:
   test-verbose:
     desc: Run tests with verbose output
     deps:
-      - submodules
+      - require-official-fixtures
     cmds:
       - echo "Running tests with verbose output..."
       - go test -race -v ./...
@@ -159,9 +177,21 @@ tasks:
 
   lint:
     desc: Run all linters
-    deps:
-      - golangci-lint
-      - tidy-lint
+    cmds:
+      - task: lint:root
+      - task: lint:mf1
+
+  lint:root:
+    desc: Run root module lint and tidy checks
+    cmds:
+      - task: tidy-lint:root
+      - task: golangci-lint:root
+
+  lint:mf1:
+    desc: Run MF1 module lint and tidy checks
+    cmds:
+      - task: tidy-lint:mf1
+      - task: golangci-lint:mf1
 
   install-golangci-lint:
     desc: Install golangci-lint with the required version
@@ -177,36 +207,43 @@ tasks:
     status:
       - test "{{.GOLANGCI_LINT_VERSION}}" = "{{.REQUIRED_GOLANGCI_LINT_VERSION}}"
 
-  golangci-lint:
-    desc: Run golangci-lint
+  golangci-lint:root:
+    internal: true
     deps:
       - install-golangci-lint
     cmds:
       - '{{.GOLANGCI_LINT_BINARY}} version'
-      - echo "Running golangci-lint..."
+      - echo "Running root module golangci-lint..."
       - '{{.GOLANGCI_LINT_BINARY}} run --timeout=30m --concurrency=1 --allow-parallel-runners --path-prefix=.'
 
-  tidy-lint:
-    desc: Check if go.mod and go.sum are tidy
+  golangci-lint:mf1:
+    internal: true
+    deps:
+      - install-golangci-lint
+    dir: mf1
     cmds:
-      - echo "Checking go.mod and go.sum are tidy..."
-      - |
-        tmp_mod=$(mktemp)
-        tmp_sum=$(mktemp)
-        trap 'rm -f "$tmp_mod" "$tmp_sum"' EXIT
-        cp go.mod "$tmp_mod"
-        if [ -f go.sum ]; then
-          cp go.sum "$tmp_sum"
-        else
-          : > "$tmp_sum"
-        fi
-        go mod tidy
-        if ! cmp -s go.mod "$tmp_mod" || ! cmp -s go.sum "$tmp_sum"; then
-          echo "go.mod or go.sum is not tidy"
-          git diff --no-index -- "$tmp_mod" go.mod || true
-          git diff --no-index -- "$tmp_sum" go.sum || true
-          exit 1
-        fi
+      - '{{.GOLANGCI_LINT_BINARY}} version'
+      - echo "Running MF1 module golangci-lint..."
+      - '{{.GOLANGCI_LINT_BINARY}} run --config=../.golangci.yml --timeout=30m --concurrency=1 --allow-parallel-runners --path-prefix=.'
+
+  tidy-lint:
+    desc: Check both module graphs are tidy
+    cmds:
+      - task: tidy-lint:root
+      - task: tidy-lint:mf1
+
+  tidy-lint:root:
+    desc: Check the root module graph is tidy
+    cmds:
+      - echo "Checking root go.mod and go.sum are tidy..."
+      - go mod tidy -diff
+
+  tidy-lint:mf1:
+    desc: Check the MF1 module graph is tidy
+    dir: mf1
+    cmds:
+      - echo "Checking MF1 go.mod and go.sum are tidy..."
+      - go mod tidy -diff
 
   yamllint:
     desc: Run yamllint
@@ -214,7 +251,19 @@ tasks:
       - yamllint -s .
 
   vuln:
-    desc: Run govulncheck
+    desc: Run govulncheck for both modules
+    cmds:
+      - task: vuln:root
+      - task: vuln:mf1
+
+  vuln:root:
+    desc: Run govulncheck for the root module
+    cmds:
+      - govulncheck ./...
+
+  vuln:mf1:
+    desc: Run govulncheck for the MF1 module
+    dir: mf1
     cmds:
       - govulncheck ./...
 
@@ -227,16 +276,27 @@ tasks:
       - '{{.GOLANGCI_LINT_BINARY}} fmt ./...'
 
   vet:
-    desc: Run go vet
+    desc: Run go vet for both modules
     cmds:
-      - echo "Running go vet..."
+      - task: vet:root
+      - task: vet:mf1
+
+  vet:root:
+    desc: Run go vet for the root module
+    cmds:
+      - echo "Running root module go vet..."
+      - go vet ./...
+
+  vet:mf1:
+    desc: Run go vet for the MF1 module
+    dir: mf1
+    cmds:
+      - echo "Running MF1 module go vet..."
       - go vet ./...
 
   verify:
-    desc: Run all verification steps (deps, format, vet, lint, test, vuln)
+    desc: Run read-only verification for both modules
     cmds:
-      - task: deps
-      - task: fmt
       - task: vet
       - task: lint
       - task: test

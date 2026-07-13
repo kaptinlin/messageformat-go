@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
@@ -20,6 +21,7 @@ func TestScenariosLoadsJSONAndAppliesDefaults(t *testing.T) {
 		"defaultTestProperties": {
 			"locale": "fr",
 			"bidiIsolation": "default",
+			"expCleanSrc": "clean default",
 			"expErrors": [{"type": "bad-operand"}]
 		},
 		"tests": [
@@ -28,7 +30,6 @@ func TestScenariosLoadsJSONAndAppliesDefaults(t *testing.T) {
 				"exp": "hello Ada",
 				"params": [{"name": "name", "value": "Ada"}],
 				"tags": ["smoke"],
-				"only": true,
 				"description": "formats a name"
 			},
 			{
@@ -53,11 +54,9 @@ func TestScenariosLoadsJSONAndAppliesDefaults(t *testing.T) {
 	assert.Equal(t, "formats a name", TestName(first))
 	assert.Equal(t, "fr", first.Locale)
 	assert.True(t, GetBidiIsolation(first))
-	assert.Equal(t, "default", first.BidiIsolationRaw)
-	assert.True(t, IsOnlyTest(first))
-	assert.True(t, HasTag(first, "smoke"))
-	assert.True(t, ShouldSkip(first, map[string]bool{"smoke": true}))
-	assert.False(t, ShouldSkip(first, map[string]bool{"slow": true}))
+	require.NotNil(t, first.ExpCleanSrc)
+	assert.Equal(t, "clean default", *first.ExpCleanSrc)
+	assert.Contains(t, first.Tags, "smoke")
 
 	wantParams := map[string]any{"name": "Ada"}
 	if diff := cmp.Diff(wantParams, first.GetParamsMap()); diff != "" {
@@ -76,18 +75,12 @@ func TestScenariosLoadsJSONAndAppliesDefaults(t *testing.T) {
 	second := cases[1]
 	assert.Equal(t, "en", second.Locale)
 	assert.False(t, GetBidiIsolation(second))
-	assert.False(t, HasTag(second, "smoke"))
-	assert.False(t, IsOnlyTest(second))
+	assert.NotContains(t, second.Tags, "smoke")
 	assert.Empty(t, ExpectedErrors(second))
 
 	wantParts := []any{map[string]any{"type": "text", "value": "explicit"}}
 	if diff := cmp.Diff(wantParts, ExpectedParts(second)); diff != "" {
 		t.Fatalf("parts mismatch (-want +got):\n%s", diff)
-	}
-
-	assert.True(t, HasOnlyTests(scenarios[0]))
-	if diff := cmp.Diff([]Test{first}, FilterOnlyTests(scenarios[0])); diff != "" {
-		t.Fatalf("only tests mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -106,7 +99,108 @@ func TestScenariosAppliesBooleanBidiDefault(t *testing.T) {
 	require.Len(t, scenarios, 1)
 	require.Len(t, scenarios[0].Tests, 1)
 	assert.False(t, GetBidiIsolation(scenarios[0].Tests[0]))
-	assert.Equal(t, false, scenarios[0].Tests[0].BidiIsolationRaw)
+}
+
+func TestScenariosMergesAllDefaultProperties(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "scenario.json"), []byte(`{
+		"scenario": "all defaults",
+		"defaultTestProperties": {
+			"src": "default source",
+			"locale": "fr",
+			"params": [{"name": "name", "value": "Ada"}],
+			"tags": ["default-tag"],
+			"exp": "default output",
+			"expParts": [{"type": "literal", "value": "default output"}],
+			"expErrors": [{"type": "bad-operand"}],
+			"bidiIsolation": "default"
+		},
+		"tests": [
+			{},
+			{
+				"src": "",
+				"locale": "",
+				"params": [],
+				"tags": [],
+				"exp": "",
+				"expParts": [],
+				"expErrors": false,
+				"bidiIsolation": false
+			}
+		]
+	}`), 0o600))
+
+	scenarios, err := TestScenarios(dir)
+	require.NoError(t, err)
+	require.Len(t, scenarios, 1)
+	require.Len(t, scenarios[0].Tests, 2)
+
+	inherited := scenarios[0].Tests[0]
+	assert.Equal(t, "default source", inherited.Src)
+	assert.Equal(t, "fr", inherited.Locale)
+	assert.Equal(t, map[string]any{"name": "Ada"}, inherited.GetParamsMap())
+	assert.Equal(t, []string{"default-tag"}, inherited.Tags)
+	assert.Equal(t, "default output", inherited.Exp)
+	assert.Len(t, inherited.ExpParts, 1)
+	assert.Len(t, ExpectedErrors(inherited), 1)
+	assert.True(t, GetBidiIsolation(inherited))
+
+	overridden := scenarios[0].Tests[1]
+	assert.Empty(t, overridden.Src)
+	assert.Empty(t, overridden.Locale)
+	assert.Empty(t, overridden.Params)
+	assert.Empty(t, overridden.Tags)
+	assert.Equal(t, "", overridden.Exp)
+	assert.Empty(t, overridden.ExpParts)
+	assert.Empty(t, ExpectedErrors(overridden))
+	assert.False(t, GetBidiIsolation(overridden))
+}
+
+func TestScenariosConvertsDatetimeParams(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "datetime.json"), []byte(`{
+		"scenario": "datetime params",
+		"defaultTestProperties": {
+			"src": "{$when :datetime}",
+			"locale": "en",
+			"params": [{"name": "when", "type": "datetime", "value": "2020-01-02T03:04:05Z"}]
+		},
+		"tests": [{}]
+	}`), 0o600))
+
+	scenarios, err := TestScenarios(dir)
+	require.NoError(t, err)
+	require.Len(t, scenarios, 1)
+	require.Len(t, scenarios[0].Tests, 1)
+
+	params := scenarios[0].Tests[0].GetParamsMap()
+	assert.Equal(t, time.Date(2020, time.January, 2, 3, 4, 5, 0, time.UTC), params["when"])
+}
+
+func TestScenariosAssignsStablePathIdentity(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "nested"), 0o700))
+	fixture := []byte(`{
+		"tests": [{"src": "same", "locale": "en", "description": "duplicate"}]
+	}`)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "nested", "a.json"), fixture, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "nested", "b.json"), fixture, 0o600))
+
+	scenarios, err := TestScenarios(dir)
+	require.NoError(t, err)
+	require.Len(t, scenarios, 2)
+
+	assert.Equal(t, "nested/a.json", scenarios[0].Path)
+	assert.Equal(t, "nested/a.json", scenarios[0].Scenario)
+	assert.Equal(t, "nested/a.json#0", scenarios[0].Tests[0].ID())
+	assert.Equal(t, "nested/b.json#0", scenarios[1].Tests[0].ID())
+	assert.NotEqual(t, scenarios[0].Tests[0].ID(), scenarios[1].Tests[0].ID())
 }
 
 func TestScenariosReportsErrors(t *testing.T) {
@@ -131,6 +225,21 @@ func TestScenariosReportsErrors(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to walk test directory")
 	})
+
+	t.Run("only marker", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "only.json"), []byte(`{
+			"scenario": "focused",
+			"tests": [{"src": "plain", "locale": "en", "only": true}]
+		}`), 0o600))
+
+		_, err := TestScenarios(dir)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "only.json#0")
+		assert.ErrorContains(t, err, "only: true")
+	})
 }
 
 func TestGetTestType(t *testing.T) {
@@ -147,9 +256,17 @@ func TestGetTestType(t *testing.T) {
 			want: TestTypeSyntaxError,
 		},
 		{
-			name: "data model error map",
-			test: Test{ExpErrors: map[string]any{"type": "data-model-error"}},
+			name: "data model error subtype",
+			test: Test{ExpErrors: []any{map[string]any{"type": "duplicate-declaration"}}},
 			want: TestTypeDataModelError,
+		},
+		{
+			name: "syntax error takes precedence over data model error",
+			test: Test{ExpErrors: []any{
+				map[string]any{"type": "duplicate-declaration"},
+				map[string]any{"type": "syntax-error"},
+			}},
+			want: TestTypeSyntaxError,
 		},
 		{
 			name: "runtime error is format test",
@@ -211,6 +328,15 @@ func TestExpectedHelpers(t *testing.T) {
 
 	assert.Nil(t, ExpectedErrors(Test{}))
 	assert.True(t, GetBidiIsolation(Test{}))
-	assert.False(t, HasOnlyTests(TestScenario{}))
-	assert.Empty(t, FilterOnlyTests(TestScenario{}))
+}
+
+func TestCasesReturnsDetachedSlice(t *testing.T) {
+	t.Parallel()
+
+	scenario := TestScenario{Tests: []Test{{Src: "original"}}}
+	cases := TestCases(scenario)
+	require.Len(t, cases, 1)
+	cases[0].Src = "changed"
+
+	assert.Equal(t, "original", scenario.Tests[0].Src)
 }

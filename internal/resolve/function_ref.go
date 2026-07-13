@@ -5,13 +5,13 @@ package resolve
 import (
 	"cmp"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
-	"github.com/kaptinlin/messageformat-go/pkg/logger"
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
@@ -93,8 +93,6 @@ func resolveFunctionRefInternal(
 	if operand != nil {
 		resolved, err := resolveValue(ctx, operand)
 		if err != nil {
-			// Log error and return error as MessageValue would be invalid
-			logger.Error("failed to resolve operand", "error", err)
 			return nil, errors.NewMessageResolutionError(
 				errors.ErrorTypeBadOperand,
 				err.Error(),
@@ -109,7 +107,6 @@ func resolveFunctionRefInternal(
 	rf, exists := ctx.Functions[functionRef.Name()]
 	// matches TypeScript: if (!rf) { throw new MessageError('unknown-function', `Unknown function :${name}`); }
 	if !exists {
-		logger.Error("unknown function", "function", functionRef.Name(), "source", source)
 		return nil, errors.NewMessageResolutionError(
 			errors.ErrorTypeUnknownFunction,
 			fmt.Sprintf("unknown function :%s", functionRef.Name()),
@@ -130,7 +127,6 @@ func resolveFunctionRefInternal(
 
 	// matches TypeScript: if (res === null || ...) { throw new MessageError('bad-function-result', ...); }
 	if res == nil {
-		logger.Error("function returned nil result", "function", functionRef.Name(), "source", source)
 		return nil, errors.NewMessageResolutionError(
 			errors.ErrorTypeBadFunctionResult,
 			fmt.Sprintf("function :%s did not return a MessageValue", functionRef.Name()),
@@ -175,7 +171,6 @@ func createMessageFunctionContext(
 			if dirNode, ok := dirOpt.(datamodel.Node); ok {
 				dirValue, err := resolveValue(ctx, dirNode)
 				if err != nil {
-					logger.Error("failed to resolve u:dir option", "error", err)
 					if ctx.OnError != nil {
 						ctx.OnError(errors.NewMessageResolutionError(
 							errors.ErrorTypeBadOption,
@@ -219,7 +214,6 @@ func createMessageFunctionContext(
 			if idNode, ok := idOpt.(datamodel.Node); ok {
 				idValue, err := resolveValue(ctx, idNode)
 				if err != nil {
-					logger.Error("failed to resolve u:id option", "error", err)
 					if ctx.OnError != nil {
 						ctx.OnError(errors.NewMessageResolutionError(
 							errors.ErrorTypeBadOption,
@@ -281,7 +275,6 @@ func resolveOptions(ctx *Context, options map[string]any) map[string]any {
 			var err error
 			resolved, err = resolveValue(ctx, node)
 			if err != nil {
-				logger.Error("failed to resolve option", "option", name, "error", err)
 				if ctx.OnError != nil {
 					ctx.OnError(errors.NewMessageResolutionError(
 						errors.ErrorTypeBadOption,
@@ -356,7 +349,7 @@ func (mv *messageValueWithOptions) Locale() string {
 
 func (mv *messageValueWithOptions) Options() map[string]any {
 	if optioned, ok := mv.wrapped.(messagevalue.OptionedValue); ok {
-		return optioned.Options()
+		return maps.Clone(optioned.Options())
 	}
 	return nil
 }

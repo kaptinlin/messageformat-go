@@ -8,22 +8,21 @@ import (
 
 var (
 	// Common error types
-	ErrInvalidLocale      = errors.New("invalid locale")
-	ErrInvalidNumberValue = errors.New("invalid number value")
-	ErrInvalidDateValue   = errors.New("invalid date value")
-	ErrInvalidTimeValue   = errors.New("invalid time value")
-	ErrInvalidType        = errors.New("invalid type")
-	ErrInvalidNumberType  = errors.New("invalid number type")
-	ErrInvalidDateType    = errors.New("invalid date type")
-	ErrInvalidTimeType    = errors.New("invalid time type")
-	ErrInvalidParamType   = errors.New("invalid parameter type")
-	ErrMissingParameter   = errors.New("missing parameter")
-	ErrMissingArgument    = errors.New("missing required argument")
-	ErrNoMatchingCase     = errors.New("no matching case found")
-	ErrNoOtherCase        = errors.New("no 'other' case found")
-	ErrInvalidNumberStr   = errors.New("invalid number string")
-	ErrInvalidLocaleType  = errors.New("invalid locale type")
-	ErrInvalidLocalesType = errors.New("invalid locales type")
+	ErrInvalidLocale         = errors.New("invalid locale")
+	ErrInvalidNumberValue    = errors.New("invalid number value")
+	ErrInvalidDateValue      = errors.New("invalid date value")
+	ErrInvalidTimeValue      = errors.New("invalid time value")
+	ErrInvalidType           = errors.New("invalid type")
+	ErrInvalidNumberType     = errors.New("invalid number type")
+	ErrInvalidDateType       = errors.New("invalid date type")
+	ErrInvalidTimeType       = errors.New("invalid time type")
+	ErrInvalidParamType      = errors.New("invalid parameter type")
+	ErrMissingParameter      = errors.New("missing parameter")
+	ErrMissingArgument       = errors.New("missing required argument")
+	ErrNoMatchingCase        = errors.New("no matching case found")
+	ErrNoOtherCase           = errors.New("no 'other' case found")
+	ErrInvalidNumberStr      = errors.New("invalid number string")
+	ErrInvalidPluralFunction = errors.New("invalid plural function")
 )
 
 // Helper functions to wrap errors with context
@@ -65,12 +64,4 @@ func WrapNoMatchingCase(arg, selectType string) error {
 
 func WrapInvalidNumberStr(str string) error {
 	return fmt.Errorf("%w: %s", ErrInvalidNumberStr, str)
-}
-
-func WrapInvalidLocaleType(itemType string) error {
-	return fmt.Errorf("%w: %s, expected string", ErrInvalidLocaleType, itemType)
-}
-
-func WrapInvalidLocalesType(localesType string) error {
-	return fmt.Errorf("%w: %s, expected string or []string", ErrInvalidLocalesType, localesType)
 }

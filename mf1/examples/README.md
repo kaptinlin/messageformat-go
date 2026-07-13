@@ -1,16 +1,16 @@
-# V1 Examples
+# MF1 Examples
 
-Examples for the supported `github.com/kaptinlin/messageformat-go/mf1` package.
+Examples for the supported `github.com/kaptinlin/messageformat-go/mf1` module.
 
 ## Run
 
 From the repository root:
 
 ```bash
-go run ./v1/examples/basic
-go run ./v1/examples/ecommerce
-go run ./v1/examples/multilingual
-go run ./v1/examples/performance
+go -C mf1 run ./examples/basic
+go -C mf1 run ./examples/ecommerce
+go -C mf1 run ./examples/multilingual
+go -C mf1 run ./examples/performance
 ```
 
 ## Example Set
@@ -28,8 +28,8 @@ All examples import the package path below:
 import mf "github.com/kaptinlin/messageformat-go/mf1"
 ```
 
-That path is a package inside the root module. Consumers should version the root module:
+Install and version the independent MF1 module:
 
 ```bash
-go get github.com/kaptinlin/messageformat-go@latest
+go get github.com/kaptinlin/messageformat-go/mf1@latest
 ```

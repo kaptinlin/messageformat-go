@@ -81,7 +81,7 @@ task examples
 
 ## Conformance
 
-The package is verified against the official Unicode MessageFormat Working Group test suite vendored at `tests/messageformat-wg/`. All 477 subtests pass — covering bidi, data-model errors, fallback, pattern selection, syntax, `u:` options, stable default functions (`:currency`, `:integer`, `:number`, `:offset`, `:percent`, `:string`), and draft functions supplied explicitly by the test harness (`:date`, `:datetime`, `:time`, `:unit`). Run `task test-official` to reproduce.
+The `tests/messageformat-wg` gitlink pins the official Unicode MessageFormat Working Group corpus used by this repository. Run `task submodules` once, then `task test-official` to verify the implementation against that pin. A passing run describes the pinned corpus and does not claim results for future corpus revisions.
 
 ## Development and Verification
 

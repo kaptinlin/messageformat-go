@@ -28,7 +28,7 @@ Public packages:
 - `pkg/functions`: built-in functions, custom function contracts, and registries.
 - `pkg/messagevalue`: resolved values and formatted parts.
 - `pkg/parts`: compatibility aliases for part constructors and interfaces.
-- `pkg/errors`, `pkg/bidi`, and `pkg/logger`: supporting public utilities.
+- `pkg/errors` and `pkg/bidi`: supporting public utilities.
 
 Internal packages:
 
@@ -38,6 +38,18 @@ Internal packages:
 - `internal/intlbridge`: translation layer for `github.com/agentable/go-intl`.
 
 Internal packages may depend on public packages. Public packages must not expose internal package types in exported signatures.
+
+## Module Boundaries
+
+The repository contains two published Go modules:
+
+- `github.com/kaptinlin/messageformat-go` at the repository root owns MessageFormat 2.0.
+- `github.com/kaptinlin/messageformat-go/mf1` under `mf1/` owns ICU MessageFormat v1 compatibility.
+
+Each module has its own manifest, dependency graph, tests, lint invocation, vet
+pass, and vulnerability scan. Neither module requires the other. Repository
+automation may aggregate their checks, but it must not blur their import or
+release identities.
 
 ## Data Model Boundary
 
@@ -105,6 +117,23 @@ Required invariant coverage:
 - typed error identity through `errors.Is`, `errors.As`, and `Kind()`
 - documentation examples that show the default public path
 
+## Verification Boundary
+
+`Taskfile.yml` owns local check semantics. `task verify` aggregates root and MF1
+vet, tidy checks, lint, race-enabled tests, and vulnerability scans. Verification
+is observational: it must not run dependency updates, source formatters, or
+submodule initialization, and it must leave tracked files and gitlinks unchanged.
+
+`.github/workflows/ci.yml` owns CI environment and orchestration. It invokes the
+Taskfile checks, caches both `go.sum` files, and lints both module directories.
+Only the test job initializes `tests/messageformat-wg`; `.reference/messageformat`
+is evidence for maintainers and is never a build or CI prerequisite.
+
+The official test result is scoped to the corpus commit pinned by the
+`tests/messageformat-wg` gitlink. Documentation must point to that pin and the
+reproduction command instead of recording a case count or an absolute
+compliance percentage.
+
 ## Documentation Boundaries
 
 - README is a usage guide.
@@ -119,11 +148,15 @@ Required invariant coverage:
 - Do not move formatting behavior into parser packages.
 - Do not make official JSON fixture helpers the shape of the public Go API.
 - Do not add new public packages for one-off helpers unless the boundary is stable and user-facing.
+- Do not make `.reference/messageformat` or recursive submodule updates a verification prerequisite.
+- Do not run mutating dependency, formatting, or submodule commands from `task verify`.
 - Do not keep temporary planning files once their durable decisions have been accepted into SPECS.
 
 ## Acceptance Criteria
 
 - Public `go doc` output for root, `pkg/datamodel`, `pkg/functions`, and `pkg/messagevalue` does not expose `internal/cst`.
-- Official tests continue to pass through `task test-v2`.
+- `task verify` covers both module manifests and passes without changing tracked files or submodule gitlinks.
+- CI cache inputs include `go.sum` and `mf1/go.sum`, and only the test job initializes the official fixture.
+- Official tests continue to pass through `task test-v2` against the pinned corpus.
 - New docs link to SPECS for contracts and to README/docs for usage.
 - Temporary roadmap files are absent after accepted decisions move into SPECS.

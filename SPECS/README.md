@@ -6,9 +6,9 @@ SPECS is the source of truth for MessageFormat Go design contracts. User guides 
 
 | Spec | Owns |
 |------|------|
-| [`00-overview.md`](00-overview.md) | Project scope, compatibility targets, runtime guarantees |
-| [`20-api-contracts.md`](20-api-contracts.md) | Public API, data model, functions, values, errors |
-| [`40-architecture.md`](40-architecture.md) | Processing pipeline, package boundaries, intl bridge, tests |
+| [`00-overview.md`](00-overview.md) | Product and module scope, compatibility targets, runtime and verification guarantees |
+| [`20-api-contracts.md`](20-api-contracts.md) | Root and MF1 public APIs, data model, functions, values, ownership, and errors |
+| [`40-architecture.md`](40-architecture.md) | Processing pipeline, package/module boundaries, intl bridge, tests, and CI ownership |
 
 ## Rules
 

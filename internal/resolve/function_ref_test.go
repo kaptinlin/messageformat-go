@@ -108,13 +108,46 @@ func TestCustomFunction(t *testing.T) {
 	assert.Equal(t, "part:42", parts[0].Value())
 }
 
+func TestResolveFunctionRefOptionAccessorReturnsSnapshot(t *testing.T) {
+	t.Parallel()
+
+	customValue := &customMessageValue{
+		typ:     "custom",
+		source:  ":custom",
+		dir:     "auto",
+		locale:  "en",
+		options: map[string]any{"style": "full"},
+	}
+	ctx := NewContext(
+		[]string{"en"},
+		map[string]functions.MessageFunction{
+			"custom": func(functions.MessageFunctionContext, functions.Options, any) messagevalue.MessageValue {
+				return customValue
+			},
+		},
+		nil,
+		nil,
+	)
+	result := ResolveFunctionRef(ctx, nil, datamodel.NewFunctionRef("custom", datamodel.Options{
+		"u:dir": datamodel.NewLiteral("rtl"),
+	}))
+	optioned, ok := result.(messagevalue.OptionedValue)
+	require.True(t, ok)
+
+	options := optioned.Options()
+	options["style"] = "short"
+
+	assert.Equal(t, "full", customValue.Options()["style"])
+}
+
 // customMessageValue implements a custom message value for testing
 type customMessageValue struct {
-	typ    string
-	source string
-	dir    string
-	locale string
-	input  any
+	typ     string
+	source  string
+	dir     string
+	locale  string
+	input   any
+	options map[string]any
 }
 
 func (cv *customMessageValue) Type() string   { return cv.typ }
@@ -123,7 +156,7 @@ func (cv *customMessageValue) Dir() bidi.Direction {
 	return bidi.ParseDirection(cv.dir)
 }
 func (cv *customMessageValue) Locale() string                             { return cv.locale }
-func (cv *customMessageValue) Options() map[string]any                    { return nil }
+func (cv *customMessageValue) Options() map[string]any                    { return cv.options }
 func (cv *customMessageValue) ValueOf() (any, error)                      { return cv.input, nil }
 func (cv *customMessageValue) SelectKeys(keys []string) ([]string, error) { return nil, nil }
 

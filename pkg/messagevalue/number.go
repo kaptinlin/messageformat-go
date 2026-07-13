@@ -84,7 +84,7 @@ func (nv *NumberValue) Locale() string {
 }
 
 func (nv *NumberValue) Options() map[string]any {
-	return nv.options
+	return cloneOptions(nv.options)
 }
 
 // CanSelect reports whether this number value supports pattern selection.

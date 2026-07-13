@@ -605,7 +605,7 @@ func TestStringifyRoundTrip(t *testing.T) {
 			cstMsg := cst.ParseCST(tt.input, false)
 
 			// Convert to data model
-			msg, err := FromCST(cstMsg)
+			msg, err := fromCST(cstMsg)
 			require.NoError(t, err)
 
 			// Stringify back
@@ -613,7 +613,7 @@ func TestStringifyRoundTrip(t *testing.T) {
 
 			// Parse again to verify equivalence
 			cstMsg2 := cst.ParseCST(result, false)
-			msg2, err := FromCST(cstMsg2)
+			msg2, err := fromCST(cstMsg2)
 			require.NoError(t, err)
 
 			// Both messages should have the same structure
@@ -803,7 +803,7 @@ func TestStringifyComplexMessages(t *testing.T) {
 
 			// Result should be parseable
 			cstMsg := cst.ParseCST(result, false)
-			msg, err := FromCST(cstMsg)
+			msg, err := fromCST(cstMsg)
 			require.NoError(t, err)
 			assert.NotNil(t, msg)
 		})

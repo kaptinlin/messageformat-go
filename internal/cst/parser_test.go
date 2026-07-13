@@ -168,6 +168,19 @@ func TestParseSelectMessage_MissingWhitespace(t *testing.T) {
 	assert.NotEmpty(t, select_.Errors())
 }
 
+func TestParseSelectMessage_RequiresVariant(t *testing.T) {
+	t.Parallel()
+
+	source := ".input {$x :x} .match $x"
+	msg := ParseCST(source, false)
+
+	selectMessage, ok := msg.(*SelectMessage)
+	require.True(t, ok)
+	require.Len(t, selectMessage.Errors(), 1)
+	assert.Equal(t, "empty-token", selectMessage.Errors()[0].ErrorType())
+	assert.Equal(t, len(source), selectMessage.Errors()[0].Start)
+}
+
 func TestParseVariant_NoKeys(t *testing.T) {
 	ctx := NewParseContext("{{pattern}}", false)
 	variant := parseVariant(ctx, 0)

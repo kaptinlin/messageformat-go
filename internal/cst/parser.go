@@ -255,6 +255,9 @@ selectorsEnd:
 		}
 		pos = Whitespaces(ctx.source, pos).End
 	}
+	if len(variants) == 0 {
+		ctx.OnError("empty-token", pos, pos+1)
+	}
 
 	if pos < len(ctx.source) {
 		ctx.OnError("extra-content", pos, len(ctx.source))

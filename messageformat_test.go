@@ -1,9 +1,12 @@
 package messageformat
 
 import (
+	"bytes"
 	stdErrors "errors"
 	"fmt"
+	"log/slog"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -224,10 +227,83 @@ func TestNewWithDataModelMessage(t *testing.T) {
 	})
 	message := datamodel.NewPatternMessage(nil, pattern, "")
 
-	mf, err := Compile([]string{"en"}, message)
+	mf, err := Compile([]string{"en"}, message, WithBidiIsolation(BidiNone))
 	require.NoError(t, err)
 	require.NotNil(t, mf)
 	assert.Equal(t, []string{"en"}, mf.locales)
+}
+
+func TestParseRejectsMatchWithoutVariantsAsSyntaxError(t *testing.T) {
+	t.Parallel()
+
+	source := ".input {$x :x} .match $x"
+	_, err := Parse([]string{"en"}, source)
+	require.Error(t, err)
+
+	var syntaxErr *pkgerrors.MessageSyntaxError
+	require.ErrorAs(t, err, &syntaxErr)
+	assert.Equal(t, len(source), syntaxErr.Start)
+
+	var modelErr *pkgerrors.MessageDataModelError
+	assert.False(t, stdErrors.As(err, &modelErr))
+}
+
+func TestParseAndParseMessageShareSourceErrorContract(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{name: "syntax error", source: "Hello {$name"},
+		{name: "conversion error", source: "bad {:placeholder option=x option=x}"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, modelErr := datamodel.ParseMessage(tt.source)
+			_, rootErr := Parse([]string{"en"}, tt.source)
+			require.Error(t, modelErr)
+			require.Error(t, rootErr)
+
+			var modelSyntax *pkgerrors.MessageSyntaxError
+			var rootSyntax *pkgerrors.MessageSyntaxError
+			require.ErrorAs(t, modelErr, &modelSyntax)
+			require.ErrorAs(t, rootErr, &rootSyntax)
+			assert.Equal(t, modelSyntax.ErrorType(), rootSyntax.ErrorType())
+			assert.Equal(t, modelSyntax.Start, rootSyntax.Start)
+			assert.Equal(t, modelSyntax.End, rootSyntax.End)
+		})
+	}
+}
+
+func TestCompileRejectsNilMessages(t *testing.T) {
+	t.Parallel()
+
+	var pattern *datamodel.PatternMessage
+	var selectMessage *datamodel.SelectMessage
+	tests := []struct {
+		name    string
+		message datamodel.Message
+	}{
+		{name: "nil interface"},
+		{name: "nil pattern message", message: pattern},
+		{name: "nil select message", message: selectMessage},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := Compile([]string{"en"}, tt.message)
+			require.Error(t, err)
+			var modelErr *pkgerrors.MessageDataModelError
+			require.ErrorAs(t, err, &modelErr)
+			assert.Equal(t, "invalid-message", modelErr.ErrorType())
+		})
+	}
 }
 
 func TestCompileSnapshotsDataModel(t *testing.T) {
@@ -244,6 +320,109 @@ func TestCompileSnapshotsDataModel(t *testing.T) {
 	got, err := mf.Format(map[string]any{})
 	require.NoError(t, err)
 	assert.Equal(t, "before", got)
+}
+
+func TestCompileSnapshotsNestedDataModelOptions(t *testing.T) {
+	t.Parallel()
+
+	functionOptions := datamodel.Options{
+		"minimumFractionDigits": datamodel.NewLiteral("2"),
+	}
+	functionRef := datamodel.NewFunctionRef("number", functionOptions)
+	expression := datamodel.NewExpression(datamodel.NewLiteral("42"), functionRef, nil)
+	elements := []datamodel.PatternElement{expression}
+	message := datamodel.NewPatternMessage(nil, datamodel.NewPattern(elements), "")
+
+	mf, err := Compile([]string{"en"}, message)
+	require.NoError(t, err)
+
+	functionOptions["minimumFractionDigits"] = datamodel.NewLiteral("0")
+	functionRef.Options()["minimumFractionDigits"] = datamodel.NewLiteral("0")
+	elements[0] = datamodel.NewTextElement("changed")
+	message.Pattern()[0] = datamodel.NewTextElement("changed")
+
+	got, err := mf.Format(nil)
+	require.NoError(t, err)
+	assert.Equal(t, "42.00", got)
+}
+
+func TestCompileSnapshotsFunctionOptions(t *testing.T) {
+	t.Parallel()
+
+	before := func(ctx functions.MessageFunctionContext, _ functions.Options, _ any) messagevalue.MessageValue {
+		return messagevalue.NewStringValue("before", ctx.Locales()[0], ctx.Source())
+	}
+	after := func(ctx functions.MessageFunctionContext, _ functions.Options, _ any) messagevalue.MessageValue {
+		return messagevalue.NewStringValue("after", ctx.Locales()[0], ctx.Source())
+	}
+	custom := map[string]functions.MessageFunction{"custom": before}
+	mf, err := Parse([]string{"en"}, "{:custom}", WithFunctions(custom), WithBidiIsolation(BidiNone))
+	require.NoError(t, err)
+
+	custom["custom"] = after
+	got, err := mf.Format(nil)
+	require.NoError(t, err)
+	assert.Equal(t, "before", got)
+}
+
+func TestCompiledMessageFormatSupportsConcurrentFormatting(t *testing.T) {
+	t.Parallel()
+
+	mf, err := Parse([]string{"en"}, "Hello {$name}", WithBidiIsolation(BidiNone))
+	require.NoError(t, err)
+
+	errs := make(chan error, 32)
+	var group sync.WaitGroup
+	for i := range 32 {
+		group.Go(func() {
+			name := fmt.Sprintf("user-%d", i)
+			got, err := mf.Format(map[string]any{"name": name})
+			if err != nil {
+				errs <- err
+				return
+			}
+			if want := "Hello " + name; got != want {
+				errs <- fmt.Errorf("Format() = %q, want %q", got, want)
+			}
+		})
+	}
+	group.Wait()
+	close(errs)
+	for err := range errs {
+		assert.NoError(t, err)
+	}
+}
+
+func TestFormatUsesOneRecoverableErrorObserver(t *testing.T) {
+	previousDefault := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(previousDefault) })
+
+	var defaultLogs bytes.Buffer
+	slog.SetDefault(slog.New(slog.NewTextHandler(&defaultLogs, nil)))
+
+	mf, err := Parse([]string{"en"}, "{:missing}", WithBidiIsolation(BidiNone))
+	require.NoError(t, err)
+	_, err = mf.Format(nil)
+	require.NoError(t, err)
+	assert.Equal(t, 1, strings.Count(defaultLogs.String(), "MessageFormat error"))
+
+	defaultLogs.Reset()
+	var handled []error
+	_, err = mf.Format(nil, WithErrorHandler(func(err error) {
+		handled = append(handled, err)
+	}))
+	require.NoError(t, err)
+	require.Len(t, handled, 1)
+	assert.Empty(t, defaultLogs.String())
+
+	var instanceLogs bytes.Buffer
+	instanceLogger := slog.New(slog.NewTextHandler(&instanceLogs, nil))
+	mf, err = Parse([]string{"en"}, "{:missing}", WithBidiIsolation(BidiNone), WithLogger(instanceLogger))
+	require.NoError(t, err)
+	_, err = mf.Format(nil)
+	require.NoError(t, err)
+	assert.Equal(t, 1, strings.Count(instanceLogs.String(), "MessageFormat error"))
+	assert.Empty(t, defaultLogs.String())
 }
 
 func TestNewLocalesDefensiveCopy(t *testing.T) {

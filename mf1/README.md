@@ -1,24 +1,24 @@
-# MessageFormat Go `mf1`
+# MessageFormat Go MF1
 
-Supported ICU MessageFormat v1 compatibility package for this repository.
+Supported ICU MessageFormat v1 compatibility module for Go.
 
-`mf1` is the package for ICU MessageFormat v1 compatibility. Import it as:
+## Installation
+
+```bash
+go get github.com/kaptinlin/messageformat-go/mf1@latest
+```
+
+Import the package as:
 
 ```go
 import mf "github.com/kaptinlin/messageformat-go/mf1"
-```
-
-Do not run `go get github.com/kaptinlin/messageformat-go/mf1` as if it were a separate module. Use the root module version instead:
-
-```bash
-go get github.com/kaptinlin/messageformat-go@latest
 ```
 
 ## Status
 
 - Supported compatibility surface for ICU MessageFormat v1
 - Kept as product code and covered by repository lint and test workflows
-- Intended for consumers that still need the legacy MessageFormat v1 API shape
+- Intended for consumers that need the ICU MessageFormat v1 API shape
 
 ## Quick Start
 
@@ -62,11 +62,10 @@ func main() {
 Run examples from the repository root:
 
 ```bash
-go run ./mf1/examples/basic
-go run ./mf1/examples/basic
-go run ./mf1/examples/ecommerce
-go run ./mf1/examples/multilingual
-go run ./mf1/examples/performance
+go -C mf1 run ./examples/basic
+go -C mf1 run ./examples/ecommerce
+go -C mf1 run ./examples/multilingual
+go -C mf1 run ./examples/performance
 ```
 
 ## Documentation
@@ -79,4 +78,4 @@ go run ./mf1/examples/performance
 
 - `mf1` is not deprecated inside this repository.
 - `mf1` must not be pruned during cleanup or refactoring.
-- Release tags apply to the root module; `mf1` ships as part of that module.
+- `mf1/go.mod` owns the module path `github.com/kaptinlin/messageformat-go/mf1`.

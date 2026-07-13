@@ -3,6 +3,9 @@
 package functions
 
 import (
+	"maps"
+	"slices"
+
 	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
@@ -74,10 +77,10 @@ func NewMessageFunctionContext(
 		dir:               dir,
 		id:                id,
 		source:            source,
-		locales:           locales,
+		locales:           slices.Clone(locales),
 		localeMatcher:     localeMatcher,
 		onError:           onError,
-		literalOptionKeys: literalOptionKeys,
+		literalOptionKeys: maps.Clone(literalOptionKeys),
 	}
 }
 
@@ -98,7 +101,7 @@ func (ctx MessageFunctionContext) Source() string {
 
 // Locales returns the available locales
 func (ctx MessageFunctionContext) Locales() []string {
-	return ctx.locales
+	return slices.Clone(ctx.locales)
 }
 
 // LocaleMatcher returns the locale matcher strategy
@@ -115,5 +118,5 @@ func (ctx MessageFunctionContext) OnError(err error) {
 
 // LiteralOptionKeys returns the set of literal option keys
 func (ctx MessageFunctionContext) LiteralOptionKeys() map[string]bool {
-	return ctx.literalOptionKeys
+	return maps.Clone(ctx.literalOptionKeys)
 }

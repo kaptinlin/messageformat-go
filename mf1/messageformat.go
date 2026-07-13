@@ -49,7 +49,6 @@
 // import {
 //   PluralFunction,
 //   PluralObject,
-//   getAllPlurals,
 //   getPlural,
 //   hasPlural
 // } from './plurals';
@@ -139,9 +138,10 @@
 package v1
 
 import (
-	"cmp"
 	"fmt"
+	"maps"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -241,8 +241,7 @@ type MessageFormat struct {
 	plurals []PluralObject
 }
 
-// DefaultLocale is used by the constructor when no locale argument is given
-var DefaultLocale = "en"
+const defaultLocale = "en"
 
 var (
 	escapeRegexp           = regexp.MustCompile(`[{}]`)
@@ -267,36 +266,18 @@ func Escape(str string, octothorpe bool) string {
 	return re.ReplaceAllString(str, "'$0'")
 }
 
-// SupportedLocalesOf returns a subset of locales consisting of those for which MessageFormat
-// has built-in plural category support.
+// SupportedLocalesOf returns the locales with built-in plural category support.
 // TypeScript original code:
 // static supportedLocalesOf(locales: string | string[]) { return la.filter(hasPlural); }
-func SupportedLocalesOf(locales any) ([]string, error) {
-	var localeArray []string
-
-	switch l := locales.(type) {
-	case string:
-		localeArray = []string{l}
-	case []string:
-		localeArray = l
-	case []any:
-		// Handle generic slice conversion
-		localeArray = make([]string, 0, len(l))
-		for _, item := range l {
-			if str, ok := item.(string); ok {
-				localeArray = append(localeArray, str)
-			} else {
-				return nil, WrapInvalidLocaleType(fmt.Sprintf("%T", item))
-			}
-		}
-	default:
-		return nil, WrapInvalidLocalesType(fmt.Sprintf("%T", locales))
-	}
-
+func SupportedLocalesOf(locales []string) ([]string, error) {
 	var result []string
-	for _, locale := range localeArray {
-		if hasPlural(locale) {
-			result = append(result, locale)
+	for _, localeTag := range locales {
+		locale, err := parseStrictLocale(localeTag)
+		if err != nil {
+			return nil, WrapInvalidLocale(localeTag)
+		}
+		if hasPluralLocale(locale) {
+			result = append(result, localeTag)
 		}
 	}
 	return result, nil
@@ -304,8 +285,8 @@ func SupportedLocalesOf(locales any) ([]string, error) {
 
 // hasPlural checks if a locale has plural support by consulting go-intl's
 // CLDR-backed pluralrules package. Unlike intlbridge.ParseLocale, this uses
-// strict parsing — unparseable or unsupported tags ("x", "xx") return false
-// instead of silently aliasing to English.
+// strict parsing: malformed tags ("x", "xx") and valid unsupported tags
+// ("eo") return false instead of silently aliasing to English.
 func hasPlural(loc string) bool {
 	if len(loc) < 2 {
 		return false
@@ -317,72 +298,25 @@ func hasPlural(loc string) bool {
 	return hasPluralLocale(parsed)
 }
 
-// getPlural gets the plural object for a locale using proper CLDR rules
-func getPlural(locale any) *PluralObject {
-	switch l := locale.(type) {
-	case string:
-		pluralObj, err := GetPlural(l)
-		if err == nil {
-			return &pluralObj
-		}
-		// If locale is unsupported, fallback to default locale
-		if !hasPlural(l) {
-			fallbackObj, fallbackErr := GetPlural(DefaultLocale)
-			if fallbackErr == nil {
-				return &fallbackObj
-			}
-		}
-		// For TypeScript compatibility, create fallback with original locale name preserved
-		// but use English-like rules for functionality
-		return &PluralObject{
-			IsDefault: l == DefaultLocale,
-			ID:        l,
-			LC:        l,
-			Locale:    l,
-			Cardinals: []PluralCategory{PluralOne, PluralOther},
-			Ordinals:  []PluralCategory{PluralOne, PluralOther},
-			Func: func(value any, ord ...bool) (PluralCategory, error) {
-				// Simple English-like rules as fallback
-				num, err := toNumber(value)
-				if err != nil {
-					return PluralOther, err
-				}
-				if num == 1 {
-					return PluralOne, nil
-				}
-				return PluralOther, nil
-			},
-		}
-	case PluralFunction:
-		return &PluralObject{
-			IsDefault: false,
-			ID:        "custom",
-			LC:        "custom",
-			Locale:    "custom",
-			Cardinals: []PluralCategory{PluralOther},
-			Ordinals:  []PluralCategory{PluralOther},
-			Func:      l,
-		}
-	default:
+// getPlural resolves the plural object for a validated locale.
+// TypeScript original code:
+// const pl = getPlural(locale);
+func getPlural(locale string) *PluralObject {
+	plural, err := GetPlural(locale)
+	if err != nil {
 		return nil
 	}
+	return &plural
 }
 
-// getAllPlurals gets all available plurals (simplified implementation)
-func getAllPlurals(defaultLocale string) []PluralObject {
-	// In real implementation, this would return all supported locales
-	// Use defaultLocale as fallback if needed
-	return []PluralObject{
-		*getPlural(cmp.Or(defaultLocale, "en")),
-	}
-}
-
-// New creates a new MessageFormat compiler with type-safe options and error handling
-// If given multiple valid locales, the first will be the default.
-// If locale is nil, it will fall back to DefaultLocale.
+// New creates a new MessageFormat compiler for a locale.
 // TypeScript original code:
 // constructor(locale: string | PluralFunction | Array<string | PluralFunction> | null, options?: MessageFormatOptions<ReturnType>)
-func New(locale any, options *MessageFormatOptions) (*MessageFormat, error) {
+func New(locale string, options *MessageFormatOptions) (*MessageFormat, error) {
+	if _, err := parseStrictLocale(locale); err != nil {
+		return nil, WrapInvalidLocale(locale)
+	}
+
 	mf := &MessageFormat{}
 
 	// Apply options with zero-value semantics and defaults
@@ -396,7 +330,7 @@ func New(locale any, options *MessageFormatOptions) (*MessageFormat, error) {
 		BiDiSupport:         opts.BiDiSupport, // false is meaningful default
 		Currency:            "USD",            // Default currency
 		TimeZone:            opts.TimeZone,    // Empty string means system timezone
-		CustomFormatters:    opts.CustomFormatters,
+		CustomFormatters:    maps.Clone(opts.CustomFormatters),
 		LocaleCodeFromKey:   opts.LocaleCodeFromKey,
 		RequireAllArguments: opts.RequireAllArguments, // false is meaningful default
 		ReturnType:          ReturnTypeString,         // Default return type
@@ -422,56 +356,29 @@ func New(locale any, options *MessageFormatOptions) (*MessageFormat, error) {
 		mf.options.StrictPluralKeys = false
 	}
 
-	// Handle locale parameter
-	// Check for PluralFunction first - need to check the function signature
-	if fn, ok := locale.(func(any, ...bool) (PluralCategory, error)); ok {
-		pf := PluralFunction(fn)
-		if pl := getPlural(pf); pl != nil {
-			mf.plurals = []PluralObject{*pl}
-		}
-	} else if pf, ok := locale.(PluralFunction); ok {
-		if pl := getPlural(pf); pl != nil {
-			mf.plurals = []PluralObject{*pl}
-		}
+	if plural := getPlural(locale); plural != nil {
+		mf.plurals = []PluralObject{*plural}
 	} else {
-		switch l := locale.(type) {
-		case string:
-			if l == "*" {
-				mf.plurals = getAllPlurals(DefaultLocale)
-			} else if pl := getPlural(l); pl != nil {
-				mf.plurals = []PluralObject{*pl}
-			}
-		case []any:
-			for _, item := range l {
-				if pl := getPlural(item); pl != nil {
-					mf.plurals = append(mf.plurals, *pl)
-				}
-			}
-		case []string:
-			for _, item := range l {
-				if pl := getPlural(item); pl != nil {
-					mf.plurals = append(mf.plurals, *pl)
-				}
-			}
-		case nil:
-			// Use default - handled by fallback below
-		default:
-			// Try as single locale string
-			if str, ok := l.(string); ok {
-				if pl := getPlural(str); pl != nil {
-					mf.plurals = []PluralObject{*pl}
-				}
-			}
-		}
+		return nil, WrapInvalidLocale(locale)
 	}
 
-	// Ensure at least one plural object
-	if len(mf.plurals) == 0 {
-		if pl := getPlural(DefaultLocale); pl != nil {
-			mf.plurals = []PluralObject{*pl}
-		}
+	return mf, nil
+}
+
+// NewWithPlural creates a MessageFormat using a caller-supplied plural function.
+// TypeScript original code:
+// new MessageFormat(pluralFunction, options)
+func NewWithPlural(plural PluralFunction, options *MessageFormatOptions) (*MessageFormat, error) {
+	if plural == nil {
+		return nil, ErrInvalidPluralFunction
 	}
 
+	mf, err := New(defaultLocale, options)
+	if err != nil {
+		return nil, err
+	}
+	custom := newCustomPlural(plural)
+	mf.plurals = []PluralObject{custom}
 	return mf, nil
 }
 
@@ -482,13 +389,20 @@ func (mf *MessageFormat) ResolvedOptions() ResolvedMessageFormatOptions {
 	if len(mf.plurals) > 0 {
 		locale = mf.plurals[0].Locale
 	} else {
-		locale = DefaultLocale
+		locale = defaultLocale
+	}
+	options := mf.options
+	options.CustomFormatters = maps.Clone(mf.options.CustomFormatters)
+	plurals := slices.Clone(mf.plurals)
+	for i := range plurals {
+		plurals[i].Cardinals = slices.Clone(plurals[i].Cardinals)
+		plurals[i].Ordinals = slices.Clone(plurals[i].Ordinals)
 	}
 
 	return ResolvedMessageFormatOptions{
-		MessageFormatOptionsWithDefaults: mf.options,
+		MessageFormatOptionsWithDefaults: options,
 		Locale:                           locale,
-		Plurals:                          mf.plurals,
+		Plurals:                          plurals,
 	}
 }
 

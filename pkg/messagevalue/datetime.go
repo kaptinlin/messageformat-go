@@ -65,7 +65,7 @@ func (dtv *DateTimeValue) Locale() string {
 }
 
 func (dtv *DateTimeValue) Options() map[string]any {
-	return dtv.options
+	return cloneOptions(dtv.options)
 }
 
 func (dtv *DateTimeValue) ToString() (string, error) {

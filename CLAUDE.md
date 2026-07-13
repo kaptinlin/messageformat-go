@@ -1,16 +1,16 @@
 # MessageFormat Go
 
-Go implementation of Unicode MessageFormat 2.0 specification with 100% spec compliance.
+Go implementation of Unicode MessageFormat 2.0, verified against the repository's pinned official test corpus.
 
-**Reference implementation:** TypeScript messageformat library — API compatibility target with identical method signatures and behavior.
+**Reference implementation:** TypeScript messageformat library — evidence for option vocabulary and observable behavior, not a requirement to copy JavaScript unions, mutability, or exceptions into Go.
 
 ## Commands
 
 ```bash
 # Primary workflow
 task test              # Run all tests with race detection
-task lint              # Run golangci-lint + go mod tidy check
-task verify            # Full verification: deps, fmt, vet, lint, test, vuln
+task lint              # Check tidy state and lint both modules
+task verify            # Read-only vet, lint, test, and vuln checks for both modules
 
 # Version-specific testing
 task test-v2           # Run package tests + official MessageFormat 2.0 test suite
@@ -26,8 +26,23 @@ task deps              # Download and tidy dependencies
 task clean             # Clean build artifacts
 
 # Prerequisites
-task submodules        # Initialize git submodules (required for official tests)
+task submodules        # Initialize the official test fixture
 ```
+
+## Agent Operating Rules
+
+- **Think before coding** — State assumptions, surface ambiguity, and choose the simplest interpretation that preserves correctness.
+- **KISS/DRY/YAGNI** — Prefer the standard library, platform behavior, and existing utilities; share duplicated knowledge, not merely similar shape.
+- **Development-cost realism** — Do not weaken architecture or maintainability solely to reduce an estimate.
+- **User-path bug fixes** — Reproduce through the closest public path, then verify with focused and repository gates.
+- **Vertical slice** — Establish the thinnest end-to-end behavior before expanding edge cases and polish.
+- **Surgical changes** — Touch only the task-owned surface and preserve unrelated worktree changes.
+- **Goal-driven execution** — Define observable completion criteria and continue through verification when implementation is requested.
+- **Respect context budgets** — Keep evidence focused and checkpoint long work instead of silently dropping scope.
+- **Resolve conflicts explicitly** — Prefer the newer, tested, local convention and identify stale alternatives for removal.
+- **Read before writing** — Inspect contracts, callers, tests, and shared utilities before changing a surface.
+- **Test intent** — Prove public behavior and regressions; do not mirror prose after stronger behavior coverage exists.
+- **Fail loud** — Report skipped checks, uncertainty, and partial work; never call unverified work complete.
 
 ## Architecture
 
@@ -42,43 +57,14 @@ messageformat-go/
 │   ├── messagevalue/     # Message value types and formatting parts
 │   ├── errors/           # Custom error types (Syntax, Resolution, Selection)
 │   ├── bidi/             # Bidirectional text support
-│   ├── parts/            # Message part representations
-│   └── logger/           # Logging utilities
+│   └── parts/            # Message part representations
 ├── internal/             # Private packages
 │   ├── cst/              # Concrete Syntax Tree parser
 │   ├── resolve/          # Expression resolution and context handling
 │   └── selector/         # Pattern selection for .match statements
-├── mf1/                  # Supported ICU MessageFormat v1 compatibility layer, kept as product code
+├── mf1/                  # Independent ICU MessageFormat v1 module, kept as product code
 ├── tests/                # Official MessageFormat 2.0 test suite
 └── examples/             # Example programs
-```
-
-### Key Types and Interfaces
-
-```go
-// Main API (root package)
-type MessageFormat struct { ... }
-func Parse(locales []string, source string, options ...Option) (*MessageFormat, error)
-func Compile(locales []string, message datamodel.Message, options ...Option) (*MessageFormat, error)
-func (mf *MessageFormat) Format(values map[string]any, options ...FormatOption) (string, error)
-func (mf *MessageFormat) FormatToParts(values map[string]any, options ...FormatOption) ([]messagevalue.MessagePart, error)
-
-// Core data model (pkg/datamodel)
-type Message struct { ... }        // Root message node
-type Expression struct { ... }     // Variable/function expression
-type Pattern struct { ... }        // Text pattern with placeholders
-
-// Function system (pkg/functions)
-type MessageFunction func(
-    ctx MessageFunctionContext,
-    options Options,
-    operand any,
-) messagevalue.MessageValue
-
-// Built-in function registry snapshots
-func DefaultFunctionMap() map[string]MessageFunction  // :currency, :integer, :number, :offset, :percent, :string
-func DraftFunctionMap() map[string]MessageFunction    // :date, :datetime, :time, :unit
-// :math is an extension function, not in MF2 spec; supply it explicitly with WithFunction.
 ```
 
 ### Processing Flow
@@ -87,15 +73,30 @@ func DraftFunctionMap() map[string]MessageFunction    // :date, :datetime, :time
 Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolution (internal/resolve) → MessageParts (pkg/messagevalue)
 ```
 
+## Agent Workflow
+
+1. Read the relevant `SPECS/` owner before designing or modifying code.
+2. Use CodeGraph first when `.codegraph/` exists and code relationships need to be located or understood.
+3. Consult `.reference/messageformat` only for vocabulary and observable behavior that matches the local problem; do not copy dynamic JavaScript surfaces mechanically.
+4. Run the narrowest relevant tests while iterating, then run `task verify` before closeout.
+
+## SPECS Index
+
+| Spec | Owner |
+|------|-------|
+| [`SPECS/00-overview.md`](SPECS/00-overview.md) | Product scope, module identities, runtime guarantees, verification boundary |
+| [`SPECS/20-api-contracts.md`](SPECS/20-api-contracts.md) | Root and MF1 public APIs, ownership, errors, options, values, and parts |
+| [`SPECS/40-architecture.md`](SPECS/40-architecture.md) | Package/module boundaries, pipeline, tests, CI, and documentation ownership |
+
 ## Design Philosophy
 
-- **TypeScript API Compatibility** — Maintains identical method signatures and behavior with TypeScript reference implementation. Every function includes original TypeScript code in comments for traceability.
-- **Specification Compliance** — Strict adherence to Unicode MessageFormat 2.0 specification. Official test suite (git submodule at `tests/messageformat-wg/`, HEAD past LDML49 with PR #1104 well-formedness) is run by `task test-official` and passes 477 subtests covering bidi, data-model-errors, fallback, pattern-selection, syntax, u-options, and functions/{currency,date,datetime,integer,number,offset,percent,string,time}.
+- **Behavioral Reference, Go-Native Boundary** — Use the TypeScript implementation to verify vocabulary and behavior, while expressing caller jobs with typed Go inputs, explicit errors, and detached ownership.
+- **Specification Alignment** — The `tests/messageformat-wg` gitlink pins the official corpus used by `task test-official`. A passing run describes that pin; a changed pin requires a new verification run.
 - **Two-Phase Processing** — Clean separation: CST parsing → DataModel conversion → Resolution/Formatting. Each phase has clear boundaries and responsibilities.
-- **Keep `mf1` Intact** — The `mf1/` package is a supported compatibility surface, not legacy code. Do not prune, delete, sideline, or treat it as dead code during cleanup, modernization, or refactoring.
+- **Keep `mf1` Intact** — The independent `mf1/` module is a supported compatibility surface, not legacy code. Do not prune, delete, sideline, or treat it as dead code during cleanup, modernization, or refactoring.
 - **KISS** — Simple, focused implementations. No premature abstractions. Three similar lines are better than a helper used once.
 - **DRY** — Shared function registry, unified error types, reusable resolution context across all message types.
-- **YAGNI** — Only implement what's currently needed. Focus on spec compliance, not feature creep.
+- **YAGNI** — Only implement what's currently needed. Focus on spec alignment, not feature creep.
 
 ## Coding Rules
 
@@ -116,8 +117,11 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - **All comments in English only** — No other languages in code comments
 - **testify for all tests** — Use `github.com/stretchr/testify/assert` and `testify/require`
 - **Table-driven tests** — Use subtests with `t.Run()` for multiple test cases
-- **Static error definitions** — Define errors as package-level variables, never create dynamically
+- **Stable error identity** — Define sentinel identities at package scope and wrap them when contextual detail is required
 - **Thread safety** — MessageFormat instances are immutable after construction, safe for concurrent use
+- **Closed options** — Root constructor enum values use exported typed constants; `Parse` and `Compile` reject unsupported values with `ErrInvalidOption`
+- **Snapshot ownership** — Clone caller-owned containers before storage and return detached maps/slices from public inspection accessors
+- **Typed MF1 jobs** — Use `mf1.New(string, ...)` for locale lookup and `mf1.NewWithPlural(...)` for custom plural behavior; malformed locales fail while valid unsupported locales use the stable fallback
 - **Error returns** — All errors returned via `error`, never panic in production code
 - **Preserve `mf1` support** — Changes must keep `mf1/` building and tested; do not remove or downgrade `mf1` because it supports ICU MessageFormat v1
 - Follow Google Go Best Practices: <https://google.github.io/go-style/best-practices>
@@ -138,15 +142,18 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - No `panic` in production code — all errors returned via `error`
 - No dynamic error creation — use static error variables for lint compliance
 - No premature abstraction — implement only what's currently needed
-- No breaking changes to TypeScript-compatible API — maintain method signature compatibility
+- Do not reintroduce removed string option wrappers, MF1 dynamic overloads, partial locale catalogs, or package-wide mutable logger state
+- No working around dependency bugs — report them in `reports/<dependency-name>.md` instead of reimplementing dependency behavior
+- No documentation masquerading as code, policy-only gates that restate docs, or tests that only mirror SPECS
+- Do not copy JavaScript dynamic unions when a typed Go API expresses the supported caller jobs directly
 - Do not classify `mf1/` as legacy, deprecated, or prune-only code unless the user explicitly requests a product-level deprecation plan
 
 ## Testing
 
 - **Framework:** `github.com/stretchr/testify` required for all tests
 - **Patterns:** Table-driven tests with `t.Run()`, `t.Parallel()` where safe
-- **Coverage target:** >80% for all packages
-- **Official test suite:** Git submodule at `tests/messageformat-wg/` validates spec compliance
+- **Coverage:** Use coverage reports to find untested behavior; acceptance depends on behavior, race, lint, and pinned-corpus gates rather than a fixed percentage
+- **Official test suite:** Git submodule at `tests/messageformat-wg/` pins the corpus checked by `task test-official`
 
 ```bash
 # Run specific package tests
@@ -171,7 +178,7 @@ go tool cover -html=coverage.out
 |------------|---------|
 | `github.com/agentable/go-intl` | ECMA-402 Intl runtime — backs `:number` / `:integer` / `:string` / `:currency` / `:date` / `:datetime` / `:time` / `:percent` / `:unit` via `numberformat`, `datetimeformat`, `pluralrules`. Constructors are variadic `New(loc, options ...Options)`; `Append*` and `CanonicalKey` helpers do not exist on the dependency surface and must not be relied on. Delegated CLDR/TZDB validation covers MF2 well-formed `timeZone` / `calendar` / `unit` values. |
 | `golang.org/x/text` | BCP 47 / Unicode text utilities for `pkg/datamodel`, `internal/cst`, and `pkg/messagevalue/string.go` (no longer used for plural/number/message) |
-| `github.com/go-json-experiment/json` | JSON v2 experimental API (for future use) |
+| `github.com/go-json-experiment/json` | JSON v2 decoding for number options and official corpus fixtures |
 | `github.com/stretchr/testify` | Testing framework (test-only) |
 
 ## Error Handling
@@ -181,11 +188,16 @@ Custom error types for different failure modes:
 ```go
 // pkg/errors package
 type MessageSyntaxError struct { ... }      // Parsing errors
+type MessageDataModelError struct { ... }   // Parsed model invariant errors
 type MessageResolutionError struct { ... }  // Variable/function resolution errors
 type MessageSelectionError struct { ... }   // Pattern selection errors
 ```
 
-All errors are static package-level variables to prevent information leakage and satisfy lint rules.
+Stable error identities are package-level variables or typed error kinds. Add context by wrapping those identities; do not create dynamic sentinel-like errors.
+
+## Dependency Issue Reporting
+
+When a dependency bug or limitation blocks work, do not reimplement the dependency or silently bypass it. Create `reports/<dependency-name>.md` with the dependency/version, trigger, expected and actual behavior, relevant errors, and a proposed upstream resolution; continue only with work that does not depend on the defect.
 
 ## Performance
 
@@ -206,24 +218,25 @@ golangci-lint pinned via `.golangci.version`. Config in `.golangci.yml`.
 
 GitHub Actions workflows:
 
-- **ci.yml** — Primary CI/CD (tests, lint, security)
+- **ci.yml** — Primary CI checks (tests, lint, security)
 
-Triggers: Push to main and PRs
+CI initializes only the pinned official fixture, caches both module manifests, and checks root and MF1 independently. Triggers: pushes to main and pull requests.
 
 ## Development Workflow
 
 ### Development
 
 ```bash
-task test && task lint
+task verify
 git commit -m "feat: add new feature"
 ```
 
 ### Release Process
 
 ```bash
-git tag v2.1.0
-git push origin v2.1.0
+git tag -a vX.Y.Z -m vX.Y.Z
+git tag -a mf1/vX.Y.Z -m mf1/vX.Y.Z
+git push origin main vX.Y.Z mf1/vX.Y.Z
 ```
 
 ## Agent Skills
@@ -232,15 +245,17 @@ Specialized skills available in `.agents/skills/`:
 
 | Skill | When to Use |
 |-------|------------|
-| [testing](.agents/skills/testing/) | Writing or reviewing Go tests — testify patterns, table-driven tests, mocking, concurrency testing, benchmarks |
-| [linting](.agents/skills/linting/) | Setting up or running golangci-lint v2, fixing lint errors, configuring linters |
+| [agent-md-writing](.agents/skills/agent-md-writing/) | Revising project-specific CLAUDE.md and AGENTS.md development guidance |
+| [api-surface-designing](.agents/skills/api-surface-designing/) | Designing exported types, options, errors, defaults, and caller-facing contracts |
+| [code-review](.agents/skills/code-review/) | Reviewing completed changes for contract fit, regressions, tests, and safety |
+| [committing](.agents/skills/committing/) | Creating narrow conventional commits after staged-diff and gate review |
+| [concurrency-hardening](.agents/skills/concurrency-hardening/) | Reviewing goroutines, shared state, immutability, and race-sensitive code |
+| [github-actions-configuring](.agents/skills/github-actions-configuring/) | Configuring Go CI workflows and multi-module cache/check ownership |
+| [go-best-practices](.agents/skills/go-best-practices/) | Applying Google Go style, errors, naming, interfaces, tests, and concurrency guidance |
+| [golangci-linting](.agents/skills/golangci-linting/) | Running or configuring golangci-lint v2 and fixing reported issues |
+| [improvement-proposing](.agents/skills/improvement-proposing/) | Producing evidence-backed, bounded improvement proposals for this repository |
 | [modernizing](.agents/skills/modernizing/) | Adopting Go 1.20-1.26 new features — generics, iterators, error handling, stdlib collections |
-| [committing](.agents/skills/committing/) | Creating conventional commit messages for Go packages |
 | [releasing](.agents/skills/releasing/) | Releasing a Go package — semantic versioning, tagging, dependency upgrades |
-| [code-simplifying](.agents/skills/code-simplifying/) | Refining recently written Go code for clarity and consistency without changing functionality |
-| [go-best-practices](.agents/skills/go-best-practices/) | Applying Google Go style guide — naming, error handling, interfaces, testing, concurrency |
-| [agent-md-creating](.agents/skills/agent-md-creating/) | Generate CLAUDE.md and AGENTS.md for Go projects |
-| [dependency-selecting](.agents/skills/dependency-selecting/) | Selecting Go dependencies from kaptinlin/agentable ecosystem and vetted external libraries |
-| [readme-creating](.agents/skills/readme-creating/) | Generate README.md for Go libraries in kaptinlin and agentable ecosystem |
-| [ralphy-initializing](.agents/skills/ralphy-initializing/) | Initialize Ralphy AI coding loop configuration for Go projects |
-| [ralphy-todo-creating](.agents/skills/ralphy-todo-creating/) | Create Ralphy TODO.yaml task files from PRDs, plans, or issue trackers |
+| [readme-writing](.agents/skills/readme-writing/) | Maintaining usage-first installation, examples, configuration, and command documentation |
+| [spec-writing](.agents/skills/spec-writing/) | Maintaining durable target-state contracts with verification paths |
+| [tdd-implementing](.agents/skills/tdd-implementing/) | Implementing behavior changes through focused red-green-refactor cycles |

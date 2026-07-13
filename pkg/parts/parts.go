@@ -26,7 +26,7 @@ func NewBidiIsolationPart(value string) *messagevalue.BidiIsolationPart {
 
 // NewMarkupPart creates a new markup part.
 func NewMarkupPart(kind, name, source string, options map[string]any) *messagevalue.MarkupPart {
-	return messagevalue.NewMarkupPart(kind, name, source, options)
+	return messagevalue.NewMarkupPart(kind, name, source, "", options)
 }
 
 // NewFallbackPart creates a new fallback part.

@@ -41,6 +41,34 @@ func TestMessageFunctionContextCarriesMetadata(t *testing.T) {
 	ctx.OnError(errors.New("ignored"))
 }
 
+func TestMessageFunctionContextOwnsCollections(t *testing.T) {
+	t.Parallel()
+
+	locales := []string{"en", "fr"}
+	literalKeys := map[string]bool{"select": true}
+	ctx := NewMessageFunctionContext(locales, "$value", "lookup", nil, literalKeys, "", "")
+
+	locales[0] = "ar"
+	literalKeys["select"] = false
+	if diff := cmp.Diff([]string{"en", "fr"}, ctx.Locales()); diff != "" {
+		t.Errorf("Locales() after input mutation mismatch (-want +got):\n%s", diff)
+	}
+	if diff := cmp.Diff(map[string]bool{"select": true}, ctx.LiteralOptionKeys()); diff != "" {
+		t.Errorf("LiteralOptionKeys() after input mutation mismatch (-want +got):\n%s", diff)
+	}
+
+	returnedLocales := ctx.Locales()
+	returnedKeys := ctx.LiteralOptionKeys()
+	returnedLocales[0] = "de"
+	returnedKeys["select"] = false
+	if diff := cmp.Diff([]string{"en", "fr"}, ctx.Locales()); diff != "" {
+		t.Errorf("Locales() after result mutation mismatch (-want +got):\n%s", diff)
+	}
+	if diff := cmp.Diff(map[string]bool{"select": true}, ctx.LiteralOptionKeys()); diff != "" {
+		t.Errorf("LiteralOptionKeys() after result mutation mismatch (-want +got):\n%s", diff)
+	}
+}
+
 func TestNumberFunctionValidatesSelectionOptions(t *testing.T) {
 	t.Parallel()
 

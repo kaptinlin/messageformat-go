@@ -73,27 +73,3 @@ func TestSelectSelectMessage(t *testing.T) {
 	text := result.Elements()[0].(*datamodel.TextElement).Value()
 	assert.True(t, text == "One item" || text == "Many items", "Expected either 'One item' or 'Many items', got: %s", text)
 }
-
-func TestSelectPatternUnsupportedMessage(t *testing.T) {
-	// Create an unsupported message type (neither PatternMessage nor SelectMessage)
-	// This should trigger an error
-
-	// We'll create a mock message that doesn't implement the expected interface properly
-	var unsupportedMessage datamodel.Message = &mockUnsupportedMessage{}
-
-	ctx := createTestContext()
-
-	// This should handle the unsupported message gracefully
-	result := SelectPattern(ctx, unsupportedMessage)
-
-	// The result should be an empty pattern since the message type is unsupported
-	assert.NotNil(t, result)
-	assert.Equal(t, 0, result.Len())
-}
-
-// mockUnsupportedMessage is a mock implementation that doesn't match expected types
-type mockUnsupportedMessage struct{}
-
-func (m *mockUnsupportedMessage) Type() string                          { return "unsupported" }
-func (m *mockUnsupportedMessage) Declarations() []datamodel.Declaration { return nil }
-func (m *mockUnsupportedMessage) Comment() string                       { return "" }

@@ -11,8 +11,8 @@ MessageFormat 2.0 is the next-generation internationalization standard developed
 git clone https://github.com/kaptinlin/messageformat-go
 cd messageformat-go
 
-# Install dependencies
-go mod tidy
+# Download and tidy dependencies explicitly
+task deps
 
 # Run basic examples - learn fundamentals
 go run examples/basic/main.go

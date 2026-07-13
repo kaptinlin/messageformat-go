@@ -60,7 +60,7 @@ func TestFromCSTSimpleMessage(t *testing.T) {
 			cstMsg := cst.ParseCST(tt.input, false)
 
 			// Convert to data model
-			msg, err := FromCST(cstMsg)
+			msg, err := fromCST(cstMsg)
 
 			if tt.wantError {
 				assert.Error(t, err)
@@ -117,7 +117,7 @@ func TestFromCSTComplexMessage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cstMsg := cst.ParseCST(tt.input, false)
-			msg, err := FromCST(cstMsg)
+			msg, err := fromCST(cstMsg)
 
 			if tt.wantError {
 				assert.Error(t, err)
@@ -179,7 +179,7 @@ one {{One}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cstMsg := cst.ParseCST(tt.input, false)
-			msg, err := FromCST(cstMsg)
+			msg, err := fromCST(cstMsg)
 
 			if tt.wantError {
 				assert.Error(t, err)
@@ -265,7 +265,7 @@ func TestFromCSTExpressions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cstMsg := cst.ParseCST(tt.input, false)
-			msg, err := FromCST(cstMsg)
+			msg, err := fromCST(cstMsg)
 
 			if tt.wantError {
 				assert.Error(t, err)
@@ -360,7 +360,7 @@ func TestFromCSTMarkup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cstMsg := cst.ParseCST(tt.input, false)
-			msg, err := FromCST(cstMsg)
+			msg, err := fromCST(cstMsg)
 
 			if tt.wantError {
 				assert.Error(t, err)
@@ -428,7 +428,7 @@ one male {{He has one}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cstMsg := cst.ParseCST(tt.input, false)
-			msg, err := FromCST(cstMsg)
+			msg, err := fromCST(cstMsg)
 
 			if tt.wantError {
 				assert.Error(t, err)
@@ -505,7 +505,7 @@ func TestFromCSTDeclarations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cstMsg := cst.ParseCST(tt.input, false)
-			msg, err := FromCST(cstMsg)
+			msg, err := fromCST(cstMsg)
 
 			if tt.wantError {
 				assert.Error(t, err)
@@ -545,7 +545,7 @@ func TestFromCSTErrorHandling(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cstMsg := cst.ParseCST(tt.input, false)
-			msg, err := FromCST(cstMsg)
+			msg, err := fromCST(cstMsg)
 
 			if tt.wantError {
 				assert.Error(t, err)
@@ -630,7 +630,7 @@ one {{You have {$count} item}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cstMsg := cst.ParseCST(tt.input, false)
-			msg, err := FromCST(cstMsg)
+			msg, err := fromCST(cstMsg)
 
 			require.NoError(t, err)
 			require.NotNil(t, msg)
@@ -665,7 +665,7 @@ func TestFromCSTNamespaces(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cstMsg := cst.ParseCST(tt.input, false)
-			msg, err := FromCST(cstMsg)
+			msg, err := fromCST(cstMsg)
 
 			require.NoError(t, err)
 			require.NotNil(t, msg)

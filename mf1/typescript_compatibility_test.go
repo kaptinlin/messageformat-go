@@ -255,12 +255,12 @@ func TestTypeScriptCompatibilityStaticMethods(t *testing.T) {
 
 	t.Run("SupportedLocalesOf function", func(t *testing.T) {
 		testCases := []struct {
-			locales  any
+			locales  []string
 			expected []string
 		}{
 			{[]string{"en", "fr", "de"}, []string{"en", "fr", "de"}},
-			{[]string{"en", "xx", "fr"}, []string{"en", "fr"}}, // Filter invalid locales
-			{"en", []string{"en"}},
+			{[]string{"en", "eo", "fr"}, []string{"en", "fr"}}, // Filter unsupported locales
+			{[]string{"en"}, []string{"en"}},
 		}
 
 		for _, tc := range testCases {

@@ -1,6 +1,6 @@
-# V1 Performance Guide
+# MF1 Performance Guide
 
-Performance notes for the supported ICU MessageFormat v1 compatibility package.
+Performance notes for the supported ICU MessageFormat v1 compatibility module.
 
 ## General Guidance
 
@@ -35,7 +35,7 @@ for _, name := range names {
 Run repository benchmarks from the root:
 
 ```bash
-go test -bench=. -benchmem ./v1
+go -C mf1 test -bench=. -benchmem ./...
 ```
 
 ## Concurrency
@@ -44,4 +44,4 @@ go test -bench=. -benchmem ./v1
 
 ## Scope
 
-This document is intentionally short. The source of truth for current behavior is the package implementation and tests under `./v1`.
+This document is intentionally short. The source of truth for current behavior is the module implementation and tests under `./mf1`.

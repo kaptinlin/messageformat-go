@@ -245,10 +245,10 @@ func TestFormatMarkupResolvesOptionsAndReportsUniversalDir(t *testing.T) {
 	if diff := cmp.Diff(map[string]any{
 		"class": "primary",
 		"role":  "button",
-		"u:id":  "cta",
 	}, markup.Options()); diff != "" {
 		t.Errorf("markup options mismatch (-want +got):\n%s", diff)
 	}
+	assert.Equal(t, "cta", markup.ID())
 	require.Len(t, errs, 1)
 	assertResolveCoverageResolutionErrorType(t, errs[0], pkgerrors.ErrorTypeBadOption)
 }

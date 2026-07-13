@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/go-json-experiment/json"
 )
@@ -14,6 +15,7 @@ import (
 // TestParam represents a parameter in the test
 type TestParam struct {
 	Name  string `json:"name"`
+	Type  string `json:"type,omitempty"`
 	Value any    `json:"value"`
 }
 
@@ -23,15 +25,27 @@ type Test struct {
 	Locale        string      `json:"locale,omitempty"`
 	Params        []TestParam `json:"params,omitempty"`
 	Exp           any         `json:"exp,omitempty"`
+	ExpCleanSrc   *string     `json:"expCleanSrc,omitempty"`
 	ExpErrors     any         `json:"expErrors,omitempty"`
 	ExpParts      []any       `json:"expParts,omitempty"`
 	BidiIsolation *bool       `json:"bidiIsolation,omitempty"`
-	Only          bool        `json:"only,omitempty"`
 	Tags          []string    `json:"tags,omitempty"`
 	Description   string      `json:"description,omitempty"`
+	id            string
+}
 
-	// Internal field to store the original bidi isolation value
-	BidiIsolationRaw any `json:"-"`
+type rawTest struct {
+	Src           *string      `json:"src"`
+	Locale        *string      `json:"locale,omitempty"`
+	Params        *[]TestParam `json:"params,omitempty"`
+	Exp           any          `json:"exp,omitempty"`
+	ExpCleanSrc   *string      `json:"expCleanSrc,omitempty"`
+	ExpErrors     any          `json:"expErrors,omitempty"`
+	ExpParts      *[]any       `json:"expParts,omitempty"`
+	BidiIsolation any          `json:"bidiIsolation,omitempty"`
+	Only          bool         `json:"only,omitempty"`
+	Tags          *[]string    `json:"tags,omitempty"`
+	Description   string       `json:"description,omitempty"`
 }
 
 // GetParamsMap converts the params array to a map for easier use
@@ -50,7 +64,15 @@ func (t Test) GetParamsMap() map[string]any {
 // TestScenario represents a collection of related tests
 type TestScenario struct {
 	Scenario string `json:"scenario"`
+	Path     string `json:"-"`
 	Tests    []Test `json:"tests"`
+}
+
+// ID returns the fixture-relative identity of the test case.
+// TypeScript original code:
+// // No direct equivalent; reference test names are not guaranteed unique.
+func (t Test) ID() string {
+	return t.id
 }
 
 // TestType represents the type of test based on expected behavior
@@ -80,65 +102,49 @@ func TestName(tc Test) string {
 }
 
 // GetTestType determines the type of test based on expected errors
+// TypeScript original code:
+// if (!tc.expErrors) return 'valid';
+// if (Array.isArray(tc.expErrors)) { ... }
 func GetTestType(tc Test) TestType {
-	if tc.ExpErrors != nil {
-		// Check if it's specifically a syntax error or data model error
-		if errSlice, ok := tc.ExpErrors.([]any); ok {
-			for _, err := range errSlice {
-				if errMap, ok := err.(map[string]any); ok {
-					if errType, exists := errMap["type"]; exists {
-						if errType == "syntax-error" {
-							return TestTypeSyntaxError
-						}
-						if errType == "data-model-error" {
-							return TestTypeDataModelError
-						}
-						// Runtime errors like bad-operand, bad-option should be format tests
-						if errType == "bad-operand" || errType == "bad-option" ||
-							errType == "bad-selector" || errType == "unresolved-variable" ||
-							errType == "unsupported-operation" || errType == "bad-function-result" {
-							return TestTypeFormat
-						}
-					}
-				}
-			}
-		} else if errMap, ok := tc.ExpErrors.(map[string]any); ok {
-			if errType, exists := errMap["type"]; exists {
-				if errType == "syntax-error" {
-					return TestTypeSyntaxError
-				}
-				if errType == "data-model-error" {
-					return TestTypeDataModelError
-				}
-				// Runtime errors like bad-operand, bad-option should be format tests
-				if errType == "bad-operand" || errType == "bad-option" ||
-					errType == "bad-selector" || errType == "unresolved-variable" ||
-					errType == "unsupported-operation" || errType == "bad-function-result" {
-					return TestTypeFormat
-				}
-			}
-		} else if tc.ExpErrors == true {
-			// If expErrors is just true, assume it's a format test with runtime errors
-			return TestTypeFormat
-		} else if tc.ExpErrors == false {
-			// If expErrors is false, it's a normal format test
-			return TestTypeFormat
+	expected := ExpectedErrors(tc)
+	for _, err := range expected {
+		if err["type"] == "syntax-error" {
+			return TestTypeSyntaxError
 		}
-
-		// If there are expected errors but no specific type, assume format tests with runtime errors
-		return TestTypeFormat
 	}
-
+	for _, err := range expected {
+		errorType, _ := err["type"].(string)
+		if isDataModelErrorType(errorType) {
+			return TestTypeDataModelError
+		}
+	}
 	return TestTypeFormat
 }
 
-// TestFile represents the structure of a test JSON file
-type TestFile struct {
-	Schema                string         `json:"$schema,omitempty"`
-	Scenario              string         `json:"scenario"`
-	Description           string         `json:"description,omitempty"`
-	DefaultTestProperties map[string]any `json:"defaultTestProperties,omitempty"`
-	Tests                 []Test         `json:"tests"`
+// isDataModelErrorType reports whether an official error belongs to model validation.
+// TypeScript original code:
+// const dataModelErrors = ['duplicate-attribute', ...];
+func isDataModelErrorType(errorType string) bool {
+	switch errorType {
+	case "duplicate-attribute",
+		"duplicate-declaration",
+		"duplicate-option-name",
+		"duplicate-variant",
+		"missing-fallback-variant",
+		"missing-selector-annotation",
+		"variant-key-mismatch":
+		return true
+	default:
+		return false
+	}
+}
+
+type testFile struct {
+	Schema                string    `json:"$schema,omitempty"`
+	Scenario              string    `json:"scenario"`
+	Description           string    `json:"description,omitempty"`
+	DefaultTestProperties *rawTest  `json:"defaultTestProperties,omitempty"`
+	Tests                 []rawTest `json:"tests"`
 }
 
 // TestScenarios loads all test scenarios from a directory
@@ -164,46 +170,38 @@ func TestScenarios(testDir string) ([]TestScenario, error) {
 		}
 
 		// Parse the JSON content as TestFile
-		var testFile TestFile
+		var testFile testFile
 		if err := json.Unmarshal(data, &testFile); err != nil {
 			return fmt.Errorf("failed to parse JSON file %s: %w", path, err)
 		}
+		relativePath, err := filepath.Rel(testDir, path)
+		if err != nil {
+			return fmt.Errorf("failed to resolve fixture path %s: %w", path, err)
+		}
+		relativePath = filepath.ToSlash(relativePath)
 
-		// Apply default test properties to each test
-		for i := range testFile.Tests {
-			test := &testFile.Tests[i]
-
-			// Apply defaults if not already set
-			if testFile.DefaultTestProperties != nil {
-				if test.Locale == "" {
-					if locale, ok := testFile.DefaultTestProperties["locale"].(string); ok {
-						test.Locale = locale
-					}
-				}
-				if test.BidiIsolation == nil {
-					if bidiValue, exists := testFile.DefaultTestProperties["bidiIsolation"]; exists {
-						test.BidiIsolationRaw = bidiValue
-						if bidi, ok := bidiValue.(bool); ok {
-							test.BidiIsolation = &bidi
-						} else if bidiStr, ok := bidiValue.(string); ok {
-							// Convert string to bool for compatibility
-							boolValue := bidiStr == "default"
-							test.BidiIsolation = &boolValue
-						}
-					}
-				}
-				if test.ExpErrors == nil {
-					if expErrors, ok := testFile.DefaultTestProperties["expErrors"]; ok {
-						test.ExpErrors = expErrors
-					}
-				}
+		tests := make([]Test, len(testFile.Tests))
+		for i, raw := range testFile.Tests {
+			test, err := normalizeTest(testFile.DefaultTestProperties, raw)
+			if err != nil {
+				return fmt.Errorf("failed to normalize JSON file %s test %d: %w", path, i, err)
 			}
+			test.id = fmt.Sprintf("%s#%d", relativePath, i)
+			if raw.Only {
+				return fmt.Errorf("fixture %s uses only: true", test.id)
+			}
+			tests[i] = test
 		}
 
 		// Create the scenario
+		scenarioName := testFile.Scenario
+		if scenarioName == "" {
+			scenarioName = relativePath
+		}
 		scenario := TestScenario{
-			Scenario: testFile.Scenario,
-			Tests:    testFile.Tests,
+			Scenario: scenarioName,
+			Path:     relativePath,
+			Tests:    tests,
 		}
 
 		scenarios = append(scenarios, scenario)
@@ -217,50 +215,104 @@ func TestScenarios(testDir string) ([]TestScenario, error) {
 	return scenarios, nil
 }
 
+// normalizeTest applies scenario defaults with explicit test properties taking precedence.
+// TypeScript original code:
+// const td = Object.assign({}, defaults, test);
+// if ('type' in p && p.type === 'datetime') pr[p.name] = new Date(p.value);
+func normalizeTest(defaults *rawTest, raw rawTest) (Test, error) {
+	if defaults == nil {
+		defaults = &rawTest{}
+	}
+
+	src := defaults.Src
+	if raw.Src != nil {
+		src = raw.Src
+	}
+	locale := defaults.Locale
+	if raw.Locale != nil {
+		locale = raw.Locale
+	}
+	params := defaults.Params
+	if raw.Params != nil {
+		params = raw.Params
+	}
+	tags := defaults.Tags
+	if raw.Tags != nil {
+		tags = raw.Tags
+	}
+	exp := defaults.Exp
+	if raw.Exp != nil {
+		exp = raw.Exp
+	}
+	expCleanSrc := defaults.ExpCleanSrc
+	if raw.ExpCleanSrc != nil {
+		expCleanSrc = raw.ExpCleanSrc
+	}
+	expErrors := defaults.ExpErrors
+	if raw.ExpErrors != nil {
+		expErrors = raw.ExpErrors
+	}
+	expParts := defaults.ExpParts
+	if raw.ExpParts != nil {
+		expParts = raw.ExpParts
+	}
+	bidiIsolation := defaults.BidiIsolation
+	if raw.BidiIsolation != nil {
+		bidiIsolation = raw.BidiIsolation
+	}
+
+	test := Test{
+		Exp:         exp,
+		ExpCleanSrc: expCleanSrc,
+		ExpErrors:   expErrors,
+		Description: raw.Description,
+	}
+	if src != nil {
+		test.Src = *src
+	}
+	if locale != nil {
+		test.Locale = *locale
+	}
+	if params != nil {
+		test.Params = slices.Clone(*params)
+		for i := range test.Params {
+			param := &test.Params[i]
+			if param.Type != "datetime" {
+				continue
+			}
+			value, ok := param.Value.(string)
+			if !ok {
+				return Test{}, fmt.Errorf("datetime param %q must be a string", param.Name)
+			}
+			parsed, err := time.Parse(time.RFC3339, value)
+			if err != nil {
+				parsed, err = time.ParseInLocation("2006-01-02T15:04:05", value, time.UTC)
+			}
+			if err != nil {
+				return Test{}, fmt.Errorf("invalid datetime param %q: %w", param.Name, err)
+			}
+			param.Value = parsed
+		}
+	}
+	if tags != nil {
+		test.Tags = slices.Clone(*tags)
+	}
+	if expParts != nil {
+		test.ExpParts = slices.Clone(*expParts)
+	}
+	switch value := bidiIsolation.(type) {
+	case bool:
+		test.BidiIsolation = &value
+	case string:
+		isolate := value == "default"
+		test.BidiIsolation = &isolate
+	}
+	return test, nil
+}
+
 // TestCases extracts all test cases from a scenario
 func TestCases(scenario TestScenario) []Test {
-	return scenario.Tests
-}
-
-// HasTag checks if a test has a specific tag
-func HasTag(tc Test, tag string) bool {
-	return slices.Contains(tc.Tags, tag)
-}
-
-// ShouldSkip determines if a test should be skipped based on tags
-func ShouldSkip(tc Test, skipTags map[string]bool) bool {
-	for _, tag := range tc.Tags {
-		if skipTags[tag] {
-			return true
-		}
-	}
-	return false
-}
-
-// IsOnlyTest checks if this is an "only" test that should run exclusively
-func IsOnlyTest(tc Test) bool {
-	return tc.Only
-}
-
-// HasOnlyTests checks if any test in the scenario is marked as "only"
-func HasOnlyTests(scenario TestScenario) bool {
-	for _, test := range scenario.Tests {
-		if test.Only {
-			return true
-		}
-	}
-	return false
-}
-
-// FilterOnlyTests returns only the tests marked with "only"
-func FilterOnlyTests(scenario TestScenario) []Test {
-	var onlyTests []Test
-	for _, test := range scenario.Tests {
-		if test.Only {
-			onlyTests = append(onlyTests, test)
-		}
-	}
-	return onlyTests
+	return slices.Clone(scenario.Tests)
 }
 
 // ExpectedString returns the expected result as a string if possible

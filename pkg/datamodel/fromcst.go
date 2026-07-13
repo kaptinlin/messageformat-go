@@ -7,7 +7,7 @@ import (
 	"github.com/kaptinlin/messageformat-go/pkg/errors"
 )
 
-// FromCST converts a CST message structure into its data model representation
+// fromCST converts a typed CST message into its data model representation.
 // TypeScript original code:
 //
 //	export function messageFromCST(msg: CST.Message): Model.Message {
@@ -38,13 +38,7 @@ import (
 //	    };
 //	  }
 //	}
-func FromCST(input any) (Message, error) {
-	msg, ok := input.(cst.Message)
-	if !ok {
-		end := 1
-		return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, 0, &end, nil)
-	}
-
+func fromCST(msg cst.Message) (Message, error) {
 	// Check for CST errors first
 	if len(msg.Errors()) > 0 {
 		return nil, msg.Errors()[0]
