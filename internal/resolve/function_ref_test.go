@@ -80,12 +80,11 @@ func TestCustomFunction(t *testing.T) {
 		map[string]any{
 			"var": 42,
 		},
-		nil,
-	)
+		nil, "best fit")
 
 	// Create variable reference and function reference
 	varRef := datamodel.NewVariableRef("var")
-	funcRef := datamodel.NewFunctionRef("custom", nil)
+	funcRef := mustFunctionRef(t, "custom", nil)
 
 	// Resolve the function reference
 	result := ResolveFunctionRef(ctx, varRef, funcRef)
@@ -126,9 +125,9 @@ func TestResolveFunctionRefOptionAccessorReturnsSnapshot(t *testing.T) {
 			},
 		},
 		nil,
-		nil,
-	)
-	result := ResolveFunctionRef(ctx, nil, datamodel.NewFunctionRef("custom", datamodel.Options{
+		nil, "best fit")
+
+	result := ResolveFunctionRef(ctx, nil, mustFunctionRef(t, "custom", datamodel.Options{
 		"u:dir": datamodel.NewLiteral("rtl"),
 	}))
 	optioned, ok := result.(messagevalue.OptionedValue)
@@ -215,7 +214,8 @@ func TestInputsWithOptions(t *testing.T) {
 		operandOptions := map[string]any{
 			"useGrouping": "never",
 		}
-		numberValue := messagevalue.NewNumberValue(12345678, "en", "test", operandOptions)
+		numberValue, err := messagevalue.NewNumberValue(12345678, "en", "test", operandOptions)
+		require.NoError(t, err)
 
 		// Create context with number function
 		ctx := NewContext(
@@ -226,13 +226,12 @@ func TestInputsWithOptions(t *testing.T) {
 			map[string]any{
 				"val": numberValue,
 			},
-			nil,
-		)
+			nil, "best fit")
 
 		// Create function reference with additional options
 		options := make(datamodel.Options)
 		options["minimumFractionDigits"] = datamodel.NewLiteral("2")
-		funcRef := datamodel.NewFunctionRef("number", options)
+		funcRef := mustFunctionRef(t, "number", options)
 
 		// Create variable reference
 		varRef := datamodel.NewVariableRef("val")
@@ -275,7 +274,8 @@ func TestInputsWithOptions(t *testing.T) {
 			"minimumFractionDigits": 4,
 			"useGrouping":           false,
 		}
-		numberValue := messagevalue.NewNumberValue(12345678, "en", "test", operandOptions)
+		numberValue, err := messagevalue.NewNumberValue(12345678, "en", "test", operandOptions)
+		require.NoError(t, err)
 
 		// Create context with number function
 		ctx := NewContext(
@@ -286,13 +286,12 @@ func TestInputsWithOptions(t *testing.T) {
 			map[string]any{
 				"val": numberValue,
 			},
-			nil,
-		)
+			nil, "best fit")
 
 		// Create function reference with expression options that override operand options
 		options := make(datamodel.Options)
 		options["minimumFractionDigits"] = datamodel.NewLiteral("2")
-		funcRef := datamodel.NewFunctionRef("number", options)
+		funcRef := mustFunctionRef(t, "number", options)
 
 		// Create variable reference
 		varRef := datamodel.NewVariableRef("val")
@@ -365,13 +364,12 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 			map[string]any{
 				"date": date,
 			},
-			nil,
-		)
+			nil, "best fit")
 
 		options1 := make(datamodel.Options)
 		options1["timeStyle"] = datamodel.NewLiteral("short")
 		options1["hour12"] = datamodel.NewLiteral("true")
-		funcRef1 := datamodel.NewFunctionRef("datetime", options1)
+		funcRef1 := mustFunctionRef(t, "datetime", options1)
 		varRef1 := datamodel.NewVariableRef("date")
 
 		result1 := ResolveFunctionRef(ctx1, varRef1, funcRef1)
@@ -388,13 +386,12 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 			map[string]any{
 				"date": date,
 			},
-			nil,
-		)
+			nil, "best fit")
 
 		options2 := make(datamodel.Options)
 		options2["timeStyle"] = datamodel.NewLiteral("short")
 		options2["hour12"] = datamodel.NewLiteral("false")
-		funcRef2 := datamodel.NewFunctionRef("datetime", options2)
+		funcRef2 := mustFunctionRef(t, "datetime", options2)
 		varRef2 := datamodel.NewVariableRef("date")
 
 		result2 := ResolveFunctionRef(ctx2, varRef2, funcRef2)
@@ -444,13 +441,12 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 				"date":   date,
 				"hour12": "false",
 			},
-			nil,
-		)
+			nil, "best fit")
 
 		options1 := make(datamodel.Options)
 		options1["timeStyle"] = datamodel.NewLiteral("short")
 		options1["hour12"] = datamodel.NewVariableRef("hour12")
-		funcRef1 := datamodel.NewFunctionRef("datetime", options1)
+		funcRef1 := mustFunctionRef(t, "datetime", options1)
 		varRef1 := datamodel.NewVariableRef("date")
 
 		result1 := ResolveFunctionRef(ctx1, varRef1, funcRef1)
@@ -468,13 +464,12 @@ func TestTypeCastsBasedOnRuntime(t *testing.T) {
 				"date":   date,
 				"hour12": false,
 			},
-			nil,
-		)
+			nil, "best fit")
 
 		options2 := make(datamodel.Options)
 		options2["timeStyle"] = datamodel.NewLiteral("short")
 		options2["hour12"] = datamodel.NewVariableRef("hour12")
-		funcRef2 := datamodel.NewFunctionRef("datetime", options2)
+		funcRef2 := mustFunctionRef(t, "datetime", options2)
 		varRef2 := datamodel.NewVariableRef("date")
 
 		result2 := ResolveFunctionRef(ctx2, varRef2, funcRef2)
@@ -523,11 +518,10 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 				"fail": failFunc,
 			},
 			map[string]any{},
-			onError,
-		)
+			onError, "best fit")
 
 		// Create function reference without operand
-		funcRef := datamodel.NewFunctionRef("fail", nil)
+		funcRef := mustFunctionRef(t, "fail", nil)
 
 		// This should trigger error handling and return fallback
 		result := ResolveFunctionRef(ctx, nil, funcRef)
@@ -575,12 +569,11 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 				"fail": failFunc,
 			},
 			map[string]any{},
-			onError,
-		)
+			onError, "best fit")
 
 		// Create function reference with literal operand
 		literal := datamodel.NewLiteral("42")
-		funcRef := datamodel.NewFunctionRef("fail", nil)
+		funcRef := mustFunctionRef(t, "fail", nil)
 
 		// This should trigger error handling and return fallback
 		result := ResolveFunctionRef(ctx, literal, funcRef)
@@ -614,14 +607,13 @@ func TestFunctionReturnIsNotMessageValue(t *testing.T) {
 
 		ctx := NewContext(
 			[]string{"en"},
-			map[string]functions.MessageFunction{}, // Empty functions map
+			map[string]functions.MessageFunction{},
 			map[string]any{},
-			onError,
-		)
+			onError, "best fit")
 
 		// Create function reference with literal operand and unknown function
 		literal := datamodel.NewLiteral("13")
-		funcRef := datamodel.NewFunctionRef("toString", nil)
+		funcRef := mustFunctionRef(t, "toString", nil)
 
 		// This should trigger unknown-function error and return fallback
 		result := ResolveFunctionRef(ctx, literal, funcRef)
@@ -643,11 +635,10 @@ func TestResolveFunctionRefInternal_PreservesCauseForBadOperand(t *testing.T) {
 			"number": functions.NumberFunction,
 		},
 		map[string]any{},
-		nil,
-	)
+		nil, "best fit")
 
 	operand := &mockInvalidOperandNode{}
-	funcRef := datamodel.NewFunctionRef("number", nil)
+	funcRef := mustFunctionRef(t, "number", nil)
 
 	_, err := resolveFunctionRefInternal(ctx, operand, funcRef, "$missing")
 	require.Error(t, err)

@@ -24,7 +24,7 @@ import (
 // MessageCache demonstrates compiled message caching for performance
 type MessageCache struct {
 	messageFormat *mf.MessageFormat
-	cache         map[string]mf.MessageFunction
+	cache         map[string]*mf.CompiledMessage
 	mu            sync.RWMutex
 }
 
@@ -37,12 +37,12 @@ func NewMessageCache(locale string, options *mf.MessageFormatOptions) (*MessageC
 
 	return &MessageCache{
 		messageFormat: messageFormat,
-		cache:         make(map[string]mf.MessageFunction),
+		cache:         make(map[string]*mf.CompiledMessage),
 	}, nil
 }
 
 // GetCompiledMessage returns a compiled message, using cache when possible
-func (mc *MessageCache) GetCompiledMessage(template string) (mf.MessageFunction, error) {
+func (mc *MessageCache) GetCompiledMessage(template string) (*mf.CompiledMessage, error) {
 	// Try to get from cache first (read lock)
 	mc.mu.RLock()
 	if msg, exists := mc.cache[template]; exists {
@@ -77,12 +77,12 @@ func (mc *MessageCache) Format(template string, data map[string]any) (string, er
 		return "", err
 	}
 
-	result, err := msg(data)
+	result, err := msg.Format(data)
 	if err != nil {
 		return "", err
 	}
 
-	return result.(string), nil
+	return result, nil
 }
 
 // CacheStats returns cache statistics
@@ -141,7 +141,7 @@ func demonstrateBasicPerformance() {
 
 		// Measure execution time (single run)
 		start = time.Now()
-		result, err := msg(test.data)
+		result, err := msg.Format(test.data)
 		if err != nil {
 			log.Printf("Execution error: %v", err)
 			continue
@@ -157,7 +157,7 @@ func demonstrateBasicPerformance() {
 		iterations := 10000
 		start = time.Now()
 		for range iterations {
-			_, err := msg(test.data)
+			_, err := msg.Format(test.data)
 			if err != nil {
 				log.Printf("Throughput test error: %v", err)
 				break
@@ -236,7 +236,7 @@ func demonstrateCaching() {
 			log.Printf("Non-cached compilation error: %v", err)
 			break
 		}
-		_, err = msg(data[templateIdx])
+		_, err = msg.Format(data[templateIdx])
 		if err != nil {
 			log.Printf("Non-cached execution error: %v", err)
 			break

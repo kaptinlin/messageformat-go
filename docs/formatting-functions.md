@@ -8,7 +8,7 @@ These functions are used inside expressions such as:
 
 ```text
 {$value :number}
-{$date :datetime dateStyle=full}
+{$date :datetime dateLength=long timePrecision=second}
 {$price :currency currency=USD}
 ```
 
@@ -101,7 +101,7 @@ Draft functions require explicit opt-in:
 ```go
 mf, err := messageformat.Parse(
 	[]string{"en"},
-	"Created {$createdAt :datetime dateStyle=full timeStyle=short}",
+	"Created {$createdAt :datetime dateLength=long timePrecision=minute}",
 	messageformat.WithFunctions(functions.DraftFunctionMap()),
 )
 ```
@@ -113,9 +113,9 @@ Formats temporal values.
 Examples:
 
 ```text
-{$createdAt :datetime dateStyle=full timeStyle=short}
-{$createdAt :date style=long}
-{$createdAt :time style=short}
+{$createdAt :datetime dateLength=long timePrecision=second}
+{$createdAt :date fields=year-month-day length=long}
+{$createdAt :time precision=second timeZoneStyle=short}
 ```
 
 ### `:currency`
@@ -178,14 +178,19 @@ Common options for temporal formatting:
 
 | Option | Meaning |
 |--------|---------|
-| `style` | high-level style for `:date` or `:time` |
-| `dateStyle` | date formatting preset |
-| `timeStyle` | time formatting preset |
+| `calendar` | Unicode calendar identifier |
+| `numberingSystem` | Unicode numbering-system identifier |
+| `timeZone` | IANA name, UTC offset, or `input` when supplied by the operand |
+| `hour12` | 12-hour clock selection for `:datetime` and `:time` |
+| `dateFields` / `fields` | visible date fields for `:datetime` / `:date` |
+| `dateLength` / `length` | `long`, `medium`, or `short` date width |
+| `timePrecision` / `precision` | `hour`, `minute`, or `second` precision |
+| `timeZoneStyle` | `long` or `short` time-zone name |
 
 Example:
 
 ```text
-{$createdAt :datetime dateStyle=full timeStyle=short}
+{$createdAt :datetime dateLength=long timePrecision=second timeZone=UTC}
 ```
 
 ## Locale Behavior
@@ -223,15 +228,14 @@ one {{One item}}
 
 ## Error Handling
 
-Formatting-time issues can be surfaced through `WithErrorHandler(...)`:
+Formatting-time issues return fallback output and a non-nil error:
 
 ```go
-out, err := mf.Format(
-	map[string]any{"amount": "not-a-number"},
-	messageformat.WithErrorHandler(func(err error) {
-		log.Printf("format warning: %v", err)
-	}),
-)
+out, err := mf.Format(map[string]any{"amount": "not-a-number"})
+if err != nil {
+	log.Printf("format diagnostics: %v", err)
+}
+fmt.Println(out)
 ```
 
 Recoverable issues degrade through fallback behavior rather than crashing the formatter.

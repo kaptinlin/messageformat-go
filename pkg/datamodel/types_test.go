@@ -12,13 +12,13 @@ import (
 func TestPatternMessage(t *testing.T) {
 	// Create test data
 	literal := NewLiteral("hello")
-	expr := NewExpression(literal, nil, nil)
+	expr := mustExpression(t, literal, nil, nil)
 	decl := NewLocalDeclaration("test", expr)
 	textElem := NewTextElement("Hello ")
 	exprElem := expr
-	pattern := NewPattern([]PatternElement{textElem, exprElem})
+	pattern := mustPattern(t, []PatternElement{textElem, exprElem})
 
-	msg := NewPatternMessage([]Declaration{decl}, pattern, "test comment")
+	msg := mustPatternMessage(t, []Declaration{decl}, pattern, "test comment")
 
 	assert.Equal(t, "message", msg.Type())
 	assert.Len(t, msg.Declarations(), 1)
@@ -32,10 +32,10 @@ func TestSelectMessage(t *testing.T) {
 	literal1 := NewLiteral("one")
 	catchall := NewCatchallKey("")
 
-	variant1 := NewVariant([]VariantKey{literal1}, NewPattern([]PatternElement{NewTextElement("One item")}))
-	variant2 := NewVariant([]VariantKey{catchall}, NewPattern([]PatternElement{NewTextElement("Many items")}))
+	variant1 := mustVariant(t, []VariantKey{literal1}, mustPattern(t, []PatternElement{NewTextElement("One item")}))
+	variant2 := mustVariant(t, []VariantKey{catchall}, mustPattern(t, []PatternElement{NewTextElement("Many items")}))
 
-	msg := NewSelectMessage(nil, []VariableRef{*selector}, []Variant{*variant1, *variant2}, "")
+	msg := mustSelectMessage(t, nil, []VariableRef{*selector}, []Variant{*variant1, *variant2}, "")
 
 	assert.Equal(t, "select", msg.Type())
 	assert.Len(t, msg.Selectors(), 1)
@@ -46,14 +46,14 @@ func TestSelectMessage(t *testing.T) {
 func TestDeclarations(t *testing.T) {
 	literal := NewLiteral("test")
 	varRef := NewVariableRef("testVar")
-	expr := NewExpression(literal, nil, nil)
-	varExpr := NewExpression(varRef, nil, nil)
+	expr := mustExpression(t, literal, nil, nil)
+	varExpr := mustExpression(t, varRef, nil, nil)
 
 	t.Run("InputDeclaration", func(t *testing.T) {
-		decl := NewInputDeclaration("input1", ConvertExpressionToVariableRefExpression(varExpr))
+		decl := mustInputDeclaration(t, varExpr)
 
 		assert.Equal(t, "input", decl.Type())
-		assert.Equal(t, "input1", decl.Name())
+		assert.Equal(t, "testVar", decl.Name())
 		assert.NotNil(t, decl.Value())
 	})
 
@@ -68,10 +68,10 @@ func TestDeclarations(t *testing.T) {
 
 func TestExpression(t *testing.T) {
 	literal := NewLiteral("test")
-	funcRef := NewFunctionRef("number", ConvertMapToOptions(map[string]any{"style": "decimal"}))
+	funcRef := mustFunctionRef(t, "number", ConvertMapToOptions(map[string]any{"style": "decimal"}))
 	attrs := ConvertMapToAttributes(map[string]any{"id": "test"})
 
-	expr := NewExpression(literal, funcRef, attrs)
+	expr := mustExpression(t, literal, funcRef, attrs)
 
 	assert.Equal(t, "expression", expr.Type())
 	assert.Equal(t, literal, expr.Arg())
@@ -99,7 +99,7 @@ func TestFunctionRef(t *testing.T) {
 		"style":    "currency",
 		"currency": "USD",
 	})
-	fr := NewFunctionRef("number", options)
+	fr := mustFunctionRef(t, "number", options)
 
 	assert.Equal(t, "function", fr.Type())
 	assert.Equal(t, "number", fr.Name())
@@ -140,9 +140,9 @@ func TestCatchallKey(t *testing.T) {
 func TestPattern(t *testing.T) {
 	textElem := NewTextElement("Hello ")
 	literal := NewLiteral("world")
-	expr := NewExpression(literal, nil, nil)
+	expr := mustExpression(t, literal, nil, nil)
 
-	pattern := NewPattern([]PatternElement{textElem, expr})
+	pattern := mustPattern(t, []PatternElement{textElem, expr})
 
 	assert.Len(t, pattern.Elements(), 2)
 	assert.Equal(t, "text", pattern.Elements()[0].Type())
@@ -160,9 +160,9 @@ func TestVariant(t *testing.T) {
 	literal := NewLiteral("one")
 	catchall := NewCatchallKey("")
 	keys := []VariantKey{literal, catchall}
-	pattern := NewPattern([]PatternElement{NewTextElement("One item")})
+	pattern := mustPattern(t, []PatternElement{NewTextElement("One item")})
 
-	variant := NewVariant(keys, pattern)
+	variant := mustVariant(t, keys, pattern)
 
 	assert.Len(t, variant.Keys(), 2)
 	assert.Equal(t, literal, variant.Keys()[0])
@@ -171,22 +171,22 @@ func TestVariant(t *testing.T) {
 }
 
 func TestConstructorsCloneInputCollections(t *testing.T) {
-	firstDecl := NewLocalDeclaration("first", NewExpression(NewLiteral("one"), nil, nil))
-	secondDecl := NewLocalDeclaration("second", NewExpression(NewLiteral("two"), nil, nil))
+	firstDecl := NewLocalDeclaration("first", mustExpression(t, NewLiteral("one"), nil, nil))
+	secondDecl := NewLocalDeclaration("second", mustExpression(t, NewLiteral("two"), nil, nil))
 	declarations := []Declaration{firstDecl}
-	pattern := NewPattern([]PatternElement{NewTextElement("initial")})
-	message := NewPatternMessage(declarations, pattern, "")
+	pattern := mustPattern(t, []PatternElement{NewTextElement("initial")})
+	message := mustPatternMessage(t, declarations, pattern, "")
 	declarations[0] = secondDecl
 
 	assert.Same(t, firstDecl, message.Declarations()[0])
 
 	selector := NewVariableRef("count")
 	otherSelector := NewVariableRef("other")
-	variant := NewVariant([]VariantKey{NewCatchallKey("")}, NewPattern([]PatternElement{NewTextElement("fallback")}))
-	otherVariant := NewVariant([]VariantKey{NewLiteral("one")}, NewPattern([]PatternElement{NewTextElement("one")}))
+	variant := mustVariant(t, []VariantKey{NewCatchallKey("")}, mustPattern(t, []PatternElement{NewTextElement("fallback")}))
+	otherVariant := mustVariant(t, []VariantKey{NewLiteral("one")}, mustPattern(t, []PatternElement{NewTextElement("one")}))
 	selectors := []VariableRef{*selector}
 	variants := []Variant{*variant}
-	selectMessage := NewSelectMessage(nil, selectors, variants, "")
+	selectMessage := mustSelectMessage(t, nil, selectors, variants, "")
 	selectors[0] = *otherSelector
 	variants[0] = *otherVariant
 
@@ -194,26 +194,26 @@ func TestConstructorsCloneInputCollections(t *testing.T) {
 	assert.True(t, IsCatchallKey(selectMessage.Variants()[0].Keys()[0]))
 
 	elements := []PatternElement{NewTextElement("before")}
-	clonedPattern := NewPattern(elements)
+	clonedPattern := mustPattern(t, elements)
 	elements[0] = NewTextElement("after")
 
 	requireTextValue(t, "before", clonedPattern.Elements()[0])
 
 	keys := []VariantKey{NewLiteral("one")}
-	variantWithKeys := NewVariant(keys, NewPattern(nil))
+	variantWithKeys := mustVariant(t, keys, mustPattern(t, nil))
 	keys[0] = NewCatchallKey("")
 
 	assert.Equal(t, "one", variantWithKeys.Keys()[0].String())
 
 	options := ConvertMapToOptions(map[string]any{"style": "currency"})
-	functionRef := NewFunctionRef("number", options)
+	functionRef := mustFunctionRef(t, "number", options)
 	options["style"] = NewLiteral("decimal")
 
 	assert.Equal(t, "currency", functionRef.Options()["style"].String())
 
 	attributes := ConvertMapToAttributes(map[string]any{"id": "original"})
-	expression := NewExpression(NewLiteral("value"), nil, attributes)
-	variableExpression := NewVariableRefExpression(NewVariableRef("name"), nil, attributes)
+	expression := mustExpression(t, NewLiteral("value"), nil, attributes)
+	variableExpression := mustExpression(t, NewVariableRef("name"), nil, attributes)
 	attributes["id"] = NewLiteral("changed")
 
 	assert.Equal(t, "original", expression.Attributes()["id"].String())
@@ -230,13 +230,12 @@ func TestConstructorsCloneInputCollections(t *testing.T) {
 }
 
 func TestAccessorsReturnCollectionSnapshots(t *testing.T) {
-	firstDecl := NewLocalDeclaration("first", NewExpression(NewLiteral("one"), nil, nil))
-	secondDecl := NewLocalDeclaration("second", NewExpression(NewLiteral("two"), nil, nil))
-	patternMessage := NewPatternMessage(
+	firstDecl := NewLocalDeclaration("first", mustExpression(t, NewLiteral("one"), nil, nil))
+	secondDecl := NewLocalDeclaration("second", mustExpression(t, NewLiteral("two"), nil, nil))
+	patternMessage := mustPatternMessage(t,
 		[]Declaration{firstDecl},
-		NewPattern([]PatternElement{NewTextElement("before")}),
-		"",
-	)
+		mustPattern(t, []PatternElement{NewTextElement("before")}),
+		"")
 
 	declarations := patternMessage.Declarations()
 	declarations[0] = secondDecl
@@ -248,20 +247,19 @@ func TestAccessorsReturnCollectionSnapshots(t *testing.T) {
 
 	selector := NewVariableRef("count")
 	otherSelector := NewVariableRef("other")
-	fallbackVariant := NewVariant(
+	fallbackVariant := mustVariant(t,
 		[]VariantKey{NewCatchallKey("")},
-		NewPattern([]PatternElement{NewTextElement("fallback")}),
-	)
-	otherVariant := NewVariant(
+		mustPattern(t, []PatternElement{NewTextElement("fallback")}))
+
+	otherVariant := mustVariant(t,
 		[]VariantKey{NewLiteral("one")},
-		NewPattern([]PatternElement{NewTextElement("one")}),
-	)
-	selectMessage := NewSelectMessage(
+		mustPattern(t, []PatternElement{NewTextElement("one")}))
+
+	selectMessage := mustSelectMessage(t,
 		nil,
 		[]VariableRef{*selector},
 		[]Variant{*fallbackVariant},
-		"",
-	)
+		"")
 
 	selectors := selectMessage.Selectors()
 	selectors[0] = *otherSelector
@@ -284,15 +282,15 @@ func TestAccessorsReturnCollectionSnapshots(t *testing.T) {
 
 	requireTextValue(t, "before", patternMessage.Pattern().Elements()[0])
 
-	functionRef := NewFunctionRef("number", ConvertMapToOptions(map[string]any{"style": "currency"}))
+	functionRef := mustFunctionRef(t, "number", ConvertMapToOptions(map[string]any{"style": "currency"}))
 	options := functionRef.Options()
 	options["style"] = NewLiteral("decimal")
 
 	assert.Equal(t, "currency", functionRef.Options()["style"].String())
 
 	attrs := ConvertMapToAttributes(map[string]any{"id": "before"})
-	expression := NewExpression(NewLiteral("value"), nil, attrs)
-	variableExpression := NewVariableRefExpression(NewVariableRef("name"), nil, attrs)
+	expression := mustExpression(t, NewLiteral("value"), nil, attrs)
+	variableExpression := mustExpression(t, NewVariableRef("name"), nil, attrs)
 	exprAttrs := expression.Attributes()
 	varExprAttrs := variableExpression.Attributes()
 	exprAttrs["id"] = NewLiteral("after")
@@ -328,15 +326,15 @@ func requireTextValue(t *testing.T, want string, element PatternElement) {
 
 func TestNilHandling(t *testing.T) {
 	t.Run("PatternMessage with nil declarations", func(t *testing.T) {
-		pattern := NewPattern(nil)
-		msg := NewPatternMessage(nil, pattern, "")
+		pattern := mustPattern(t, nil)
+		msg := mustPatternMessage(t, nil, pattern, "")
 
 		assert.NotNil(t, msg.Declarations())
 		assert.Len(t, msg.Declarations(), 0)
 	})
 
 	t.Run("SelectMessage with nil arrays", func(t *testing.T) {
-		msg := NewSelectMessage(nil, nil, nil, "")
+		msg := mustSelectMessage(t, nil, nil, nil, "")
 
 		assert.NotNil(t, msg.Declarations())
 		assert.NotNil(t, msg.Selectors())
@@ -347,15 +345,15 @@ func TestNilHandling(t *testing.T) {
 	})
 
 	t.Run("Pattern with nil elements", func(t *testing.T) {
-		pattern := NewPattern(nil)
+		pattern := mustPattern(t, nil)
 
 		assert.NotNil(t, pattern.Elements())
 		assert.Len(t, pattern.Elements(), 0)
 	})
 
 	t.Run("Variant with nil keys", func(t *testing.T) {
-		pattern := NewPattern(nil)
-		variant := NewVariant(nil, pattern)
+		pattern := mustPattern(t, nil)
+		variant := mustVariant(t, nil, pattern)
 
 		assert.NotNil(t, variant.Keys())
 		assert.Len(t, variant.Keys(), 0)
@@ -365,7 +363,7 @@ func TestNilHandling(t *testing.T) {
 func TestPatternOperations(t *testing.T) {
 	t.Parallel()
 
-	pattern := NewPattern(nil)
+	pattern := mustPattern(t, nil)
 	text := NewTextElement("Hello")
 	pattern.Add(text)
 
@@ -394,18 +392,23 @@ func TestWithCSTConstructorsPreserveSourcePosition(t *testing.T) {
 
 	literal := newLiteralWithCST("hello", literalCST)
 	variable := newVariableRefWithCST("name", variableCST)
-	functionRef := newFunctionRefWithCST("string", ConvertMapToOptions(map[string]any{"case": "title"}), functionCST)
+	functionRef, err := newFunctionRefWithCST("string", ConvertMapToOptions(map[string]any{"case": "title"}), functionCST)
+	require.NoError(t, err)
 	attrs := ConvertMapToAttributes(map[string]any{"required": true})
-	expression := newExpressionWithCST(variable, functionRef, attrs, expressionCST)
-	variableExpression := newVariableRefExpressionWithCST(variable, functionRef, attrs, expressionCST)
-	input := newInputDeclarationWithCST("name", variableExpression, inputCST)
+	expression, err := newExpressionWithCST(variable, functionRef, attrs, expressionCST)
+	require.NoError(t, err)
+	input, err := newInputDeclarationWithCST(expression, inputCST)
+	require.NoError(t, err)
 	local := newLocalDeclarationWithCST("title", expression, localCST)
 	text := newTextElementWithCST("Hello ", textCST)
-	pattern := NewPattern([]PatternElement{text, expression})
-	message := newPatternMessageWithCST([]Declaration{input, local}, pattern, "comment", messageCST)
+	pattern := mustPattern(t, []PatternElement{text, expression})
+	message, err := newPatternMessageWithCST([]Declaration{input, local}, pattern, "comment", messageCST)
+	require.NoError(t, err)
 	catchall := newCatchallKeyWithCST("", catchallCST)
-	variant := newVariantWithCST([]VariantKey{literal, catchall}, pattern, variantCST)
-	selectMessage := newSelectMessageWithCST([]Declaration{input}, []VariableRef{*variable}, []Variant{*variant}, "select comment", selectCST)
+	variant, err := newVariantWithCST([]VariantKey{literal, catchall}, pattern, variantCST)
+	require.NoError(t, err)
+	selectMessage, err := newSelectMessageWithCST([]Declaration{input}, []VariableRef{*variable}, []Variant{*variant}, "select comment", selectCST)
+	require.NoError(t, err)
 	markup, err := newMarkupWithCST("open", "strong", nil, attrs, markupCST)
 	require.NoError(t, err)
 	booleanAttr := newBooleanAttributeWithCST(booleanCST)
@@ -416,7 +419,6 @@ func TestWithCSTConstructorsPreserveSourcePosition(t *testing.T) {
 	assert.Equal(t, "name", variable.String())
 	assertPosition(t, functionCST, functionRef)
 	assertPosition(t, expressionCST, expression)
-	assertPosition(t, expressionCST, variableExpression)
 	assertPosition(t, inputCST, input)
 	assertPosition(t, localCST, local)
 	assertPosition(t, textCST, text)

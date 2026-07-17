@@ -163,7 +163,11 @@ func TestMessageFormatRejectsMalformedLocale(t *testing.T) {
 func TestMessageFormatRejectsNilPluralFunction(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewWithPlural(nil, nil)
+	_, err := NewWithPlural(PluralProfile{
+		Locale:    "en",
+		Cardinals: []PluralCategory{PluralOther},
+		Ordinals:  []PluralCategory{PluralOther},
+	}, nil)
 	require.ErrorIs(t, err, ErrInvalidPluralFunction)
 }
 
@@ -203,9 +207,9 @@ func TestMessageFormatOptions(t *testing.T) {
 	})
 
 	t.Run("should apply custom formatters", func(t *testing.T) {
-		formatters := map[string]any{
-			"upper": func(value any, locale string, arg *string) any {
-				return strings.ToUpper(value.(string))
+		formatters := map[string]Formatter{
+			"upper": func(value any, _, _ string) (string, error) {
+				return strings.ToUpper(value.(string)), nil
 			},
 		}
 
@@ -217,7 +221,7 @@ func TestMessageFormatOptions(t *testing.T) {
 		msgFunc, err := mf.Compile("{text, upper}")
 		require.NoError(t, err)
 
-		result, err := msgFunc(map[string]any{"text": "hello"})
+		result, err := msgFunc.Format(map[string]any{"text": "hello"})
 		require.NoError(t, err)
 		assert.Equal(t, "HELLO", result)
 	})
@@ -226,20 +230,20 @@ func TestMessageFormatOptions(t *testing.T) {
 func TestMessageFormatSnapshotsCustomFormatterInput(t *testing.T) {
 	t.Parallel()
 
-	formatters := map[string]any{
-		"change": CustomFormatter(func(value any, _ string, _ *string) any {
-			return strings.ToUpper(value.(string))
-		}),
+	formatters := map[string]Formatter{
+		"change": func(value any, _, _ string) (string, error) {
+			return strings.ToUpper(value.(string)), nil
+		},
 	}
 	mf, err := New("en", &MessageFormatOptions{CustomFormatters: formatters})
 	require.NoError(t, err)
 	compiled, err := mf.Compile("{value, change}")
 	require.NoError(t, err)
 
-	formatters["change"] = CustomFormatter(func(value any, _ string, _ *string) any {
-		return strings.ToLower(value.(string))
-	})
-	got, err := compiled(map[string]any{"value": "MiXeD"})
+	formatters["change"] = func(value any, _, _ string) (string, error) {
+		return strings.ToLower(value.(string)), nil
+	}
+	got, err := compiled.Format(map[string]any{"value": "MiXeD"})
 	require.NoError(t, err)
 
 	assert.Equal(t, "MIXED", got)
@@ -248,20 +252,20 @@ func TestMessageFormatSnapshotsCustomFormatterInput(t *testing.T) {
 func TestResolvedOptionsReturnsCustomFormatterSnapshot(t *testing.T) {
 	t.Parallel()
 
-	mf, err := New("en", &MessageFormatOptions{CustomFormatters: map[string]any{
-		"change": CustomFormatter(func(value any, _ string, _ *string) any {
-			return strings.ToUpper(value.(string))
-		}),
+	mf, err := New("en", &MessageFormatOptions{CustomFormatters: map[string]Formatter{
+		"change": func(value any, _, _ string) (string, error) {
+			return strings.ToUpper(value.(string)), nil
+		},
 	}})
 	require.NoError(t, err)
 	compiled, err := mf.Compile("{value, change}")
 	require.NoError(t, err)
 
 	resolved := mf.ResolvedOptions()
-	resolved.CustomFormatters["change"] = CustomFormatter(func(value any, _ string, _ *string) any {
-		return strings.ToLower(value.(string))
-	})
-	got, err := compiled(map[string]any{"value": "MiXeD"})
+	resolved.CustomFormatters["change"] = func(value any, _, _ string) (string, error) {
+		return strings.ToLower(value.(string)), nil
+	}
+	got, err := compiled.Format(map[string]any{"value": "MiXeD"})
 	require.NoError(t, err)
 
 	assert.Equal(t, "MIXED", got)
@@ -300,10 +304,10 @@ func TestResolvedOptionsReturnsPluralSnapshot(t *testing.T) {
 func TestMessageFormatSnapshotSupportsConcurrentUse(t *testing.T) {
 	t.Parallel()
 
-	mf, err := New("en", &MessageFormatOptions{CustomFormatters: map[string]any{
-		"upper": CustomFormatter(func(value any, _ string, _ *string) any {
-			return strings.ToUpper(value.(string))
-		}),
+	mf, err := New("en", &MessageFormatOptions{CustomFormatters: map[string]Formatter{
+		"upper": func(value any, _, _ string) (string, error) {
+			return strings.ToUpper(value.(string)), nil
+		},
 	}})
 	require.NoError(t, err)
 
@@ -313,7 +317,7 @@ func TestMessageFormatSnapshotSupportsConcurrentUse(t *testing.T) {
 			compiled, err := mf.Compile("{value, upper}")
 			assert.NoError(t, err)
 			if err == nil {
-				got, err := compiled(map[string]any{"value": "text"})
+				got, err := compiled.Format(map[string]any{"value": "text"})
 				assert.NoError(t, err)
 				assert.Equal(t, "TEXT", got)
 			}
@@ -330,28 +334,20 @@ func TestMessageFormatSnapshotSupportsConcurrentUse(t *testing.T) {
 
 func TestTypeSafeBasics(t *testing.T) {
 	t.Run("Basic Creation with Type-Safe Constants", func(t *testing.T) {
-		mf, err := New("en", &MessageFormatOptions{
-			ReturnType: ReturnTypeString,
-			Currency:   "USD",
-		})
+		mf, err := New("en", &MessageFormatOptions{Currency: "USD"})
 		require.NoError(t, err)
 		require.NotNil(t, mf)
 
 		options := mf.ResolvedOptions()
-		assert.Equal(t, ReturnTypeString, options.ReturnType)
 		assert.Equal(t, "USD", options.Currency)
 		assert.Equal(t, "en", options.Locale)
 	})
 
-	t.Run("Values Return Type", func(t *testing.T) {
-		mf, err := New("en", &MessageFormatOptions{
-			ReturnType:  ReturnTypeValues,
-			BiDiSupport: true,
-		})
+	t.Run("projection methods do not change constructor options", func(t *testing.T) {
+		mf, err := New("en", &MessageFormatOptions{BiDiSupport: true})
 		require.NoError(t, err)
 
 		options := mf.ResolvedOptions()
-		assert.Equal(t, ReturnTypeValues, options.ReturnType)
 		assert.True(t, options.BiDiSupport)
 	})
 
@@ -402,9 +398,6 @@ func TestNumberSkeletonTypeSafety(t *testing.T) {
 		*number = 2
 		assert.Equal(t, 2, *number)
 
-		returnType := new(ReturnTypeValues)
-		assert.Equal(t, ReturnTypeValues, *returnType)
-
 		sign := new(SignAlways)
 		assert.Equal(t, SignAlways, *sign)
 	})
@@ -433,9 +426,9 @@ func TestPtr(t *testing.T) {
 		{
 			name: "typed constant",
 			run: func(t *testing.T) {
-				ptr := Ptr(ReturnTypeValues)
+				ptr := Ptr(SignAlways)
 				require.NotNil(t, ptr)
-				assert.Equal(t, ReturnTypeValues, *ptr)
+				assert.Equal(t, SignAlways, *ptr)
 			},
 		},
 		{
@@ -469,7 +462,7 @@ func TestMessageExecution(t *testing.T) {
 		msgFunc, err := mf.Compile("Hello world")
 		require.NoError(t, err)
 
-		result, err := msgFunc(nil)
+		result, err := msgFunc.Format(nil)
 		require.NoError(t, err)
 		assert.Equal(t, "Hello world", result)
 	})
@@ -478,7 +471,7 @@ func TestMessageExecution(t *testing.T) {
 		msgFunc, err := mf.Compile("Hello {name}")
 		require.NoError(t, err)
 
-		result, err := msgFunc(map[string]any{"name": "World"})
+		result, err := msgFunc.Format(map[string]any{"name": "World"})
 		require.NoError(t, err)
 		assert.Equal(t, "Hello World", result)
 	})
@@ -487,11 +480,11 @@ func TestMessageExecution(t *testing.T) {
 		msgFunc, err := mf.Compile("{count, plural, one{1 item} other{# items}}")
 		require.NoError(t, err)
 
-		result, err := msgFunc(map[string]any{"count": 1})
+		result, err := msgFunc.Format(map[string]any{"count": 1})
 		require.NoError(t, err)
 		assert.Equal(t, "1 item", result)
 
-		result, err = msgFunc(map[string]any{"count": 3})
+		result, err = msgFunc.Format(map[string]any{"count": 3})
 		require.NoError(t, err)
 		assert.Equal(t, "3 items", result)
 	})
@@ -500,11 +493,11 @@ func TestMessageExecution(t *testing.T) {
 		msgFunc, err := mf.Compile("{gender, select, male{He} female{She} other{They}} liked this.")
 		require.NoError(t, err)
 
-		result, err := msgFunc(map[string]any{"gender": "male"})
+		result, err := msgFunc.Format(map[string]any{"gender": "male"})
 		require.NoError(t, err)
 		assert.Equal(t, "He liked this.", result)
 
-		result, err = msgFunc(map[string]any{"gender": "unknown"})
+		result, err = msgFunc.Format(map[string]any{"gender": "unknown"})
 		require.NoError(t, err)
 		assert.Equal(t, "They liked this.", result)
 	})
@@ -559,7 +552,7 @@ func TestOctothorpeReplacement(t *testing.T) {
 			compiled, err := mf.Compile(tt.message)
 			require.NoError(t, err, "Failed to compile message: %s", tt.message)
 
-			result, err := compiled(tt.params)
+			result, err := compiled.Format(tt.params)
 			require.NoError(t, err, "Failed to execute compiled message")
 
 			assert.Equal(t, tt.expected, result, "Message: %s, Params: %v", tt.message, tt.params)
@@ -597,7 +590,7 @@ func TestOctothorpeEdgeCases(t *testing.T) {
 			compiled, err := mf.Compile(tt.message)
 			require.NoError(t, err, "Failed to compile message: %s", tt.message)
 
-			result, err := compiled(tt.params)
+			result, err := compiled.Format(tt.params)
 			require.NoError(t, err, "Failed to execute compiled message")
 
 			assert.Equal(t, tt.expected, result, "Message: %s, Params: %v", tt.message, tt.params)
@@ -664,7 +657,7 @@ func TestRealWorldCompatibility(t *testing.T) {
 				compiled, err := mf.Compile(tt.message)
 				require.NoError(t, err, "Failed to compile: %s", tt.message)
 
-				result, err := compiled(tt.params)
+				result, err := compiled.Format(tt.params)
 				require.NoError(t, err, "Failed to execute")
 
 				assert.Equal(t, tt.expected, result)

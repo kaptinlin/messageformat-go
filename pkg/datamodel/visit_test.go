@@ -11,24 +11,22 @@ import (
 func TestVisit_PatternMessageTraversal(t *testing.T) {
 	t.Parallel()
 
-	input := NewInputDeclaration(
-		"name",
-		NewVariableRefExpression(
+	input := mustInputDeclaration(t,
+
+		mustExpression(t,
 			NewVariableRef("name"),
-			NewFunctionRef("string", ConvertMapToOptions(map[string]any{"case": "title"})),
-			ConvertMapToAttributes(map[string]any{"required": true, "label": "Name"}),
-		),
-	)
-	expression := NewExpression(
+			mustFunctionRef(t, "string", ConvertMapToOptions(map[string]any{"case": "title"})),
+			ConvertMapToAttributes(map[string]any{"required": true, "label": "Name"})))
+
+	expression := mustExpression(t,
 		NewVariableRef("name"),
-		NewFunctionRef("string", ConvertMapToOptions(map[string]any{"case": NewVariableRef("style")})),
-		ConvertMapToAttributes(map[string]any{"id": "user-name", "hidden": true}),
-	)
-	message := NewPatternMessage(
+		mustFunctionRef(t, "string", ConvertMapToOptions(map[string]any{"case": NewVariableRef("style")})),
+		ConvertMapToAttributes(map[string]any{"id": "user-name", "hidden": true}))
+
+	message := mustPatternMessage(t,
 		[]Declaration{input},
-		NewPattern([]PatternElement{NewTextElement("Hello "), expression}),
-		"",
-	)
+		mustPattern(t, []PatternElement{NewTextElement("Hello "), expression}),
+		"")
 
 	var events []string
 	Visit(message, &Visitor{
@@ -74,15 +72,15 @@ func TestVisit_SelectMessageTraversal(t *testing.T) {
 	t.Parallel()
 
 	selector := NewVariableRef("count")
-	one := NewVariant(
+	one := mustVariant(t,
 		[]VariantKey{NewLiteral("one")},
-		NewPattern([]PatternElement{NewExpression(NewVariableRef("count"), nil, nil)}),
-	)
-	fallback := NewVariant(
+		mustPattern(t, []PatternElement{mustExpression(t, NewVariableRef("count"), nil, nil)}))
+
+	fallback := mustVariant(t,
 		[]VariantKey{NewCatchallKey("")},
-		NewPattern([]PatternElement{mustMarkup(t, "standalone", "br", ConvertMapToOptions(map[string]any{"id": "line"}), nil)}),
-	)
-	message := NewSelectMessage(nil, []VariableRef{*selector}, []Variant{*one, *fallback}, "items")
+		mustPattern(t, []PatternElement{mustMarkup(t, "standalone", "br", ConvertMapToOptions(map[string]any{"id": "line"}), nil)}))
+
+	message := mustSelectMessage(t, nil, []VariableRef{*selector}, []Variant{*one, *fallback}, "items")
 
 	var selectors []string
 	var keys []string
@@ -117,16 +115,16 @@ func TestVisit_SelectMessageTraversal(t *testing.T) {
 func TestVisit_MarkupAttributeValues(t *testing.T) {
 	t.Parallel()
 
-	message := NewPatternMessage(
+	message := mustPatternMessage(t,
 		nil,
-		NewPattern([]PatternElement{
+		mustPattern(t, []PatternElement{
 			mustMarkup(t, "open", "button", nil, Attributes{
 				"ariaLabel": NewLiteral("label"),
 				"disabled":  NewBooleanAttribute(),
 			}),
 		}),
-		"",
-	)
+
+		"")
 
 	var values []string
 	Visit(message, &Visitor{
@@ -142,6 +140,6 @@ func TestVisit_NilVisitor(t *testing.T) {
 	t.Parallel()
 
 	require.NotPanics(t, func() {
-		Visit(NewPatternMessage(nil, NewPattern(nil), ""), nil)
+		Visit(mustPatternMessage(t, nil, mustPattern(t, nil), ""), nil)
 	})
 }

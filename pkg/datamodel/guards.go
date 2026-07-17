@@ -165,10 +165,3 @@ func IsBooleanAttribute(attr any) bool {
 	_, ok := attr.(*BooleanAttribute)
 	return ok
 }
-
-// IsVariableRefExpression checks if an expression is a VariableRefExpression
-// TypeScript original code: Expression<VariableRef> type checking
-func IsVariableRefExpression(expr any) bool {
-	_, ok := expr.(*VariableRefExpression)
-	return ok
-}

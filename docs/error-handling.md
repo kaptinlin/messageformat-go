@@ -3,7 +3,7 @@
 Error handling in MessageFormat Go follows a simple rule:
 
 - fail early at construction time
-- degrade gracefully at formatting time
+- degrade gracefully and return diagnostics at formatting time
 
 That split is intentional. Invalid templates should be rejected immediately. Runtime issues should stay observable without turning every missing value into a hard failure.
 
@@ -75,7 +75,9 @@ Typical categories include:
 - `bad-function-result`
 - `unknown-function`
 
-These do not usually cause `Format(...)` itself to fail. Instead, the formatter degrades to fallback output and can report the warning through an error handler.
+These return a non-nil error from `Format(...)` while preserving fallback
+output. The error is diagnostic, not a signal that the returned output is
+empty or unusable.
 
 Example:
 
@@ -87,7 +89,7 @@ if err != nil {
 
 out, err := mf.Format(map[string]any{"name": "Alice"})
 if err != nil {
-	log.Fatal(err)
+	log.Printf("format diagnostics: %v", err)
 }
 
 fmt.Println(out)
@@ -104,11 +106,13 @@ Common categories:
 - `bad-selector`
 - `no-match`
 
-If a selector fails during evaluation, the error can be reported and the formatter can still degrade rather than panic the application.
+If a selector fails during evaluation, the returned error reports it and the
+formatter can still degrade rather than panic the application.
 
-## Format-Time Error Handlers
+## Joined Format-Time Errors
 
-Use `messageformat.WithErrorHandler(...)` to observe recoverable runtime problems:
+`Format` and `FormatToParts` join recoverable diagnostics in encounter order.
+Standard `errors.Is` and `errors.As` traverse the joined result:
 
 ```go
 mf, err := messageformat.Parse([]string{"en"}, "Hello {$name} and {$missing}!")
@@ -116,20 +120,15 @@ if err != nil {
 	log.Fatal(err)
 }
 
-var warnings []error
-
-out, err := mf.Format(
-	map[string]any{"name": "Alice"},
-	messageformat.WithErrorHandler(func(err error) {
-		warnings = append(warnings, err)
-	}),
-)
-if err != nil {
-	log.Fatal(err)
-}
+out, err := mf.Format(map[string]any{"name": "Alice"})
 
 fmt.Println(out)
-fmt.Println(len(warnings))
+if err != nil {
+	var resolutionErr *errors.MessageResolutionError
+	if stdErrors.As(err, &resolutionErr) {
+		fmt.Println(resolutionErr.ErrorType(), resolutionErr.Source)
+	}
+}
 ```
 
 ## Error Type Inspection
@@ -180,10 +179,9 @@ Use `Parse(...)` when:
 - templates come from configuration, user input, or external files
 - you need explicit error propagation
 
-Use `WithErrorHandler(...)` when:
-
-- you want telemetry or logs for missing variables and formatting problems
-- you want graceful runtime degradation without losing visibility
+Inspect the returned formatting error when you want telemetry or logs for
+missing variables and formatting problems. Preserve the output whenever
+fallback text or parts are useful to the caller.
 
 ## Recommended Pattern
 
@@ -196,17 +194,12 @@ func compileTemplate(locale, source string) (*messageformat.MessageFormat, error
 	return mf, nil
 }
 
-func renderTemplate(mf *messageformat.MessageFormat, values map[string]any) string {
-	out, err := mf.Format(
-		values,
-		messageformat.WithErrorHandler(func(err error) {
-			log.Printf("messageformat warning: %v", err)
-		}),
-	)
+func renderTemplate(mf *messageformat.MessageFormat, values map[string]any) (string, error) {
+	out, err := mf.Format(values)
 	if err != nil {
-		return "[format failed]"
+		log.Printf("messageformat diagnostics: %v", err)
 	}
-	return out
+	return out, err
 }
 ```
 
@@ -217,5 +210,5 @@ MessageFormat Go is strict about invalid templates and forgiving about runtime d
 - construction is fail-fast
 - formatting is resilient
 - syntax errors preserve specific categories
-- runtime errors can be observed through handlers
+- runtime errors are returned as joined diagnostics alongside fallback output
 - wrapped causes can be inspected with `errors.Is` and `errors.As`

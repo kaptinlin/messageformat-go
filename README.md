@@ -70,13 +70,15 @@ func main() {
 |-----|---------|
 | `Parse(locales, source, options...)` | Parse source text into a formatter |
 | `Compile(locales, message, options...)` | Build a formatter from a parsed data model |
-| `(*MessageFormat).Format(values, options...)` | Format to a string |
-| `(*MessageFormat).FormatToParts(values, options...)` | Format to structured parts |
-| `ParseMessage(source)` | Parse source into the public data model |
-| `StringifyMessage(message)` | Convert the data model back to source |
-| `Validate(message, onError)` | Validate a parsed message |
+| `(*MessageFormat).Format(values)` | Format to a string and return runtime diagnostics |
+| `(*MessageFormat).FormatToParts(values)` | Format to structured parts and return runtime diagnostics |
+| `datamodel.ParseMessage(source)` | Parse source into the public data model |
+| `datamodel.StringifyMessage(message)` | Convert the data model back to source |
+| `datamodel.ValidateMessage(message, onError)` | Validate a parsed message |
 
 Full API details are available on [pkg.go.dev](https://pkg.go.dev/github.com/kaptinlin/messageformat-go) and in [`docs/api-reference.md`](docs/api-reference.md).
+Import `github.com/kaptinlin/messageformat-go/pkg/datamodel` for direct model
+construction, validation, visitation, and type guards.
 
 ## Common Usage
 
@@ -175,7 +177,7 @@ See [`docs/custom-functions.md`](docs/custom-functions.md) and [`examples/custom
 
 ### Use ICU MessageFormat 1
 
-The independent `mf1` module keeps ICU MessageFormat v1 patterns on a typed Go boundary. Construct from one locale, compile once, and reuse the returned function:
+The independent `mf1` module keeps ICU MessageFormat v1 patterns on a typed Go boundary. Construct from one locale, compile once, and reuse the returned message:
 
 ```go
 messageFormat, err := mf1.New("en", nil)
@@ -188,7 +190,7 @@ if err != nil {
 	log.Fatal(err)
 }
 
-out, err := compiled(map[string]any{"name": "World"})
+out, err := compiled.Format(map[string]any{"name": "World"})
 if err != nil {
 	log.Fatal(err)
 }
@@ -196,7 +198,9 @@ if err != nil {
 fmt.Println(out) // Hello, World!
 ```
 
-Use `mf1.NewWithPlural` for a caller-supplied plural function. Malformed locale tags return an error; syntactically valid locales without plural data use the module's stable fallback locale.
+Use `mf1.NewWithPlural` with a `mf1.PluralProfile` for caller-supplied plural
+behavior. Malformed locale tags return an error; syntactically valid locales
+without plural data use the module's stable fallback locale.
 
 ## Configuration
 
@@ -209,7 +213,6 @@ Use functional options for focused constructor changes:
 | `WithLocaleMatcher(matcher)` | Select locale matching behavior | `LocaleBestFit` |
 | `WithFunction(name, fn)` | Register one custom function | Built-ins only |
 | `WithFunctions(funcs)` | Register multiple custom functions | Built-ins only |
-| `WithLogger(logger)` | Attach an instance logger | `slog.Default()` |
 
 Example:
 

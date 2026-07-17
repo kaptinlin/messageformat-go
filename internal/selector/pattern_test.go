@@ -21,16 +21,16 @@ func createTestContext() *resolve.Context {
 			"count": 1,
 			"name":  "Alice",
 		},
-		nil,
-	)
+		nil, "best fit")
 }
 
 func TestSelectPatternMessage(t *testing.T) {
 	// Create a simple pattern message
-	pattern := datamodel.NewPattern([]datamodel.PatternElement{
+	pattern := mustPattern(t, []datamodel.PatternElement{
 		datamodel.NewTextElement("Hello World"),
 	})
-	message := datamodel.NewPatternMessage(nil, pattern, "")
+
+	message := mustPatternMessage(t, nil, pattern, "")
 
 	ctx := createTestContext()
 
@@ -47,21 +47,20 @@ func TestSelectSelectMessage(t *testing.T) {
 	}
 
 	variants := []datamodel.Variant{
-		*datamodel.NewVariant(
+		*mustVariant(t,
 			[]datamodel.VariantKey{datamodel.NewLiteral("1")},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("One item"),
-			}),
-		),
-		*datamodel.NewVariant(
+			})),
+
+		*mustVariant(t,
 			[]datamodel.VariantKey{datamodel.NewCatchallKey("*")},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Many items"),
-			}),
-		),
+			})),
 	}
 
-	message := datamodel.NewSelectMessage(nil, selectors, variants, "")
+	message := mustSelectMessage(t, nil, selectors, variants, "")
 
 	ctx := createTestContext()
 

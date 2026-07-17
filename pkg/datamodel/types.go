@@ -9,7 +9,12 @@ import (
 	"slices"
 )
 
-var ErrInvalidMarkupKind = errors.New("invalid markup kind")
+var (
+	ErrInvalidExpression       = errors.New("invalid expression")
+	ErrInvalidInputDeclaration = errors.New("invalid input declaration")
+	ErrInvalidMarkupKind       = errors.New("invalid markup kind")
+	ErrNilMember               = errors.New("nil data model member")
+)
 
 // Options represents the options of FunctionRef and Markup
 // TypeScript original code:
@@ -77,6 +82,27 @@ func cloneDeclarations(declarations []Declaration) []Declaration {
 	return slices.Clone(declarations)
 }
 
+// validateDeclarations rejects nil members before declarations are stored.
+// TypeScript original code:
+// const declarations: Declaration[] = values;
+func validateDeclarations(declarations []Declaration) error {
+	for i, declaration := range declarations {
+		switch value := declaration.(type) {
+		case nil:
+			return fmt.Errorf("%w: declaration %d", ErrNilMember, i)
+		case *InputDeclaration:
+			if value == nil {
+				return fmt.Errorf("%w: declaration %d", ErrNilMember, i)
+			}
+		case *LocalDeclaration:
+			if value == nil {
+				return fmt.Errorf("%w: declaration %d", ErrNilMember, i)
+			}
+		}
+	}
+	return nil
+}
+
 func cloneVariableRefs(refs []VariableRef) []VariableRef {
 	if refs == nil {
 		return []VariableRef{}
@@ -109,6 +135,31 @@ func clonePattern(pattern Pattern) Pattern {
 	return Pattern(slices.Clone([]PatternElement(pattern)))
 }
 
+// validatePatternElements rejects nil members before a pattern is stored.
+// TypeScript original code:
+// const pattern: Pattern = elements;
+func validatePatternElements(elements []PatternElement) error {
+	for i, element := range elements {
+		switch value := element.(type) {
+		case nil:
+			return fmt.Errorf("%w: pattern element %d", ErrNilMember, i)
+		case *TextElement:
+			if value == nil {
+				return fmt.Errorf("%w: pattern element %d", ErrNilMember, i)
+			}
+		case *Expression:
+			if value == nil {
+				return fmt.Errorf("%w: pattern element %d", ErrNilMember, i)
+			}
+		case *Markup:
+			if value == nil {
+				return fmt.Errorf("%w: pattern element %d", ErrNilMember, i)
+			}
+		}
+	}
+	return nil
+}
+
 func cloneOptions(options Options) Options {
 	if options == nil {
 		return nil
@@ -116,11 +167,53 @@ func cloneOptions(options Options) Options {
 	return maps.Clone(options)
 }
 
+// validateOptions rejects nil members before options are stored.
+// TypeScript original code:
+// const options: Options = values;
+func validateOptions(options Options) error {
+	for _, name := range slices.Sorted(maps.Keys(options)) {
+		switch value := options[name].(type) {
+		case nil:
+			return fmt.Errorf("%w: option %q", ErrNilMember, name)
+		case *Literal:
+			if value == nil {
+				return fmt.Errorf("%w: option %q", ErrNilMember, name)
+			}
+		case *VariableRef:
+			if value == nil {
+				return fmt.Errorf("%w: option %q", ErrNilMember, name)
+			}
+		}
+	}
+	return nil
+}
+
 func cloneAttributes(attributes Attributes) Attributes {
 	if attributes == nil {
 		return nil
 	}
 	return maps.Clone(attributes)
+}
+
+// validateAttributes rejects nil members before attributes are stored.
+// TypeScript original code:
+// const attributes: Attributes = values;
+func validateAttributes(attributes Attributes) error {
+	for _, name := range slices.Sorted(maps.Keys(attributes)) {
+		switch value := attributes[name].(type) {
+		case nil:
+			return fmt.Errorf("%w: attribute %q", ErrNilMember, name)
+		case *Literal:
+			if value == nil {
+				return fmt.Errorf("%w: attribute %q", ErrNilMember, name)
+			}
+		case *BooleanAttribute:
+			if value == nil {
+				return fmt.Errorf("%w: attribute %q", ErrNilMember, name)
+			}
+		}
+	}
+	return nil
 }
 
 func cloneVariantValue(variant Variant) Variant {
@@ -244,23 +337,27 @@ type PatternMessage struct {
 }
 
 // NewPatternMessage creates a new pattern message
-func NewPatternMessage(declarations []Declaration, pattern Pattern, comment string) *PatternMessage {
-	return &PatternMessage{
-		declarations: cloneDeclarations(declarations),
-		pattern:      clonePattern(pattern),
-		comment:      comment,
-		span:         unknownSourceSpan(),
-	}
+// TypeScript original code:
+// const message: PatternMessage = { type: 'message', declarations, pattern };
+func NewPatternMessage(declarations []Declaration, pattern Pattern, comment string) (*PatternMessage, error) {
+	return newPatternMessageWithCST(declarations, pattern, comment, nil)
 }
 
 // newPatternMessageWithCST creates a new pattern message with source position from CST.
-func newPatternMessageWithCST(declarations []Declaration, pattern Pattern, comment string, cst sourcePosition) *PatternMessage {
+func newPatternMessageWithCST(declarations []Declaration, pattern Pattern, comment string, cst sourcePosition) (*PatternMessage, error) {
+	if err := validateDeclarations(declarations); err != nil {
+		return nil, err
+	}
+	if err := validatePatternElements(pattern); err != nil {
+		return nil, err
+	}
+
 	return &PatternMessage{
 		declarations: cloneDeclarations(declarations),
 		pattern:      clonePattern(pattern),
 		comment:      comment,
 		span:         sourceSpanFromPosition(cst),
-	}
+	}, nil
 }
 
 func (pm *PatternMessage) Type() string {
@@ -314,25 +411,25 @@ type SelectMessage struct {
 }
 
 // NewSelectMessage creates a new select message
-func NewSelectMessage(declarations []Declaration, selectors []VariableRef, variants []Variant, comment string) *SelectMessage {
-	return &SelectMessage{
-		declarations: cloneDeclarations(declarations),
-		selectors:    cloneVariableRefs(selectors),
-		variants:     cloneVariants(variants),
-		comment:      comment,
-		span:         unknownSourceSpan(),
-	}
+// TypeScript original code:
+// const message: SelectMessage = { type: 'select', declarations, selectors, variants };
+func NewSelectMessage(declarations []Declaration, selectors []VariableRef, variants []Variant, comment string) (*SelectMessage, error) {
+	return newSelectMessageWithCST(declarations, selectors, variants, comment, nil)
 }
 
 // newSelectMessageWithCST creates a new select message with source position from CST.
-func newSelectMessageWithCST(declarations []Declaration, selectors []VariableRef, variants []Variant, comment string, cst sourcePosition) *SelectMessage {
+func newSelectMessageWithCST(declarations []Declaration, selectors []VariableRef, variants []Variant, comment string, cst sourcePosition) (*SelectMessage, error) {
+	if err := validateDeclarations(declarations); err != nil {
+		return nil, err
+	}
+
 	return &SelectMessage{
 		declarations: cloneDeclarations(declarations),
 		selectors:    cloneVariableRefs(selectors),
 		variants:     cloneVariants(variants),
 		comment:      comment,
 		span:         sourceSpanFromPosition(cst),
-	}
+	}, nil
 }
 
 func (sm *SelectMessage) Type() string {
@@ -384,77 +481,31 @@ type Declaration interface {
 //	  [cstKey]?: CST.Declaration;
 //	}
 type InputDeclaration struct {
-	name  string
-	value *VariableRefExpression // Expression<VariableRef> in TypeScript
-	span  sourceSpan             // Source position from [cstKey]?: CST.Declaration
-}
-
-// VariableRefExpression represents an Expression with VariableRef constraint
-// This ensures the expression has a VariableRef arg, matching TypeScript constraint
-// TypeScript original code: Expression<VariableRef>
-type VariableRefExpression struct {
-	arg         *VariableRef // Must be VariableRef (not optional)
-	functionRef *FunctionRef // Optional function reference
-	attributes  Attributes   // Optional attributes
-	span        sourceSpan   // Source position from [cstKey]?: CST.Expression
-}
-
-// NewVariableRefExpression creates a new variable reference expression
-func NewVariableRefExpression(arg *VariableRef, functionRef *FunctionRef, attributes Attributes) *VariableRefExpression {
-	return &VariableRefExpression{
-		arg:         arg,
-		functionRef: functionRef,
-		attributes:  cloneAttributes(attributes),
-		span:        unknownSourceSpan(),
-	}
-}
-
-// newVariableRefExpressionWithCST creates a new variable reference expression with source position from CST.
-func newVariableRefExpressionWithCST(arg *VariableRef, functionRef *FunctionRef, attributes Attributes, cst sourcePosition) *VariableRefExpression {
-	return &VariableRefExpression{
-		arg:         arg,
-		functionRef: functionRef,
-		attributes:  cloneAttributes(attributes),
-		span:        sourceSpanFromPosition(cst),
-	}
-}
-
-func (vre *VariableRefExpression) Type() string {
-	return "expression"
-}
-
-func (vre *VariableRefExpression) Arg() *VariableRef {
-	return vre.arg
-}
-
-func (vre *VariableRefExpression) FunctionRef() *FunctionRef {
-	return vre.functionRef
-}
-
-func (vre *VariableRefExpression) Attributes() Attributes {
-	return cloneAttributes(vre.attributes)
-}
-
-func (vre *VariableRefExpression) GetPosition() (start, end int) {
-	return vre.span.getPosition()
+	value *Expression
+	span  sourceSpan // Source position from [cstKey]?: CST.Declaration
 }
 
 // NewInputDeclaration creates a new input declaration
-func NewInputDeclaration(name string, value *VariableRefExpression) *InputDeclaration {
-	return &InputDeclaration{
-		name:  name,
-		value: value,
-		span:  unknownSourceSpan(),
-	}
+// TypeScript original code:
+// const name = value.arg.name;
+func NewInputDeclaration(value *Expression) (*InputDeclaration, error) {
+	return newInputDeclarationWithCST(value, nil)
 }
 
 // newInputDeclarationWithCST creates a new input declaration with source position from CST.
-func newInputDeclarationWithCST(name string, value *VariableRefExpression, cst sourcePosition) *InputDeclaration {
+func newInputDeclarationWithCST(value *Expression, cst sourcePosition) (*InputDeclaration, error) {
+	if value == nil {
+		return nil, ErrInvalidInputDeclaration
+	}
+	arg, ok := value.arg.(*VariableRef)
+	if !ok || arg == nil {
+		return nil, ErrInvalidInputDeclaration
+	}
+
 	return &InputDeclaration{
-		name:  name,
 		value: value,
 		span:  sourceSpanFromPosition(cst),
-	}
+	}, nil
 }
 
 func (id *InputDeclaration) Type() string {
@@ -462,10 +513,10 @@ func (id *InputDeclaration) Type() string {
 }
 
 func (id *InputDeclaration) Name() string {
-	return id.name
+	return id.value.arg.(*VariableRef).Name()
 }
 
-func (id *InputDeclaration) Value() *VariableRefExpression {
+func (id *InputDeclaration) Value() *Expression {
 	return id.value
 }
 
@@ -544,21 +595,37 @@ type Variant struct {
 }
 
 // NewVariant creates a new variant
-func NewVariant(keys []VariantKey, value Pattern) *Variant {
-	return &Variant{
-		keys:  cloneVariantKeys(keys),
-		value: clonePattern(value),
-		span:  unknownSourceSpan(),
-	}
+// TypeScript original code:
+// const variant: Variant = { keys, value };
+func NewVariant(keys []VariantKey, value Pattern) (*Variant, error) {
+	return newVariantWithCST(keys, value, nil)
 }
 
 // newVariantWithCST creates a new variant with source position from CST.
-func newVariantWithCST(keys []VariantKey, value Pattern, cst sourcePosition) *Variant {
+func newVariantWithCST(keys []VariantKey, value Pattern, cst sourcePosition) (*Variant, error) {
+	for i, key := range keys {
+		switch value := key.(type) {
+		case nil:
+			return nil, fmt.Errorf("%w: variant key %d", ErrNilMember, i)
+		case *Literal:
+			if value == nil {
+				return nil, fmt.Errorf("%w: variant key %d", ErrNilMember, i)
+			}
+		case *CatchallKey:
+			if value == nil {
+				return nil, fmt.Errorf("%w: variant key %d", ErrNilMember, i)
+			}
+		}
+	}
+	if err := validatePatternElements(value); err != nil {
+		return nil, err
+	}
+
 	return &Variant{
 		keys:  cloneVariantKeys(keys),
 		value: clonePattern(value),
 		span:  sourceSpanFromPosition(cst),
-	}
+	}, nil
 }
 
 func (v *Variant) Keys() []VariantKey {
@@ -643,11 +710,14 @@ type Pattern []PatternElement
 
 // NewPattern creates a new pattern from elements
 // TypeScript original code: Pattern array construction
-func NewPattern(elements []PatternElement) Pattern {
-	if elements == nil {
-		return Pattern{}
+func NewPattern(elements []PatternElement) (Pattern, error) {
+	if err := validatePatternElements(elements); err != nil {
+		return nil, err
 	}
-	return Pattern(slices.Clone(elements))
+	if elements == nil {
+		return Pattern{}, nil
+	}
+	return Pattern(slices.Clone(elements)), nil
 }
 
 // Elements returns the pattern elements
@@ -751,23 +821,37 @@ type Expression struct {
 }
 
 // NewExpression creates a new expression
-func NewExpression(arg ExpressionArg, functionRef *FunctionRef, attributes Attributes) *Expression {
-	return &Expression{
-		arg:         arg,
-		functionRef: functionRef,
-		attributes:  cloneAttributes(attributes),
-		span:        unknownSourceSpan(),
-	}
+// TypeScript original code:
+// if (!arg && !functionRef) throw new TypeError('Invalid expression');
+func NewExpression(arg ExpressionArg, functionRef *FunctionRef, attributes Attributes) (*Expression, error) {
+	return newExpressionWithCST(arg, functionRef, attributes, nil)
 }
 
 // newExpressionWithCST creates a new expression with source position from CST.
-func newExpressionWithCST(arg ExpressionArg, functionRef *FunctionRef, attributes Attributes, cst sourcePosition) *Expression {
+func newExpressionWithCST(arg ExpressionArg, functionRef *FunctionRef, attributes Attributes, cst sourcePosition) (*Expression, error) {
+	switch value := arg.(type) {
+	case *Literal:
+		if value == nil {
+			arg = nil
+		}
+	case *VariableRef:
+		if value == nil {
+			arg = nil
+		}
+	}
+	if arg == nil && functionRef == nil {
+		return nil, ErrInvalidExpression
+	}
+	if err := validateAttributes(attributes); err != nil {
+		return nil, err
+	}
+
 	return &Expression{
 		arg:         arg,
 		functionRef: functionRef,
 		attributes:  cloneAttributes(attributes),
 		span:        sourceSpanFromPosition(cst),
-	}
+	}, nil
 }
 
 func (e *Expression) Type() string {
@@ -926,21 +1010,23 @@ type FunctionRef struct {
 }
 
 // NewFunctionRef creates a new function reference
-func NewFunctionRef(name string, options Options) *FunctionRef {
-	return &FunctionRef{
-		name:    name,
-		options: cloneOptions(options),
-		span:    unknownSourceSpan(),
-	}
+// TypeScript original code:
+// const functionRef: FunctionRef = { type: 'function', name, options };
+func NewFunctionRef(name string, options Options) (*FunctionRef, error) {
+	return newFunctionRefWithCST(name, options, nil)
 }
 
 // newFunctionRefWithCST creates a new function reference with source position from CST.
-func newFunctionRefWithCST(name string, options Options, cst sourcePosition) *FunctionRef {
+func newFunctionRefWithCST(name string, options Options, cst sourcePosition) (*FunctionRef, error) {
+	if err := validateOptions(options); err != nil {
+		return nil, err
+	}
+
 	return &FunctionRef{
 		name:    name,
 		options: cloneOptions(options),
 		span:    sourceSpanFromPosition(cst),
-	}
+	}, nil
 }
 
 func (fr *FunctionRef) Type() string {
@@ -998,6 +1084,12 @@ func newMarkupWithCST(kind MarkupKind, name string, options Options, attributes 
 	if !validMarkupKind(kind) {
 		return nil, ErrInvalidMarkupKind
 	}
+	if err := validateOptions(options); err != nil {
+		return nil, err
+	}
+	if err := validateAttributes(attributes); err != nil {
+		return nil, err
+	}
 	return &Markup{
 		kind:       kind,
 		name:       name,
@@ -1032,24 +1124,6 @@ func (m *Markup) GetPosition() (start, end int) {
 }
 
 func (m *Markup) patternElement() {}
-
-// Helper functions for type conversion and compatibility
-
-// ConvertExpressionToVariableRefExpression converts Expression to VariableRefExpression if possible
-// This is used for backward compatibility with fromcst.go
-func ConvertExpressionToVariableRefExpression(expr *Expression) *VariableRefExpression {
-	if expr == nil {
-		return nil
-	}
-
-	// Check if the arg is a VariableRef
-	if varRef, ok := expr.arg.(*VariableRef); ok {
-		return newVariableRefExpressionWithCST(varRef, expr.functionRef, expr.attributes, expr.span)
-	}
-
-	// If not a VariableRef, we can't convert - this should not happen for InputDeclaration
-	return nil
-}
 
 // ConvertMapToOptions converts map[string]interface{} to Options
 func ConvertMapToOptions(m map[string]any) Options {

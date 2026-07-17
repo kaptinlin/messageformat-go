@@ -174,7 +174,7 @@ func (pe *ParseError) Error() string {
 	if pe.Token == nil {
 		return fmt.Sprintf("ParseError: %s", pe.Message)
 	}
-	return globalLexer.FormatError(pe.Token, pe.Message)
+	return (&Lexer{source: pe.Token.source}).FormatError(pe.Token, pe.Message)
 }
 
 // NewParseError creates a new ParseError
@@ -197,9 +197,12 @@ type Parser struct {
 }
 
 // NewParser creates a new parser instance
-func NewParser(src string, options *ParseOptions) *Parser {
+func NewParser(src string, options *ParseOptions) (*Parser, error) {
 	lexer := NewLexer(src)
-	tokens, _ := lexer.Tokenize()
+	tokens, err := lexer.Tokenize()
+	if err != nil {
+		return nil, err
+	}
 
 	// Set default options
 	cardinalKeys := []PluralCategory{PluralZero, PluralOne, PluralTwo, PluralFew, PluralMany, PluralOther}
@@ -228,7 +231,7 @@ func NewParser(src string, options *ParseOptions) *Parser {
 		cardinalKeys:     cardinalKeys,
 		ordinalKeys:      ordinalKeys,
 		strictPluralKeys: strictPluralKeys,
-	}
+	}, nil
 }
 
 // getContext converts LexerToken to Context
@@ -349,6 +352,19 @@ func (p *Parser) checkSelectKey(lt *LexerToken, selectType string, key string) e
 	return NewParseError(lt, fmt.Sprintf("The %s case %s is not valid in this locale", selectType, key))
 }
 
+// unexpectedEndError returns a positioned error for parser-owned EOF failures.
+// TypeScript original code:
+// throw new ParseError(null, 'Unexpected message end');
+func (p *Parser) unexpectedEndError() *ParseError {
+	token := &LexerToken{
+		Offset: p.lexer.pos,
+		Line:   p.lexer.line,
+		Col:    p.lexer.col,
+		source: p.lexer.source,
+	}
+	return NewParseError(token, "Unexpected message end")
+}
+
 // parseSelect parses a select/plural/selectordinal statement
 func (p *Parser) parseSelect(argToken *LexerToken, inPlural bool, ctx Context, selectType string) (*Select, error) {
 	sel := &Select{
@@ -367,7 +383,7 @@ func (p *Parser) parseSelect(argToken *LexerToken, inPlural bool, ctx Context, s
 	for {
 		lt := p.nextToken()
 		if lt == nil {
-			return nil, NewParseError(nil, "Unexpected message end")
+			return nil, p.unexpectedEndError()
 		}
 
 		switch lt.Type {
@@ -424,7 +440,7 @@ func (p *Parser) parseArgToken(lt *LexerToken, inPlural bool) (Token, error) {
 
 	argType := p.nextToken()
 	if argType == nil {
-		return nil, NewParseError(nil, "Unexpected message end")
+		return nil, p.unexpectedEndError()
 	}
 
 	ctx.Text += argType.Text
@@ -448,7 +464,7 @@ func (p *Parser) parseArgToken(lt *LexerToken, inPlural bool) (Token, error) {
 	case TokenFuncSimple:
 		end := p.nextToken()
 		if end == nil {
-			return nil, NewParseError(nil, "Unexpected message end")
+			return nil, p.unexpectedEndError()
 		}
 		if end.Type != TokenEnd {
 			return nil, NewParseError(end, fmt.Sprintf("Unexpected lexer token: %s", end.Type))
@@ -513,7 +529,7 @@ func (p *Parser) parseBody(inPlural bool, atRoot bool) ([]Token, error) {
 			if atRoot {
 				return tokens, nil
 			}
-			return nil, NewParseError(nil, "Unexpected message end")
+			return nil, p.unexpectedEndError()
 		}
 
 		// Advance token index since we're consuming this token
@@ -569,6 +585,9 @@ func (p *Parser) Parse() ([]Token, error) {
 
 // Parse function that matches TypeScript's parse signature
 func Parse(src string, options *ParseOptions) ([]Token, error) {
-	parser := NewParser(src, options)
+	parser, err := NewParser(src, options)
+	if err != nil {
+		return nil, err
+	}
 	return parser.Parse()
 }

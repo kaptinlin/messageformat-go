@@ -58,7 +58,7 @@ func TestStringValueWithDir(t *testing.T) {
 }
 
 func TestNumberValue(t *testing.T) {
-	nv := NewNumberValue(42, "en", "test", nil)
+	nv := mustNumberValue(t, 42, "en", "test", nil)
 
 	assert.Equal(t, "number", nv.Type())
 	assert.Equal(t, "test", nv.Source())
@@ -89,27 +89,137 @@ func TestNumberValue(t *testing.T) {
 	assert.Equal(t, "42", numberSubPart.Text())
 }
 
+func TestFormattedPartPartsReturnsSnapshot(t *testing.T) {
+	t.Parallel()
+
+	type partsAccessor interface {
+		Parts() []MessagePart
+	}
+	tests := []struct {
+		name string
+		part func(*testing.T) partsAccessor
+	}{
+		{
+			name: "number",
+			part: func(t *testing.T) partsAccessor {
+				value := mustNumberValue(t, 1234.5, "en", "number", nil)
+				parts, err := value.ToParts()
+				require.NoError(t, err)
+				require.Len(t, parts, 1)
+				part, ok := parts[0].(*NumberPart)
+				require.True(t, ok)
+				return part
+			},
+		},
+		{
+			name: "datetime",
+			part: func(t *testing.T) partsAccessor {
+				value := mustDateTimeValue(
+					t,
+					time.Date(2026, time.July, 16, 12, 30, 0, 0, time.UTC),
+					"en",
+					"datetime",
+					map[string]any{"dateStyle": "medium"},
+				)
+				parts, err := value.ToParts()
+				require.NoError(t, err)
+				require.Len(t, parts, 1)
+				part, ok := parts[0].(*DateTimePart)
+				require.True(t, ok)
+				return part
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			part := tt.part(t)
+			first := part.Parts()
+			require.NotEmpty(t, first)
+			original := first[0]
+			first[0] = NewTextPart("changed", "changed", "en")
+
+			fresh := part.Parts()
+			require.NotEmpty(t, fresh)
+			assert.Same(t, original, fresh[0])
+		})
+	}
+}
+
+// TestNumberValueUsesResolvedLocaleAndConsistentProjection proves all public projections share one Intl plan.
+// TypeScript original code:
+// locale ??= nf.resolvedOptions().locale;
+// const parts = nf.formatToParts(value);
+func TestNumberValueUsesResolvedLocaleAndConsistentProjection(t *testing.T) {
+	t.Parallel()
+
+	nv := mustNumberValue(t, 1234.5, "en-us", "source", map[string]any{
+		"minimumFractionDigits": 1,
+	})
+	assert.Equal(t, "en-US", nv.Locale())
+
+	formatted, err := nv.ToString()
+	require.NoError(t, err)
+	parts, err := nv.ToParts()
+	require.NoError(t, err)
+	require.Len(t, parts, 1)
+
+	numberPart, ok := parts[0].(*NumberPart)
+	require.True(t, ok)
+	assert.Equal(t, nv.Locale(), numberPart.Locale())
+
+	var joined string
+	for _, part := range numberPart.Parts() {
+		assert.Equal(t, nv.Locale(), part.Locale())
+		textPart, ok := part.(interface{ Text() string })
+		require.True(t, ok)
+		joined += textPart.Text()
+	}
+	assert.Equal(t, formatted, joined)
+}
+
+// TestNumberValuePluralSelectionUsesResolvedFormattingPlan proves rendering and selection apply the same rounding.
+// TypeScript original code:
+// cat ??= new Intl.PluralRules(locales, pluralOpt).select(Number(numVal));
+func TestNumberValuePluralSelectionUsesResolvedFormattingPlan(t *testing.T) {
+	t.Parallel()
+
+	nv := mustNumberValueWithSelection(t, 1.2, "zz", "source", bidi.DirAuto, map[string]any{
+		"maximumFractionDigits": 0,
+	}, true)
+	assert.Equal(t, "en", nv.Locale())
+	formatted, err := nv.ToString()
+	require.NoError(t, err)
+	assert.Equal(t, "1", formatted)
+
+	keys, err := nv.SelectKeys([]string{"one", "other"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"one"}, keys)
+}
+
 func TestMessageValueConstructorsCloneOptions(t *testing.T) {
 	options := map[string]any{"style": "currency", "currency": "USD"}
-	numberValue := NewNumberValue(42, "en", "test", options)
+	numberValue := mustNumberValue(t, 42, "en", "test", options)
 	options["currency"] = "EUR"
 
 	assert.Equal(t, "USD", numberValue.Options()["currency"])
 
 	dirOptions := map[string]any{"style": "percent"}
-	numberWithDir := NewNumberValueWithDir(0.42, "en", "test", bidi.DirLTR, dirOptions)
+	numberWithDir := mustNumberValueWithDir(t, 0.42, "en", "test", bidi.DirLTR, dirOptions)
 	dirOptions["style"] = "unit"
 
 	assert.Equal(t, "percent", numberWithDir.Options()["style"])
 
 	selectionOptions := map[string]any{"select": "ordinal"}
-	numberWithSelection := NewNumberValueWithSelection(1, "en", "test", bidi.DirLTR, selectionOptions, true)
+	numberWithSelection := mustNumberValueWithSelection(t, 1, "en", "test", bidi.DirLTR, selectionOptions, true)
 	selectionOptions["select"] = "cardinal"
 
 	assert.Equal(t, "ordinal", numberWithSelection.Options()["select"])
 
 	timeOptions := map[string]any{"dateStyle": "short"}
-	dateTimeValue := NewDateTimeValue(time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC), "en", "test", timeOptions)
+	dateTimeValue := mustDateTimeValue(t, time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC), "en", "test", timeOptions)
 	timeOptions["dateStyle"] = "full"
 
 	assert.Equal(t, "short", dateTimeValue.Options()["dateStyle"])
@@ -118,7 +228,10 @@ func TestMessageValueConstructorsCloneOptions(t *testing.T) {
 func TestNumberValueOptionsReturnsSnapshot(t *testing.T) {
 	t.Parallel()
 
-	value := NewNumberValue(42, "en", "test", map[string]any{"style": "currency"})
+	value := mustNumberValue(t, 42, "en", "test", map[string]any{
+		"style":    "currency",
+		"currency": "USD",
+	})
 	options := value.Options()
 	options["style"] = "decimal"
 
@@ -134,7 +247,7 @@ func TestOptionAccessorsReturnSnapshots(t *testing.T) {
 	}{
 		{
 			name: "datetime value",
-			value: NewDateTimeValue(
+			value: mustDateTimeValue(t,
 				time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC),
 				"en",
 				"test",
@@ -181,7 +294,7 @@ func TestNumberValueTypes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nv := NewNumberValue(tt.value, "en", "test", nil)
+			nv := mustNumberValue(t, tt.value, "en", "test", nil)
 			str, err := nv.ToString()
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, str)
@@ -226,7 +339,7 @@ func TestNumberValueSelectKeys(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nv := NewNumberValue(tt.value, "en", "test", nil)
+			nv := mustNumberValue(t, tt.value, "en", "test", nil)
 			keys, err := nv.SelectKeys(tt.keys)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, keys)

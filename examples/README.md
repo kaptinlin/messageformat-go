@@ -98,7 +98,7 @@ Covers advanced MessageFormat 2.0 capabilities:
 - Complex multi-selector pattern matching (.match statements)
 - Custom functions with complex logic and styling
 - Performance optimization techniques and caching
-- Custom error handlers with `WithErrorHandler()`
+- Recoverable diagnostics returned alongside fallback output
 - Nested patterns and local declarations
 - Multi-locale support and fallback handling
 - Working with structured data types
@@ -119,7 +119,7 @@ All examples are designed to be easily adapted for additional locales.
 - ✅ **Pluralization**: Complex `.match` statements with exact numbers and categories
 - ✅ **Custom Functions**: Registration with `WithFunction()` and parameter options
 - ✅ **Bidirectional Text**: Unicode bidi isolation controls
-- ✅ **Error Handling**: Graceful fallbacks and custom error handlers
+- ✅ **Error Handling**: Graceful fallbacks with returned diagnostics
 - ✅ **Performance**: Optimization techniques and caching patterns
 - ✅ **Structured Output**: `FormatToParts()` for rich text rendering
 - ✅ **Multi-locale**: Language-specific formatting and fallback handling

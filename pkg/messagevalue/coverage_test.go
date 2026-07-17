@@ -90,10 +90,11 @@ func TestHelperConversionsAndConstructors(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "hello", str)
 
-		nv := Number(42)
+		nv, err := Number(42)
+		require.NoError(t, err)
 		require.NotNil(t, nv)
 		assert.Equal(t, "number", nv.Type())
-		assert.Equal(t, "", nv.Locale())
+		assert.Equal(t, "en", nv.Locale())
 		assert.Equal(t, "", nv.Source())
 		assert.NotNil(t, nv.Options())
 
@@ -129,7 +130,7 @@ func TestDateTimeValueAdditionalBehaviors(t *testing.T) {
 	t.Run("new style options format date time and timezone", func(t *testing.T) {
 		t.Parallel()
 
-		dtv := NewDateTimeValue(testTime, "en_US", "source", map[string]any{
+		dtv := mustDateTimeValue(t, testTime, "en_US", "source", map[string]any{
 			"dateFields":    "weekday-year-month-day",
 			"dateLength":    "long",
 			"timePrecision": "second",
@@ -150,13 +151,13 @@ func TestDateTimeValueAdditionalBehaviors(t *testing.T) {
 		assert.Equal(t, "datetime", parts[0].Type())
 		assert.Equal(t, formatted, fmt.Sprint(parts[0].Value()))
 		assert.Equal(t, "source", parts[0].Source())
-		assert.Equal(t, "en_US", parts[0].Locale())
+		assert.Equal(t, "en-US", parts[0].Locale())
 	})
 
 	t.Run("explicit direction with nil options preserves metadata", func(t *testing.T) {
 		t.Parallel()
 
-		dtv := NewDateTimeValueWithDir(testTime, "ar", "source", bidi.DirRTL, nil)
+		dtv := mustDateTimeValueWithDir(t, testTime, "ar", "source", bidi.DirRTL, nil)
 		assert.NotNil(t, dtv.Options())
 		assert.Equal(t, bidi.DirRTL, dtv.Dir())
 
@@ -173,7 +174,7 @@ func TestDateTimeValueAdditionalBehaviors(t *testing.T) {
 			t.Run(locale, func(t *testing.T) {
 				t.Parallel()
 
-				dtv := NewDateTimeValue(testTime, locale, "source", map[string]any{"dateStyle": "short"})
+				dtv := mustDateTimeValue(t, testTime, locale, "source", map[string]any{"dateStyle": "short"})
 				formatted, err := dtv.ToString()
 				require.NoError(t, err)
 				assert.NotEmpty(t, formatted)
@@ -184,12 +185,12 @@ func TestDateTimeValueAdditionalBehaviors(t *testing.T) {
 	t.Run("new style date and time options fall back independently", func(t *testing.T) {
 		t.Parallel()
 
-		dateOnly := NewDateTimeValue(testTime, "en-US", "source", map[string]any{"dateFields": "year-month-day", "dateLength": "short"})
+		dateOnly := mustDateTimeValue(t, testTime, "en-US", "source", map[string]any{"dateFields": "year-month-day", "dateLength": "short"})
 		formatted, err := dateOnly.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "1/2/2006", formatted)
 
-		timeOnly := NewDateTimeValue(testTime, "en-US", "source", map[string]any{"timePrecision": "minute", "timeZoneStyle": "none"})
+		timeOnly := mustDateTimeValue(t, testTime, "en-US", "source", map[string]any{"timePrecision": "minute", "timeZoneStyle": "none"})
 		formatted, err = timeOnly.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "3:04 PM", formatted)
@@ -197,7 +198,7 @@ func TestDateTimeValueAdditionalBehaviors(t *testing.T) {
 		// Invalid dateFields/timePrecision drop those expansions, leaving only the
 		// timeZoneStyle hint. go-intl pulls in default date+time fields when no
 		// explicit field is set, so the output still contains a date and time.
-		defaulted := NewDateTimeValue(testTime, "en-US", "source", map[string]any{"dateFields": 123, "timePrecision": 123, "timeZoneStyle": "long"})
+		defaulted := mustDateTimeValue(t, testTime, "en-US", "source", map[string]any{"dateFields": 123, "timePrecision": 123, "timeZoneStyle": "long"})
 		formatted, err = defaulted.ToString()
 		require.NoError(t, err)
 		assert.Contains(t, formatted, "2006")
@@ -207,17 +208,17 @@ func TestDateTimeValueAdditionalBehaviors(t *testing.T) {
 	t.Run("old style formatting supports date only time only and default", func(t *testing.T) {
 		t.Parallel()
 
-		dateOnly := NewDateTimeValue(testTime, "en-US", "source", map[string]any{"dateStyle": "full"})
+		dateOnly := mustDateTimeValue(t, testTime, "en-US", "source", map[string]any{"dateStyle": "full"})
 		formatted, err := dateOnly.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "Monday, January 2, 2006", formatted)
 
-		timeOnly := NewDateTimeValue(testTime, "en-US", "source", map[string]any{"timeStyle": "long"})
+		timeOnly := mustDateTimeValue(t, testTime, "en-US", "source", map[string]any{"timeStyle": "long"})
 		formatted, err = timeOnly.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "3:04:05 PM GMT", formatted)
 
-		defaulted := NewDateTimeValue(testTime, "en-US", "source", nil)
+		defaulted := mustDateTimeValue(t, testTime, "en-US", "source", nil)
 		formatted, err = defaulted.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "1/2/2006", formatted)
@@ -227,7 +228,7 @@ func TestDateTimeValueAdditionalBehaviors(t *testing.T) {
 func TestTimePrecisionHour(t *testing.T) {
 	t.Parallel()
 
-	hourValue := NewDateTimeValue(time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC), "en-US", "source", map[string]any{"timePrecision": "hour"})
+	hourValue := mustDateTimeValue(t, time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC), "en-US", "source", map[string]any{"timePrecision": "hour"})
 	formatted, err := hourValue.ToString()
 	require.NoError(t, err)
 	assert.Equal(t, "3 PM", formatted)
@@ -260,7 +261,7 @@ func TestNumberValueSelectionBehaviors(t *testing.T) {
 	t.Run("returns sentinel error when selection is disabled", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValueWithSelection(42, "en", "source", bidi.DirLTR, nil, false)
+		nv := mustNumberValueWithSelection(t, 42, "en", "source", bidi.DirLTR, nil, false)
 		assert.NotNil(t, nv.Options())
 
 		keys, err := nv.SelectKeys([]string{"42", "other"})
@@ -271,7 +272,7 @@ func TestNumberValueSelectionBehaviors(t *testing.T) {
 	t.Run("exact selection disables plural fallback", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValueWithSelection(2, "en", "source", bidi.DirAuto, map[string]any{"select": "exact"}, true)
+		nv := mustNumberValueWithSelection(t, 2, "en", "source", bidi.DirAuto, map[string]any{"select": "exact"}, true)
 		keys, err := nv.SelectKeys([]string{"one", "other"})
 		require.NoError(t, err)
 		assert.Empty(t, keys)
@@ -280,7 +281,7 @@ func TestNumberValueSelectionBehaviors(t *testing.T) {
 	t.Run("cardinal selection uses cardinal categories", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValueWithSelection(1, "en", "source", bidi.DirAuto, map[string]any{"select": "cardinal"}, true)
+		nv := mustNumberValueWithSelection(t, 1, "en", "source", bidi.DirAuto, map[string]any{"select": "cardinal"}, true)
 		keys, err := nv.SelectKeys([]string{"one", "two", "few", "other"})
 		require.NoError(t, err)
 		require.Len(t, keys, 1)
@@ -290,7 +291,7 @@ func TestNumberValueSelectionBehaviors(t *testing.T) {
 	t.Run("ordinal selection uses ordinal categories", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValueWithSelection(3, "en", "source", bidi.DirAuto, map[string]any{"select": "ordinal"}, true)
+		nv := mustNumberValueWithSelection(t, 3, "en", "source", bidi.DirAuto, map[string]any{"select": "ordinal"}, true)
 		keys, err := nv.SelectKeys([]string{"one", "two", "few", "other"})
 		require.NoError(t, err)
 		require.Len(t, keys, 1)
@@ -300,7 +301,7 @@ func TestNumberValueSelectionBehaviors(t *testing.T) {
 	t.Run("percent selection matches multiplied value", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValue(0.01, "en", "source", map[string]any{"style": "percent"})
+		nv := mustNumberValue(t, 0.01, "en", "source", map[string]any{"style": "percent"})
 		keys, err := nv.SelectKeys([]string{"=bad", "=1", "1", "other"})
 		require.NoError(t, err)
 		require.Len(t, keys, 1)
@@ -310,7 +311,7 @@ func TestNumberValueSelectionBehaviors(t *testing.T) {
 	t.Run("exact numeric key has precedence over plural category", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValueWithSelection(1, "en", "source", bidi.DirAuto, nil, true)
+		nv := mustNumberValueWithSelection(t, 1, "en", "source", bidi.DirAuto, nil, true)
 		keys, err := nv.SelectKeys([]string{"=1", "one", "other"})
 		require.NoError(t, err)
 		require.Len(t, keys, 1)
@@ -320,7 +321,7 @@ func TestNumberValueSelectionBehaviors(t *testing.T) {
 	t.Run("ordinal teen values use other category", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValueWithSelection(11, "en", "source", bidi.DirAuto, map[string]any{"select": "ordinal"}, true)
+		nv := mustNumberValueWithSelection(t, 11, "en", "source", bidi.DirAuto, map[string]any{"select": "ordinal"}, true)
 		keys, err := nv.SelectKeys([]string{"one", "two", "few", "other"})
 		require.NoError(t, err)
 		require.Len(t, keys, 1)
@@ -345,7 +346,7 @@ func TestNumberValueSelectionBehaviors(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
-				nv := NewNumberValueWithSelection(tc.value, "en", "source", bidi.DirAuto, map[string]any{"select": "ordinal"}, true)
+				nv := mustNumberValueWithSelection(t, tc.value, "en", "source", bidi.DirAuto, map[string]any{"select": "ordinal"}, true)
 				keys, err := nv.SelectKeys([]string{"one", "two", "few", "other"})
 				require.NoError(t, err)
 				require.Len(t, keys, 1)
@@ -354,19 +355,18 @@ func TestNumberValueSelectionBehaviors(t *testing.T) {
 		}
 	})
 
-	t.Run("unsupported value type is not selectable", func(t *testing.T) {
+	t.Run("unsupported value type is rejected during construction", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValueWithSelection("not-a-number", "en", "source", bidi.DirAuto, nil, true)
-		keys, err := nv.SelectKeys([]string{"other"})
-		require.NoError(t, err)
-		assert.Empty(t, keys)
+		nv, err := NewNumberValueWithSelection("not-a-number", "en", "source", bidi.DirAuto, nil, true)
+		assert.Nil(t, nv)
+		assert.ErrorIs(t, err, ErrInvalidNumber)
 	})
 
 	t.Run("fractional numbers match formatted string keys", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValueWithSelection(1.5, "en", "source", bidi.DirAuto, nil, true)
+		nv := mustNumberValueWithSelection(t, 1.5, "en", "source", bidi.DirAuto, nil, true)
 		keys, err := nv.SelectKeys([]string{"=bad", "1.5", "other"})
 		require.NoError(t, err)
 		require.Len(t, keys, 1)
@@ -399,7 +399,7 @@ func TestNumberValueSelectionBehaviors(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
-				nv := NewNumberValueWithSelection(tc.value, tc.locale, "source", bidi.DirAuto, nil, true)
+				nv := mustNumberValueWithSelection(t, tc.value, tc.locale, "source", bidi.DirAuto, nil, true)
 				keys, err := nv.SelectKeys([]string{"zero", "one", "two", "few", "many", "other"})
 				require.NoError(t, err)
 				require.Len(t, keys, 1)
@@ -412,33 +412,37 @@ func TestNumberValueSelectionBehaviors(t *testing.T) {
 func TestNumberValueFormattingAndParts(t *testing.T) {
 	t.Parallel()
 
-	t.Run("decimal formatting handles grouping fraction and unsupported values", func(t *testing.T) {
+	t.Run("decimal formatting handles grouping and fraction options", func(t *testing.T) {
 		t.Parallel()
 
-		ungrouped := NewNumberValue(1234.5, "en", "source", map[string]any{
+		ungrouped := mustNumberValue(t, 1234.5, "en", "source", map[string]any{
 			"minimumFractionDigits": 2,
-			"maximumFractionDigits": 1,
+			"maximumFractionDigits": 3,
 			"useGrouping":           "never",
 		})
+
 		formatted, err := ungrouped.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "1234.50", formatted)
 
-		unsupported := NewNumberValue(struct{ Name string }{Name: "Ada"}, "en", "source", nil)
-		formatted, err = unsupported.ToString()
-		require.NoError(t, err)
-		assert.Equal(t, "{Ada}", formatted)
-
-		noGrouping := NewNumberValue(1234, "en", "source", map[string]any{"useGrouping": false})
+		noGrouping := mustNumberValue(t, 1234, "en", "source", map[string]any{"useGrouping": false})
 		formatted, err = noGrouping.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "1234", formatted)
 	})
 
+	t.Run("unsupported number values fail construction", func(t *testing.T) {
+		t.Parallel()
+
+		nv, err := NewNumberValue(struct{ Name string }{Name: "Ada"}, "en", "source", nil)
+		assert.Nil(t, nv)
+		assert.ErrorIs(t, err, ErrInvalidNumber)
+	})
+
 	t.Run("decimal parts preserve sign grouping and metadata", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValueWithDir(-1234.5, "en", "number-source", bidi.DirRTL, map[string]any{
+		nv := mustNumberValueWithDir(t, -1234.5, "en", "number-source", bidi.DirRTL, map[string]any{
 			"minimumFractionDigits": 1,
 			"maximumFractionDigits": 1,
 		})
@@ -481,22 +485,24 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 	t.Run("currency formatting supports code and accounting name display", func(t *testing.T) {
 		t.Parallel()
 
-		codeValue := NewNumberValue(42, "en", "money-source", map[string]any{
+		codeValue := mustNumberValue(t, 42, "en", "money-source", map[string]any{
 			"style":           "currency",
 			"currency":        "USD",
 			"currencyDisplay": "code",
 		})
+
 		codeFormatted, err := codeValue.ToString()
 		require.NoError(t, err)
 		assert.Contains(t, codeFormatted, "USD")
 		assert.NotContains(t, codeFormatted, "$")
 
-		nameValue := NewNumberValue(-42, "en", "money-source", map[string]any{
+		nameValue := mustNumberValue(t, -42, "en", "money-source", map[string]any{
 			"style":           "currency",
 			"currency":        "USD",
 			"currencyDisplay": "name",
 			"currencySign":    "accounting",
 		})
+
 		nameFormatted, err := nameValue.ToString()
 		require.NoError(t, err)
 		assert.Contains(t, nameFormatted, "US dollars")
@@ -505,29 +511,38 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 		assert.NotContains(t, nameFormatted, "$")
 	})
 
-	t.Run("currency formatting falls back for missing invalid and unknown currency", func(t *testing.T) {
+	t.Run("currency formatting rejects missing and invalid currency", func(t *testing.T) {
 		t.Parallel()
 
 		tests := []struct {
 			name    string
 			options map[string]any
-			want    string
 		}{
-			{name: "missing currency", options: map[string]any{"style": "currency"}, want: "42"},
-			{name: "non string currency", options: map[string]any{"style": "currency", "currency": 123}, want: "42"},
-			{name: "unsupported currency", options: map[string]any{"style": "currency", "currency": "ZZZ"}, want: "ZZZ42.00"},
+			{name: "missing currency", options: map[string]any{"style": "currency"}},
+			{name: "non string currency", options: map[string]any{"style": "currency", "currency": 123}},
 		}
 
 		for _, tc := range tests {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
-				nv := NewNumberValue(42, "en", "money-source", tc.options)
-				formatted, err := nv.ToString()
-				require.NoError(t, err)
-				assert.Equal(t, tc.want, formatted)
+				nv, err := NewNumberValue(42, "en", "money-source", tc.options)
+				assert.Nil(t, nv)
+				assert.ErrorIs(t, err, ErrInvalidNumberOptions)
 			})
 		}
+	})
+
+	t.Run("currency formatting accepts structurally valid unknown codes", func(t *testing.T) {
+		t.Parallel()
+
+		nv := mustNumberValue(t, 42, "en", "money-source", map[string]any{
+			"style":    "currency",
+			"currency": "ZZZ",
+		})
+		formatted, err := nv.ToString()
+		require.NoError(t, err)
+		assert.Equal(t, "ZZZ42.00", formatted)
 	})
 
 	t.Run("currency name display covers common regional names", func(t *testing.T) {
@@ -550,11 +565,12 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
-				nv := NewNumberValue(42, "en", "money-source", map[string]any{
+				nv := mustNumberValue(t, 42, "en", "money-source", map[string]any{
 					"style":           "currency",
 					"currency":        tc.currency,
 					"currencyDisplay": "name",
 				})
+
 				formatted, err := nv.ToString()
 				require.NoError(t, err)
 				assert.Contains(t, formatted, tc.want)
@@ -565,7 +581,7 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 	t.Run("currency parts expose literals currency and numeric pieces", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValue(-42, "en", "money-source", map[string]any{
+		nv := mustNumberValue(t, -42, "en", "money-source", map[string]any{
 			"style":        "currency",
 			"currency":     "USD",
 			"currencySign": "accounting",
@@ -597,11 +613,12 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 	t.Run("currency code parts fall back to numeric parsing", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValue(42, "en", "money-source", map[string]any{
+		nv := mustNumberValue(t, 42, "en", "money-source", map[string]any{
 			"style":           "currency",
 			"currency":        "USD",
 			"currencyDisplay": "code",
 		})
+
 		formatted, err := nv.ToString()
 		require.NoError(t, err)
 		assert.Contains(t, formatted, "USD")
@@ -627,7 +644,7 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 	t.Run("percent parts expose sign decimal fraction and percent symbol", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValue(0.125, "en", "percent-source", map[string]any{
+		nv := mustNumberValue(t, 0.125, "en", "percent-source", map[string]any{
 			"style":                 "percent",
 			"maximumFractionDigits": 1,
 			"signDisplay":           "always",
@@ -656,18 +673,18 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 	t.Run("percent formatting chooses integer and fractional defaults", func(t *testing.T) {
 		t.Parallel()
 
-		integerPercent := NewNumberValue(0.12, "en", "percent-source", map[string]any{"style": "percent"})
+		integerPercent := mustNumberValue(t, 0.12, "en", "percent-source", map[string]any{"style": "percent"})
 		formatted, err := integerPercent.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "12%", formatted)
 
-		fractionPercent := NewNumberValue(0.125, "en", "percent-source", map[string]any{"style": "percent"})
+		fractionPercent := mustNumberValue(t, 0.125, "en", "percent-source", map[string]any{"style": "percent"})
 		formatted, err = fractionPercent.ToString()
 		require.NoError(t, err)
 		// ECMA-402: percent style defaults to maximumFractionDigits=0, so 12.5% rounds to 13%.
 		assert.Equal(t, "13%", formatted)
 
-		negativeZero := NewNumberValue(math.Copysign(0, -1), "en", "percent-source", map[string]any{"style": "percent", "signDisplay": "negative"})
+		negativeZero := mustNumberValue(t, math.Copysign(0, -1), "en", "percent-source", map[string]any{"style": "percent", "signDisplay": "negative"})
 		formatted, err = negativeZero.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "0%", formatted)
@@ -676,17 +693,17 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 	t.Run("sign display options handle zero positive and negative numbers", func(t *testing.T) {
 		t.Parallel()
 
-		zero := NewNumberValue(0, "en", "zero-source", map[string]any{"signDisplay": "exceptZero"})
+		zero := mustNumberValue(t, 0, "en", "zero-source", map[string]any{"signDisplay": "exceptZero"})
 		formatted, err := zero.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "0", formatted)
 
-		positive := NewNumberValue(7, "en", "positive-source", map[string]any{"signDisplay": "exceptZero"})
+		positive := mustNumberValue(t, 7, "en", "positive-source", map[string]any{"signDisplay": "exceptZero"})
 		formatted, err = positive.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "+7", formatted)
 
-		negative := NewNumberValue(-7, "en", "negative-source", map[string]any{"signDisplay": "never"})
+		negative := mustNumberValue(t, -7, "en", "negative-source", map[string]any{"signDisplay": "never"})
 		formatted, err = negative.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "7", formatted)
@@ -695,48 +712,32 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 	t.Run("sign display always and auto preserve existing signs", func(t *testing.T) {
 		t.Parallel()
 
-		positive := NewNumberValue(7, "en", "positive-source", map[string]any{"signDisplay": "always"})
+		positive := mustNumberValue(t, 7, "en", "positive-source", map[string]any{"signDisplay": "always"})
 		formatted, err := positive.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "+7", formatted)
 
-		negative := NewNumberValue(-7, "en", "negative-source", map[string]any{"signDisplay": "auto"})
+		negative := mustNumberValue(t, -7, "en", "negative-source", map[string]any{"signDisplay": "auto"})
 		formatted, err = negative.ToString()
 		require.NoError(t, err)
 		assert.Equal(t, "-7", formatted)
 	})
 
-	t.Run("unit formatting falls back for missing and invalid units", func(t *testing.T) {
+	t.Run("unit formatting rejects missing and invalid units", func(t *testing.T) {
 		t.Parallel()
 
-		missing := NewNumberValue(42, "en", "unit-source", map[string]any{"style": "unit"})
-		formatted, err := missing.ToString()
-		require.NoError(t, err)
-		assert.Equal(t, "42", formatted)
-
-		invalid := NewNumberValue(42, "en", "unit-source", map[string]any{"style": "unit", "unit": 123})
-		formatted, err = invalid.ToString()
-		require.NoError(t, err)
-		assert.Equal(t, "42", formatted)
+		tests := []map[string]any{
+			{"style": "unit"},
+			{"style": "unit", "unit": 123},
+		}
+		for _, options := range tests {
+			nv, err := NewNumberValue(42, "en", "unit-source", options)
+			assert.Nil(t, nv)
+			assert.ErrorIs(t, err, ErrInvalidNumberOptions)
+		}
 	})
 
-	t.Run("unit fallback parts parse fallback numbers", func(t *testing.T) {
-		t.Parallel()
-
-		nv := NewNumberValue(42, "en", "unit-source", map[string]any{"style": "unit"})
-		parts, err := nv.ToParts()
-		require.NoError(t, err)
-		require.Len(t, parts, 1)
-
-		numberPart, ok := parts[0].(*NumberPart)
-		require.True(t, ok)
-		subParts := numberPart.Parts()
-		require.Len(t, subParts, 1)
-		assert.Equal(t, "integer", subParts[0].Type())
-		assert.Equal(t, "42", fmt.Sprint(subParts[0].Value()))
-	})
-
-	t.Run("unit symbols support default narrow and unknown displays", func(t *testing.T) {
+	t.Run("unit symbols support default and narrow displays", func(t *testing.T) {
 		t.Parallel()
 
 		longUnits := []struct {
@@ -758,7 +759,7 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 			t.Run("long "+tt.name, func(t *testing.T) {
 				t.Parallel()
 
-				nv := NewNumberValue(1, "en", "unit-source", map[string]any{"style": "unit", "unit": tt.unit, "unitDisplay": "long"})
+				nv := mustNumberValue(t, 1, "en", "unit-source", map[string]any{"style": "unit", "unit": tt.unit, "unitDisplay": "long"})
 				formatted, err := nv.ToString()
 				require.NoError(t, err)
 				assert.Equal(t, tt.want, formatted)
@@ -777,38 +778,40 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 			{name: "second", unit: "second", want: "1 sec"},
 			{name: "minute", unit: "minute", want: "1 min"},
 			{name: "hour", unit: "hour", want: "1 hr"},
-			// ECMA-402's sanctioned unit list excludes "lightyear"; the formatter
-			// rejects the option and falls back to bare-number formatting.
-			{name: "unknown", unit: "lightyear", want: "1"},
 		}
 
 		for _, tt := range defaults {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 
-				nv := NewNumberValue(1, "en", "unit-source", map[string]any{"style": "unit", "unit": tt.unit})
+				nv := mustNumberValue(t, 1, "en", "unit-source", map[string]any{"style": "unit", "unit": tt.unit})
 				formatted, err := nv.ToString()
 				require.NoError(t, err)
 				assert.Equal(t, tt.want, formatted)
 			})
 		}
 
-		narrow := NewNumberValue(1, "en", "unit-source", map[string]any{"style": "unit", "unit": "kilometer", "unitDisplay": "narrow"})
+		narrow := mustNumberValue(t, 1, "en", "unit-source", map[string]any{"style": "unit", "unit": "kilometer", "unitDisplay": "narrow"})
 		formatted, err := narrow.ToString()
 		require.NoError(t, err)
 		// CLDR narrow pattern for length-kilometer (en) has no separator.
 		assert.Equal(t, "1km", formatted)
 
-		longUnknown := NewNumberValue(1, "en", "unit-source", map[string]any{"style": "unit", "unit": "lightyear", "unitDisplay": "long"})
-		formatted, err = longUnknown.ToString()
-		require.NoError(t, err)
-		assert.Equal(t, "1", formatted)
+		for _, display := range []string{"short", "long"} {
+			nv, err := NewNumberValue(1, "en", "unit-source", map[string]any{
+				"style":       "unit",
+				"unit":        "lightyear",
+				"unitDisplay": display,
+			})
+			assert.Nil(t, nv)
+			assert.ErrorIs(t, err, ErrInvalidNumberOptions)
+		}
 	})
 
 	t.Run("unit parts expose literal separator and unit name", func(t *testing.T) {
 		t.Parallel()
 
-		nv := NewNumberValue(42, "en", "unit-source", map[string]any{
+		nv := mustNumberValue(t, 42, "en", "unit-source", map[string]any{
 			"style":       "unit",
 			"unit":        "meter",
 			"unitDisplay": "long",

@@ -18,15 +18,14 @@ import (
 func TestSelectPattern_EmptySelectors(t *testing.T) {
 	// Create a select message with no selectors (should use catchall)
 	variants := []datamodel.Variant{
-		*datamodel.NewVariant(
+		*mustVariant(t,
 			[]datamodel.VariantKey{datamodel.NewCatchallKey("*")},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Catchall pattern"),
-			}),
-		),
+			})),
 	}
 
-	message := datamodel.NewSelectMessage(nil, []datamodel.VariableRef{}, variants, "")
+	message := mustSelectMessage(t, nil, []datamodel.VariableRef{}, variants, "")
 
 	ctx := createTestContext()
 	result := SelectPattern(ctx, message)
@@ -57,8 +56,7 @@ func TestSelectPattern_NoMatchingVariant(t *testing.T) {
 		map[string]any{
 			"count": 999,
 		},
-		onError,
-	)
+		onError, "best fit")
 
 	// Create a select message with only specific variants (no catchall)
 	selectors := []datamodel.VariableRef{
@@ -66,21 +64,20 @@ func TestSelectPattern_NoMatchingVariant(t *testing.T) {
 	}
 
 	variants := []datamodel.Variant{
-		*datamodel.NewVariant(
+		*mustVariant(t,
 			[]datamodel.VariantKey{datamodel.NewLiteral("1")},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("One"),
-			}),
-		),
-		*datamodel.NewVariant(
+			})),
+
+		*mustVariant(t,
 			[]datamodel.VariantKey{datamodel.NewLiteral("2")},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Two"),
-			}),
-		),
+			})),
 	}
 
-	message := datamodel.NewSelectMessage(nil, selectors, variants, "")
+	message := mustSelectMessage(t, nil, selectors, variants, "")
 
 	result := SelectPattern(ctx, message)
 
@@ -104,8 +101,7 @@ func TestSelectPattern_MultipleSelectors(t *testing.T) {
 			"gender": "female",
 			"count":  1,
 		},
-		nil,
-	)
+		nil, "best fit")
 
 	// Create a select message with 2 selectors
 	selectors := []datamodel.VariableRef{
@@ -114,36 +110,35 @@ func TestSelectPattern_MultipleSelectors(t *testing.T) {
 	}
 
 	variants := []datamodel.Variant{
-		*datamodel.NewVariant(
+		*mustVariant(t,
 			[]datamodel.VariantKey{
 				datamodel.NewLiteral("female"),
 				datamodel.NewLiteral("1"),
 			},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("She has one item"),
-			}),
-		),
-		*datamodel.NewVariant(
+			})),
+
+		*mustVariant(t,
 			[]datamodel.VariantKey{
 				datamodel.NewLiteral("male"),
 				datamodel.NewLiteral("1"),
 			},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("He has one item"),
-			}),
-		),
-		*datamodel.NewVariant(
+			})),
+
+		*mustVariant(t,
 			[]datamodel.VariantKey{
 				datamodel.NewCatchallKey("*"),
 				datamodel.NewCatchallKey("*"),
 			},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("They have items"),
-			}),
-		),
+			})),
 	}
 
-	message := datamodel.NewSelectMessage(nil, selectors, variants, "")
+	message := mustSelectMessage(t, nil, selectors, variants, "")
 
 	result := SelectPattern(ctx, message)
 
@@ -169,8 +164,7 @@ func TestSelectPattern_Backtracking(t *testing.T) {
 			"a": "x",
 			"b": "y",
 		},
-		nil,
-	)
+		nil, "best fit")
 
 	// Create a scenario where first selector matches "x" but second doesn't match "z"
 	// so it should backtrack and find the catchall
@@ -180,36 +174,35 @@ func TestSelectPattern_Backtracking(t *testing.T) {
 	}
 
 	variants := []datamodel.Variant{
-		*datamodel.NewVariant(
+		*mustVariant(t,
 			[]datamodel.VariantKey{
 				datamodel.NewLiteral("x"),
-				datamodel.NewLiteral("z"), // This won't match b="y"
+				datamodel.NewLiteral("z"),
 			},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Pattern 1"),
-			}),
-		),
-		*datamodel.NewVariant(
+			})),
+
+		*mustVariant(t,
 			[]datamodel.VariantKey{
 				datamodel.NewLiteral("x"),
-				datamodel.NewLiteral("y"), // This will match
+				datamodel.NewLiteral("y"),
 			},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Pattern 2"),
-			}),
-		),
-		*datamodel.NewVariant(
+			})),
+
+		*mustVariant(t,
 			[]datamodel.VariantKey{
 				datamodel.NewCatchallKey("*"),
 				datamodel.NewCatchallKey("*"),
 			},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Fallback"),
-			}),
-		),
+			})),
 	}
 
-	message := datamodel.NewSelectMessage(nil, selectors, variants, "")
+	message := mustSelectMessage(t, nil, selectors, variants, "")
 
 	result := SelectPattern(ctx, message)
 
@@ -235,25 +228,23 @@ func TestSelectPattern_BadSelector(t *testing.T) {
 			"number": functions.NumberFunction,
 		},
 		map[string]any{
-			"bad": "value", // String doesn't support selection
+			"bad": "value",
 		},
-		onError,
-	)
+		onError, "best fit")
 
 	selectors := []datamodel.VariableRef{
 		*datamodel.NewVariableRef("bad"),
 	}
 
 	variants := []datamodel.Variant{
-		*datamodel.NewVariant(
+		*mustVariant(t,
 			[]datamodel.VariantKey{datamodel.NewCatchallKey("*")},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Catchall"),
-			}),
-		),
+			})),
 	}
 
-	message := datamodel.NewSelectMessage(nil, selectors, variants, "")
+	message := mustSelectMessage(t, nil, selectors, variants, "")
 
 	result := SelectPattern(ctx, message)
 
@@ -275,8 +266,7 @@ func TestSelectPattern_KeyMismatch(t *testing.T) {
 			"a": "x",
 			"b": "y",
 		},
-		nil,
-	)
+		nil, "best fit")
 
 	// Create selectors with mismatched keys (fewer keys than selectors in some variants)
 	selectors := []datamodel.VariableRef{
@@ -285,27 +275,25 @@ func TestSelectPattern_KeyMismatch(t *testing.T) {
 	}
 
 	variants := []datamodel.Variant{
-		*datamodel.NewVariant(
+		*mustVariant(t,
 			[]datamodel.VariantKey{
 				datamodel.NewLiteral("x"),
-				// Missing second key - should trigger key mismatch
 			},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Incomplete"),
-			}),
-		),
-		*datamodel.NewVariant(
+			})),
+
+		*mustVariant(t,
 			[]datamodel.VariantKey{
 				datamodel.NewCatchallKey("*"),
 				datamodel.NewCatchallKey("*"),
 			},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Catchall"),
-			}),
-		),
+			})),
 	}
 
-	message := datamodel.NewSelectMessage(nil, selectors, variants, "")
+	message := mustSelectMessage(t, nil, selectors, variants, "")
 
 	result := SelectPattern(ctx, message)
 
@@ -324,23 +312,21 @@ func TestSelectPattern_CatchallOnly(t *testing.T) {
 		map[string]any{
 			"count": 42,
 		},
-		nil,
-	)
+		nil, "best fit")
 
 	selectors := []datamodel.VariableRef{
 		*datamodel.NewVariableRef("count"),
 	}
 
 	variants := []datamodel.Variant{
-		*datamodel.NewVariant(
+		*mustVariant(t,
 			[]datamodel.VariantKey{datamodel.NewCatchallKey("*")},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Default pattern"),
-			}),
-		),
+			})),
 	}
 
-	message := datamodel.NewSelectMessage(nil, selectors, variants, "")
+	message := mustSelectMessage(t, nil, selectors, variants, "")
 
 	result := SelectPattern(ctx, message)
 
@@ -365,8 +351,7 @@ func TestSelectPattern_ComplexBacktracking(t *testing.T) {
 			"b": "2",
 			"c": "3",
 		},
-		nil,
-	)
+		nil, "best fit")
 
 	// Create 3 selectors with matching variants
 	selectors := []datamodel.VariableRef{
@@ -376,29 +361,28 @@ func TestSelectPattern_ComplexBacktracking(t *testing.T) {
 	}
 
 	variants := []datamodel.Variant{
-		*datamodel.NewVariant(
+		*mustVariant(t,
 			[]datamodel.VariantKey{
 				datamodel.NewLiteral("1"),
 				datamodel.NewLiteral("2"),
-				datamodel.NewLiteral("3"), // This will match
+				datamodel.NewLiteral("3"),
 			},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Exact match"),
-			}),
-		),
-		*datamodel.NewVariant(
+			})),
+
+		*mustVariant(t,
 			[]datamodel.VariantKey{
 				datamodel.NewCatchallKey("*"),
 				datamodel.NewCatchallKey("*"),
 				datamodel.NewCatchallKey("*"),
 			},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Catchall"),
-			}),
-		),
+			})),
 	}
 
-	message := datamodel.NewSelectMessage(nil, selectors, variants, "")
+	message := mustSelectMessage(t, nil, selectors, variants, "")
 
 	result := SelectPattern(ctx, message)
 
@@ -425,8 +409,7 @@ func TestSelectPattern_MixedCatchallAndLiteral(t *testing.T) {
 			"a": "x",
 			"b": "y",
 		},
-		nil,
-	)
+		nil, "best fit")
 
 	selectors := []datamodel.VariableRef{
 		*datamodel.NewVariableRef("a"),
@@ -434,36 +417,35 @@ func TestSelectPattern_MixedCatchallAndLiteral(t *testing.T) {
 	}
 
 	variants := []datamodel.Variant{
-		*datamodel.NewVariant(
+		*mustVariant(t,
 			[]datamodel.VariantKey{
 				datamodel.NewLiteral("x"),
 				datamodel.NewCatchallKey("*"),
 			},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("X with any"),
-			}),
-		),
-		*datamodel.NewVariant(
+			})),
+
+		*mustVariant(t,
 			[]datamodel.VariantKey{
 				datamodel.NewCatchallKey("*"),
 				datamodel.NewLiteral("y"),
 			},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Any with Y"),
-			}),
-		),
-		*datamodel.NewVariant(
+			})),
+
+		*mustVariant(t,
 			[]datamodel.VariantKey{
 				datamodel.NewCatchallKey("*"),
 				datamodel.NewCatchallKey("*"),
 			},
-			datamodel.NewPattern([]datamodel.PatternElement{
+			mustPattern(t, []datamodel.PatternElement{
 				datamodel.NewTextElement("Catchall"),
-			}),
-		),
+			})),
 	}
 
-	message := datamodel.NewSelectMessage(nil, selectors, variants, "")
+	message := mustSelectMessage(t, nil, selectors, variants, "")
 
 	result := SelectPattern(ctx, message)
 
@@ -491,8 +473,7 @@ func TestSelectPattern_EmptyVariants(t *testing.T) {
 		map[string]any{
 			"count": 1,
 		},
-		onError,
-	)
+		onError, "best fit")
 
 	selectors := []datamodel.VariableRef{
 		*datamodel.NewVariableRef("count"),
@@ -501,7 +482,7 @@ func TestSelectPattern_EmptyVariants(t *testing.T) {
 	// Empty variants list
 	variants := []datamodel.Variant{}
 
-	message := datamodel.NewSelectMessage(nil, selectors, variants, "")
+	message := mustSelectMessage(t, nil, selectors, variants, "")
 
 	result := SelectPattern(ctx, message)
 
@@ -543,8 +524,7 @@ func TestSelectPattern_SingleSelector(t *testing.T) {
 				map[string]any{
 					"sel": tt.selectorValue,
 				},
-				nil,
-			)
+				nil, "best fit")
 
 			selectors := []datamodel.VariableRef{
 				*datamodel.NewVariableRef("sel"),
@@ -559,15 +539,14 @@ func TestSelectPattern_SingleSelector(t *testing.T) {
 					varKey = datamodel.NewLiteral(key)
 				}
 
-				variants = append(variants, *datamodel.NewVariant(
+				variants = append(variants, *mustVariant(t,
 					[]datamodel.VariantKey{varKey},
-					datamodel.NewPattern([]datamodel.PatternElement{
+					mustPattern(t, []datamodel.PatternElement{
 						datamodel.NewTextElement(fmt.Sprintf("Pattern %d", i)),
-					}),
-				))
+					})))
 			}
 
-			message := datamodel.NewSelectMessage(nil, selectors, variants, "")
+			message := mustSelectMessage(t, nil, selectors, variants, "")
 
 			result := SelectPattern(ctx, message)
 

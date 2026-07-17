@@ -389,7 +389,7 @@ func TestCurrencyBasicFunctionality(t *testing.T) {
 			"",
 		)
 
-		operand := messagevalue.NewNumberValue(42, "en", "operand", map[string]any{
+		operand := mustNumberValue(t, 42, "en", "operand", map[string]any{
 			"style": "percent",
 		})
 
@@ -416,7 +416,7 @@ func TestCurrencyBasicFunctionality(t *testing.T) {
 			"",
 		)
 
-		operand := messagevalue.NewNumberValue(42, "en", "operand", map[string]any{
+		operand := mustNumberValue(t, 42, "en", "operand", map[string]any{
 			"style":    "decimal",
 			"currency": "USD",
 		})

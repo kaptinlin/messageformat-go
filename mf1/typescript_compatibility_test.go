@@ -41,7 +41,7 @@ func loadTypeScriptTestCases() TypeScriptTestSuite {
 			{
 				Src: "{foo}",
 				Exp: [][]any{
-					{nil, map[string]any{"error": true}},
+					{nil, ""},
 					{map[string]any{"foo": "FOO"}, "FOO"},
 				},
 			},
@@ -156,14 +156,11 @@ func TestTypeScriptCompatibilityOfficial(t *testing.T) {
 			for i, testCase := range testCases {
 				t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
 					options := &MessageFormatOptions{}
+					formatValues := false
 
 					if testCase.Options != nil {
 						if rt, ok := testCase.Options["returnType"].(string); ok {
-							if rt == "values" {
-								options.ReturnType = ReturnTypeValues
-							} else {
-								options.ReturnType = ReturnTypeString
-							}
+							formatValues = rt == "values"
 						}
 
 						if req, ok := testCase.Options["requireAllArguments"].(bool); ok {
@@ -202,10 +199,21 @@ func TestTypeScriptCompatibilityOfficial(t *testing.T) {
 							continue
 						}
 
-						params := exp[0]
+						var params map[string]any
+						if exp[0] != nil {
+							var ok bool
+							params, ok = exp[0].(map[string]any)
+							require.True(t, ok, "unsupported fixture parameters %T", exp[0])
+						}
 						expected := exp[1]
 
-						result, err := compiled(params)
+						var result any
+						var err error
+						if formatValues {
+							result, err = compiled.FormatValues(params)
+						} else {
+							result, err = compiled.Format(params)
+						}
 
 						if errMap, ok := expected.(map[string]any); ok && errMap["error"] == true {
 							assert.Error(t, err, "Expected error for params %v, message: %s", params, testCase.Src)
@@ -217,7 +225,7 @@ func TestTypeScriptCompatibilityOfficial(t *testing.T) {
 						if expectedStr, ok := expected.(string); ok {
 							assert.Equal(t, expectedStr, result, "Mismatch for exp[%d], params %v, message: %s", expIndex, params, testCase.Src)
 						} else if expectedSlice, ok := expected.([]any); ok {
-							if options.ReturnType == ReturnTypeValues {
+							if formatValues {
 								assert.Equal(t, expectedSlice, result, "Values mismatch for exp[%d], params %v, message: %s", expIndex, params, testCase.Src)
 							} else {
 								var expectedStr strings.Builder
@@ -272,17 +280,12 @@ func TestTypeScriptCompatibilityStaticMethods(t *testing.T) {
 }
 
 func TestTypeScriptCompatibilityOptionsResolution(t *testing.T) {
-	mf, err := New("en", &MessageFormatOptions{
-		ReturnType:  ReturnTypeString,
-		Currency:    "EUR",
-		BiDiSupport: true,
-	})
+	mf, err := New("en", &MessageFormatOptions{Currency: "EUR", BiDiSupport: true})
 	require.NoError(t, err)
 
 	resolved := mf.ResolvedOptions()
 
 	assert.Equal(t, "en", resolved.Locale)
-	assert.Equal(t, ReturnTypeString, resolved.ReturnType)
 	assert.Equal(t, "EUR", resolved.Currency)
 	assert.True(t, resolved.BiDiSupport)
 }
@@ -323,9 +326,7 @@ func BenchmarkTypeScriptCompatibilityPerformance(b *testing.B) {
 
 	for _, scenario := range scenarios {
 		b.Run(scenario.name, func(b *testing.B) {
-			mf, err := New(scenario.locale, &MessageFormatOptions{
-				ReturnType: ReturnTypeString,
-			})
+			mf, err := New(scenario.locale, nil)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -337,7 +338,7 @@ func BenchmarkTypeScriptCompatibilityPerformance(b *testing.B) {
 
 			b.ResetTimer()
 			for b.Loop() {
-				_, err := compiled(scenario.params)
+				_, err := compiled.Format(scenario.params)
 				if err != nil {
 					b.Fatal(err)
 				}

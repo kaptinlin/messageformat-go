@@ -20,171 +20,165 @@ func TestValidateMessage(t *testing.T) {
 	}{
 		{
 			name: "valid simple pattern message",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{NewTextElement("Hello World")}),
-				"",
-			),
+				mustPattern(t, []PatternElement{NewTextElement("Hello World")}),
+				""),
+
 			wantErrors: false,
 			wantFuncs:  []string{},
 			wantVars:   []string{},
 		},
 		{
 			name: "valid pattern message with expression",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{
+				mustPattern(t, []PatternElement{
 					NewTextElement("Hello "),
-					NewExpression(NewVariableRef("name"), nil, nil),
+					mustExpression(t, NewVariableRef("name"), nil, nil),
 				}),
-				"",
-			),
+
+				""),
+
 			wantErrors: false,
 			wantFuncs:  []string{},
 			wantVars:   []string{"name"},
 		},
 		{
 			name: "valid pattern message with function",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{
-					NewExpression(
+				mustPattern(t, []PatternElement{
+					mustExpression(t,
 						NewVariableRef("count"),
-						NewFunctionRef("number", nil),
-						nil,
-					),
+						mustFunctionRef(t, "number", nil),
+						nil),
 				}),
-				"",
-			),
+
+				""),
+
 			wantErrors: false,
 			wantFuncs:  []string{"number"},
 			wantVars:   []string{"count"},
 		},
 		{
 			name: "valid input declaration",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				[]Declaration{
-					NewInputDeclaration(
-						"count",
-						NewVariableRefExpression(
+					mustInputDeclaration(t,
+
+						mustExpression(t,
 							NewVariableRef("count"),
-							NewFunctionRef("integer", nil),
-							nil,
-						),
-					),
+							mustFunctionRef(t, "integer", nil),
+							nil)),
 				},
-				NewPattern([]PatternElement{
-					NewExpression(NewVariableRef("count"), nil, nil),
+				mustPattern(t, []PatternElement{
+					mustExpression(t, NewVariableRef("count"), nil, nil),
 				}),
-				"",
-			),
+
+				""),
+
 			wantErrors: false,
 			wantFuncs:  []string{"integer"},
 			wantVars:   []string{"count"},
 		},
 		{
 			name: "valid local declaration",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				[]Declaration{
 					NewLocalDeclaration(
 						"formatted",
-						NewExpression(
+						mustExpression(t,
 							NewVariableRef("count"),
-							NewFunctionRef("number", nil),
-							nil,
-						),
+							mustFunctionRef(t, "number", nil),
+							nil),
 					),
 				},
-				NewPattern([]PatternElement{
-					NewExpression(NewVariableRef("formatted"), nil, nil),
+				mustPattern(t, []PatternElement{
+					mustExpression(t, NewVariableRef("formatted"), nil, nil),
 				}),
-				"",
-			),
+
+				""),
+
 			wantErrors: false,
 			wantFuncs:  []string{"number"},
 			wantVars:   []string{"count"},
 		},
 		{
 			name: "duplicate declaration error",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				[]Declaration{
-					NewLocalDeclaration("x", NewExpression(NewLiteral("1"), nil, nil)),
-					NewLocalDeclaration("x", NewExpression(NewLiteral("2"), nil, nil)),
+					NewLocalDeclaration("x", mustExpression(t, NewLiteral("1"), nil, nil)),
+					NewLocalDeclaration("x", mustExpression(t, NewLiteral("2"), nil, nil)),
 				},
-				NewPattern([]PatternElement{NewTextElement("test")}),
-				"",
-			),
+				mustPattern(t, []PatternElement{NewTextElement("test")}),
+				""),
+
 			wantErrors:    true,
 			errorContains: "duplicate-declaration",
 		},
 		{
 			name: "self-reference in local declaration",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				[]Declaration{
-					NewLocalDeclaration("x", NewExpression(NewVariableRef("x"), nil, nil)),
+					NewLocalDeclaration("x", mustExpression(t, NewVariableRef("x"), nil, nil)),
 				},
-				NewPattern([]PatternElement{NewTextElement("test")}),
-				"",
-			),
+				mustPattern(t, []PatternElement{NewTextElement("test")}),
+				""),
+
 			wantErrors:    true,
 			errorContains: "duplicate-declaration",
 		},
 		{
 			name: "valid select message with catchall",
-			message: NewSelectMessage(
+			message: mustSelectMessage(t,
 				[]Declaration{
-					NewInputDeclaration(
-						"count",
-						NewVariableRefExpression(
+					mustInputDeclaration(t,
+
+						mustExpression(t,
 							NewVariableRef("count"),
-							NewFunctionRef("number", nil),
-							nil,
-						),
-					),
+							mustFunctionRef(t, "number", nil),
+							nil)),
 				},
 				[]VariableRef{*NewVariableRef("count")},
 				[]Variant{
-					*NewVariant(
+					*mustVariant(t,
 						[]VariantKey{NewLiteral("one")},
-						NewPattern([]PatternElement{NewTextElement("One item")}),
-					),
-					*NewVariant(
+						mustPattern(t, []PatternElement{NewTextElement("One item")})),
+
+					*mustVariant(t,
 						[]VariantKey{NewCatchallKey("")},
-						NewPattern([]PatternElement{NewTextElement("Many items")}),
-					),
+						mustPattern(t, []PatternElement{NewTextElement("Many items")})),
 				},
-				"",
-			),
+				""),
+
 			wantErrors: false,
 			wantFuncs:  []string{"number"},
 			wantVars:   []string{"count"},
 		},
 		{
 			name: "select message with 'other' literal as last variant requires catchall",
-			message: NewSelectMessage(
+			message: mustSelectMessage(t,
 				[]Declaration{
-					NewInputDeclaration(
-						"count",
-						NewVariableRefExpression(
+					mustInputDeclaration(t,
+
+						mustExpression(t,
 							NewVariableRef("count"),
-							NewFunctionRef("number", nil),
-							nil,
-						),
-					),
+							mustFunctionRef(t, "number", nil),
+							nil)),
 				},
 				[]VariableRef{*NewVariableRef("count")},
 				[]Variant{
-					*NewVariant(
+					*mustVariant(t,
 						[]VariantKey{NewLiteral("one")},
-						NewPattern([]PatternElement{NewTextElement("One item")}),
-					),
-					*NewVariant(
+						mustPattern(t, []PatternElement{NewTextElement("One item")})),
+
+					*mustVariant(t,
 						[]VariantKey{NewLiteral("other")},
-						NewPattern([]PatternElement{NewTextElement("Many items")}),
-					),
+						mustPattern(t, []PatternElement{NewTextElement("Many items")})),
 				},
-				"",
-			),
+				""),
+
 			// Per MF2 spec only catchall (*) keys count as fallback; the
 			// literal "other" key does not satisfy missing-fallback.
 			wantErrors:    true,
@@ -192,48 +186,46 @@ func TestValidateMessage(t *testing.T) {
 		},
 		{
 			name: "select message with key mismatch",
-			message: NewSelectMessage(
+			message: mustSelectMessage(t,
 				nil,
 				[]VariableRef{
 					*NewVariableRef("count"),
 					*NewVariableRef("type"),
 				},
 				[]Variant{
-					*NewVariant(
-						[]VariantKey{NewLiteral("one")}, // Only 1 key but 2 selectors
-						NewPattern([]PatternElement{NewTextElement("One item")}),
-					),
-					*NewVariant(
+					*mustVariant(t,
+						[]VariantKey{NewLiteral("one")},
+						mustPattern(t, []PatternElement{NewTextElement("One item")})),
+
+					*mustVariant(t,
 						[]VariantKey{NewLiteral("other"), NewCatchallKey("")},
-						NewPattern([]PatternElement{NewTextElement("Many items")}),
-					),
+						mustPattern(t, []PatternElement{NewTextElement("Many items")})),
 				},
-				"",
-			),
+				""),
+
 			wantErrors:    true,
 			errorContains: "key-mismatch",
 		},
 		{
 			name: "select message with duplicate variants",
-			message: NewSelectMessage(
+			message: mustSelectMessage(t,
 				nil,
 				[]VariableRef{*NewVariableRef("count")},
 				[]Variant{
-					*NewVariant(
+					*mustVariant(t,
 						[]VariantKey{NewLiteral("one")},
-						NewPattern([]PatternElement{NewTextElement("First one")}),
-					),
-					*NewVariant(
+						mustPattern(t, []PatternElement{NewTextElement("First one")})),
+
+					*mustVariant(t,
 						[]VariantKey{NewLiteral("one")},
-						NewPattern([]PatternElement{NewTextElement("Second one")}),
-					),
-					*NewVariant(
+						mustPattern(t, []PatternElement{NewTextElement("Second one")})),
+
+					*mustVariant(t,
 						[]VariantKey{NewCatchallKey("")},
-						NewPattern([]PatternElement{NewTextElement("Other")}),
-					),
+						mustPattern(t, []PatternElement{NewTextElement("Other")})),
 				},
-				"",
-			),
+				""),
+
 			wantErrors:    true,
 			errorContains: "duplicate-variant",
 		},
@@ -248,65 +240,65 @@ func TestValidateMessage(t *testing.T) {
 		},
 		{
 			name: "function in option value",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{
-					NewExpression(
+				mustPattern(t, []PatternElement{
+					mustExpression(t,
 						NewVariableRef("count"),
-						NewFunctionRef("number", ConvertMapToOptions(map[string]any{
+						mustFunctionRef(t, "number", ConvertMapToOptions(map[string]any{
 							"minDigits": NewVariableRef("digits"),
 						})),
-						nil,
-					),
+
+						nil),
 				}),
-				"",
-			),
+
+				""),
+
 			wantErrors: false,
 			wantFuncs:  []string{"number"},
 			wantVars:   []string{"count", "digits"},
 		},
 		{
 			name: "multiple functions and variables",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				[]Declaration{
-					NewInputDeclaration(
-						"price",
-						NewVariableRefExpression(
+					mustInputDeclaration(t,
+
+						mustExpression(t,
 							NewVariableRef("price"),
-							NewFunctionRef("number", nil),
-							nil,
-						),
-					),
+							mustFunctionRef(t, "number", nil),
+							nil)),
+
 					NewLocalDeclaration(
 						"date",
-						NewExpression(
+						mustExpression(t,
 							NewVariableRef("timestamp"),
-							NewFunctionRef("datetime", nil),
-							nil,
-						),
+							mustFunctionRef(t, "datetime", nil),
+							nil),
 					),
 				},
-				NewPattern([]PatternElement{
-					NewExpression(NewVariableRef("price"), nil, nil),
+				mustPattern(t, []PatternElement{
+					mustExpression(t, NewVariableRef("price"), nil, nil),
 					NewTextElement(" on "),
-					NewExpression(NewVariableRef("date"), nil, nil),
+					mustExpression(t, NewVariableRef("date"), nil, nil),
 				}),
-				"",
-			),
+
+				""),
+
 			wantErrors: false,
 			wantFuncs:  []string{"number", "datetime"},
 			wantVars:   []string{"price", "timestamp"},
 		},
 		{
 			name: "forward reference in local declaration",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				[]Declaration{
-					NewLocalDeclaration("a", NewExpression(NewVariableRef("b"), nil, nil)),
-					NewLocalDeclaration("b", NewExpression(NewLiteral("value"), nil, nil)),
+					NewLocalDeclaration("a", mustExpression(t, NewVariableRef("b"), nil, nil)),
+					NewLocalDeclaration("b", mustExpression(t, NewLiteral("value"), nil, nil)),
 				},
-				NewPattern([]PatternElement{NewTextElement("test")}),
-				"",
-			),
+				mustPattern(t, []PatternElement{NewTextElement("test")}),
+				""),
+
 			wantErrors:    true,
 			errorContains: "duplicate-declaration",
 		},
@@ -343,14 +335,13 @@ func TestValidateMessageWithCustomErrorHandler(t *testing.T) {
 		errorTypes = append(errorTypes, errType)
 	}
 
-	msg := NewPatternMessage(
+	msg := mustPatternMessage(t,
 		[]Declaration{
-			NewLocalDeclaration("x", NewExpression(NewLiteral("1"), nil, nil)),
-			NewLocalDeclaration("x", NewExpression(NewLiteral("2"), nil, nil)),
+			NewLocalDeclaration("x", mustExpression(t, NewLiteral("1"), nil, nil)),
+			NewLocalDeclaration("x", mustExpression(t, NewLiteral("2"), nil, nil)),
 		},
-		NewPattern([]PatternElement{NewTextElement("test")}),
-		"",
-	)
+		mustPattern(t, []PatternElement{NewTextElement("test")}),
+		"")
 
 	_, err := ValidateMessage(msg, errorHandler)
 
@@ -367,59 +358,56 @@ func TestValidateComplexSelectMessage(t *testing.T) {
 	}{
 		{
 			name: "multi-selector with proper keys",
-			message: NewSelectMessage(
+			message: mustSelectMessage(t,
 				[]Declaration{
-					NewInputDeclaration(
-						"count",
-						NewVariableRefExpression(NewVariableRef("count"), NewFunctionRef("number", nil), nil),
-					),
-					NewInputDeclaration(
-						"gender",
-						NewVariableRefExpression(NewVariableRef("gender"), NewFunctionRef("string", nil), nil),
-					),
+					mustInputDeclaration(t,
+
+						mustExpression(t, NewVariableRef("count"), mustFunctionRef(t, "number", nil), nil)),
+
+					mustInputDeclaration(t,
+
+						mustExpression(t, NewVariableRef("gender"), mustFunctionRef(t, "string", nil), nil)),
 				},
 				[]VariableRef{
 					*NewVariableRef("count"),
 					*NewVariableRef("gender"),
 				},
 				[]Variant{
-					*NewVariant(
+					*mustVariant(t,
 						[]VariantKey{NewLiteral("one"), NewLiteral("male")},
-						NewPattern([]PatternElement{NewTextElement("He has one item")}),
-					),
-					*NewVariant(
+						mustPattern(t, []PatternElement{NewTextElement("He has one item")})),
+
+					*mustVariant(t,
 						[]VariantKey{NewLiteral("one"), NewLiteral("female")},
-						NewPattern([]PatternElement{NewTextElement("She has one item")}),
-					),
-					*NewVariant(
+						mustPattern(t, []PatternElement{NewTextElement("She has one item")})),
+
+					*mustVariant(t,
 						[]VariantKey{NewCatchallKey(""), NewCatchallKey("")},
-						NewPattern([]PatternElement{NewTextElement("They have items")}),
-					),
+						mustPattern(t, []PatternElement{NewTextElement("They have items")})),
 				},
-				"",
-			),
+				""),
+
 			wantErrors: false,
 		},
 		{
 			name: "multi-selector with key count mismatch",
-			message: NewSelectMessage(
+			message: mustSelectMessage(t,
 				nil,
 				[]VariableRef{
 					*NewVariableRef("count"),
 					*NewVariableRef("gender"),
 				},
 				[]Variant{
-					*NewVariant(
-						[]VariantKey{NewLiteral("one")}, // Missing second key
-						NewPattern([]PatternElement{NewTextElement("One")}),
-					),
-					*NewVariant(
+					*mustVariant(t,
+						[]VariantKey{NewLiteral("one")},
+						mustPattern(t, []PatternElement{NewTextElement("One")})),
+
+					*mustVariant(t,
 						[]VariantKey{NewCatchallKey(""), NewCatchallKey("")},
-						NewPattern([]PatternElement{NewTextElement("Other")}),
-					),
+						mustPattern(t, []PatternElement{NewTextElement("Other")})),
 				},
-				"",
-			),
+				""),
+
 			wantErrors: true,
 			errorType:  "key-mismatch",
 		},
@@ -449,56 +437,60 @@ func TestValidateMarkup(t *testing.T) {
 	}{
 		{
 			name: "valid markup without options",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{
+				mustPattern(t, []PatternElement{
 					mustMarkup(t, "open", "b", nil, nil),
 					NewTextElement("Bold text"),
 					mustMarkup(t, "close", "b", nil, nil),
 				}),
-				"",
-			),
+
+				""),
+
 			wantErrors: false,
 		},
 		{
 			name: "valid standalone markup",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{
+				mustPattern(t, []PatternElement{
 					NewTextElement("Line 1"),
 					mustMarkup(t, "standalone", "br", nil, nil),
 					NewTextElement("Line 2"),
 				}),
-				"",
-			),
+
+				""),
+
 			wantErrors: false,
 		},
 		{
 			name: "markup with options",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{
+				mustPattern(t, []PatternElement{
 					mustMarkup(t, "open", "link", ConvertMapToOptions(map[string]any{
 						"href": NewLiteral("https://example.com"),
 					}), nil),
 					NewTextElement("Click here"),
 					mustMarkup(t, "close", "link", nil, nil),
 				}),
-				"",
-			),
+
+				""),
+
 			wantErrors: false,
 		},
 		{
 			name: "markup with attributes",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{
+				mustPattern(t, []PatternElement{
 					mustMarkup(t, "open", "img", nil, ConvertMapToAttributes(map[string]any{
 						"alt": NewLiteral("Image description"),
 					})),
 				}),
-				"",
-			),
+
+				""),
+
 			wantErrors: false,
 		},
 	}
@@ -525,43 +517,40 @@ func TestValidateAnnotatedVariables(t *testing.T) {
 	}{
 		{
 			name: "input declaration with annotation",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				[]Declaration{
-					NewInputDeclaration(
-						"count",
-						NewVariableRefExpression(
+					mustInputDeclaration(t,
+
+						mustExpression(t,
 							NewVariableRef("count"),
-							NewFunctionRef("integer", nil),
-							nil,
-						),
-					),
+							mustFunctionRef(t, "integer", nil),
+							nil)),
 				},
-				NewPattern([]PatternElement{NewTextElement("test")}),
-				"",
-			),
+				mustPattern(t, []PatternElement{NewTextElement("test")}),
+				""),
+
 			wantErrors: false,
 			wantFuncs:  []string{"integer"},
 		},
 		{
 			name: "local declaration referencing annotated variable",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				[]Declaration{
-					NewInputDeclaration(
-						"count",
-						NewVariableRefExpression(
+					mustInputDeclaration(t,
+
+						mustExpression(t,
 							NewVariableRef("count"),
-							NewFunctionRef("integer", nil),
-							nil,
-						),
-					),
+							mustFunctionRef(t, "integer", nil),
+							nil)),
+
 					NewLocalDeclaration(
 						"formatted",
-						NewExpression(NewVariableRef("count"), nil, nil),
+						mustExpression(t, NewVariableRef("count"), nil, nil),
 					),
 				},
-				NewPattern([]PatternElement{NewTextElement("test")}),
-				"",
-			),
+				mustPattern(t, []PatternElement{NewTextElement("test")}),
+				""),
+
 			wantErrors: false,
 			wantFuncs:  []string{"integer"},
 		},
@@ -589,28 +578,25 @@ func TestValidateAnnotatedVariables(t *testing.T) {
 func TestValidateSelectMessageOtherLiteralFallback(t *testing.T) {
 	t.Parallel()
 
-	message := NewSelectMessage(
+	message := mustSelectMessage(t,
 		[]Declaration{
-			NewInputDeclaration(
-				"count",
-				NewVariableRefExpression(NewVariableRef("count"), NewFunctionRef("integer", nil), nil),
-			),
+			mustInputDeclaration(t,
+
+				mustExpression(t, NewVariableRef("count"), mustFunctionRef(t, "integer", nil), nil)),
 		},
 		[]VariableRef{*NewVariableRef("count")},
 		[]Variant{
-			*NewVariant(
+			*mustVariant(t,
 				[]VariantKey{NewLiteral("one")},
-				NewPattern([]PatternElement{NewTextElement("one")}),
-			),
-			*NewVariant(
+				mustPattern(t, []PatternElement{NewTextElement("one")})),
+
+			*mustVariant(t,
 				[]VariantKey{NewLiteral("other")},
-				NewPattern([]PatternElement{
-					NewExpression(NewVariableRef("count"), NewFunctionRef("integer", nil), nil),
-				}),
-			),
+				mustPattern(t, []PatternElement{
+					mustExpression(t, NewVariableRef("count"), mustFunctionRef(t, "integer", nil), nil),
+				})),
 		},
-		"",
-	)
+		"")
 
 	_, err := ValidateMessage(message, nil)
 
@@ -619,34 +605,32 @@ func TestValidateSelectMessageOtherLiteralFallback(t *testing.T) {
 }
 
 func TestValidationResultStructure(t *testing.T) {
-	msg := NewPatternMessage(
+	msg := mustPatternMessage(t,
 		[]Declaration{
-			NewInputDeclaration(
-				"count",
-				NewVariableRefExpression(
+			mustInputDeclaration(t,
+
+				mustExpression(t,
 					NewVariableRef("count"),
-					NewFunctionRef("integer", nil),
-					nil,
-				),
-			),
+					mustFunctionRef(t, "integer", nil),
+					nil)),
+
 			NewLocalDeclaration(
 				"date",
-				NewExpression(
+				mustExpression(t,
 					NewVariableRef("timestamp"),
-					NewFunctionRef("datetime", nil),
-					nil,
-				),
+					mustFunctionRef(t, "datetime", nil),
+					nil),
 			),
 		},
-		NewPattern([]PatternElement{
-			NewExpression(NewVariableRef("count"), nil, nil),
+		mustPattern(t, []PatternElement{
+			mustExpression(t, NewVariableRef("count"), nil, nil),
 			NewTextElement(" items on "),
-			NewExpression(NewVariableRef("date"), nil, nil),
+			mustExpression(t, NewVariableRef("date"), nil, nil),
 			NewTextElement(" by "),
-			NewExpression(NewVariableRef("user"), nil, nil),
+			mustExpression(t, NewVariableRef("user"), nil, nil),
 		}),
-		"",
-	)
+
+		"")
 
 	result, err := ValidateMessage(msg, nil)
 
@@ -664,23 +648,103 @@ func TestValidationResultStructure(t *testing.T) {
 }
 
 func TestValidationResultExcludesAllLocalVariables(t *testing.T) {
-	msg := NewPatternMessage(
+	msg := mustPatternMessage(t,
 		[]Declaration{
-			NewLocalDeclaration("first", NewExpression(NewVariableRef("external"), nil, nil)),
-			NewLocalDeclaration("second", NewExpression(NewVariableRef("first"), nil, nil)),
+			NewLocalDeclaration("first", mustExpression(t, NewVariableRef("external"), nil, nil)),
+			NewLocalDeclaration("second", mustExpression(t, NewVariableRef("first"), nil, nil)),
 		},
-		NewPattern([]PatternElement{
-			NewExpression(NewVariableRef("first"), nil, nil),
-			NewExpression(NewVariableRef("second"), nil, nil),
-			NewExpression(NewVariableRef("external"), nil, nil),
+		mustPattern(t, []PatternElement{
+			mustExpression(t, NewVariableRef("first"), nil, nil),
+			mustExpression(t, NewVariableRef("second"), nil, nil),
+			mustExpression(t, NewVariableRef("external"), nil, nil),
 		}),
-		"",
-	)
+
+		"")
 
 	result, err := ValidateMessage(msg, nil)
 
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"external"}, result.Variables)
+}
+
+// TestValidationResultOrderAndCoverage proves validation reports all dependencies deterministically.
+// TypeScript original code:
+// return { functions, variables };
+func TestValidationResultOrderAndCoverage(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		message       Message
+		wantFunctions []string
+		wantVariables []string
+	}{
+		{
+			name: "declarations expressions and markup options",
+			message: mustPatternMessage(t,
+				[]Declaration{
+					mustInputDeclaration(t, mustExpression(t,
+						NewVariableRef("inputArg"),
+						mustFunctionRef(t, "declFn", Options{
+							"z": NewVariableRef("declZ"),
+							"a": NewVariableRef("declA"),
+						}), nil)),
+					NewLocalDeclaration("local", mustExpression(t,
+						NewVariableRef("localArg"),
+						mustFunctionRef(t, "localFn", Options{
+							"z": NewVariableRef("localZ"),
+							"a": NewVariableRef("localA"),
+						}), nil)),
+				},
+				mustPattern(t, []PatternElement{
+					mustExpression(t,
+						NewVariableRef("exprArg"),
+						mustFunctionRef(t, "exprFn", Options{
+							"z": NewVariableRef("exprZ"),
+							"a": NewVariableRef("exprA"),
+						}), nil),
+					mustMarkup(t, MarkupStandalone, "link", Options{
+						"z": NewVariableRef("markupZ"),
+						"a": NewVariableRef("markupA"),
+					}, nil),
+				}), ""),
+			wantFunctions: []string{"declFn", "localFn", "exprFn"},
+			wantVariables: []string{
+				"inputArg", "declA", "declZ",
+				"localArg", "localA", "localZ",
+				"exprArg", "exprA", "exprZ",
+				"markupA", "markupZ",
+			},
+		},
+		{
+			name: "selectors and variant patterns",
+			message: mustSelectMessage(t,
+				[]Declaration{mustInputDeclaration(t, mustExpression(t,
+					NewVariableRef("selector"), mustFunctionRef(t, "selectorFn", nil), nil))},
+				[]VariableRef{*NewVariableRef("selector")},
+				[]Variant{
+					*mustVariant(t, []VariantKey{NewLiteral("one")}, mustPattern(t, []PatternElement{
+						mustExpression(t, NewVariableRef("variantArg"), mustFunctionRef(t, "variantFn", nil), nil),
+					})),
+					*mustVariant(t, []VariantKey{NewCatchallKey("")}, mustPattern(t, []PatternElement{
+						mustExpression(t, NewVariableRef("fallbackArg"), mustFunctionRef(t, "fallbackFn", nil), nil),
+					})),
+				}, ""),
+			wantFunctions: []string{"selectorFn", "variantFn", "fallbackFn"},
+			wantVariables: []string{"selector", "variantArg", "fallbackArg"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			for range 100 {
+				result, err := ValidateMessage(tc.message, nil)
+				require.NoError(t, err)
+				assert.Equal(t, tc.wantFunctions, result.Functions)
+				assert.Equal(t, tc.wantVariables, result.Variables)
+			}
+		})
+	}
 }
 
 func TestEdgeCasesInValidation(t *testing.T) {
@@ -691,53 +755,53 @@ func TestEdgeCasesInValidation(t *testing.T) {
 	}{
 		{
 			name: "empty pattern message",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{}),
-				"",
-			),
+				mustPattern(t, []PatternElement{}),
+				""),
+
 			wantErrors: false,
 		},
 		{
 			name: "pattern with only text",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{
+				mustPattern(t, []PatternElement{
 					NewTextElement("Just text, no expressions"),
 				}),
-				"",
-			),
+
+				""),
+
 			wantErrors: false,
 		},
 		{
 			name: "select message with single variant",
-			message: NewSelectMessage(
+			message: mustSelectMessage(t,
 				[]Declaration{
-					NewInputDeclaration(
-						"count",
-						NewVariableRefExpression(NewVariableRef("count"), NewFunctionRef("number", nil), nil),
-					),
+					mustInputDeclaration(t,
+
+						mustExpression(t, NewVariableRef("count"), mustFunctionRef(t, "number", nil), nil)),
 				},
 				[]VariableRef{*NewVariableRef("count")},
 				[]Variant{
-					*NewVariant(
+					*mustVariant(t,
 						[]VariantKey{NewCatchallKey("")},
-						NewPattern([]PatternElement{NewTextElement("Any count")}),
-					),
+						mustPattern(t, []PatternElement{NewTextElement("Any count")})),
 				},
-				"",
-			),
+				""),
+
 			wantErrors: false,
 		},
 		{
 			name: "expression with only function (no arg)",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{
-					NewExpression(nil, NewFunctionRef("randomValue", nil), nil),
+				mustPattern(t, []PatternElement{
+					mustExpression(t, nil, mustFunctionRef(t, "randomValue", nil), nil),
 				}),
-				"",
-			),
+
+				""),
+
 			wantErrors: false,
 		},
 	}
@@ -765,42 +829,41 @@ func TestValidateMessageErrorTypes(t *testing.T) {
 	}{
 		{
 			name: "local option forward reference",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				[]Declaration{
-					NewLocalDeclaration("formatted", NewExpression(NewLiteral("value"), NewFunctionRef("string", ConvertMapToOptions(map[string]any{"case": NewVariableRef("style")})), nil)),
-					NewLocalDeclaration("style", NewExpression(NewLiteral("title"), nil, nil)),
+					NewLocalDeclaration("formatted", mustExpression(t, NewLiteral("value"), mustFunctionRef(t, "string", ConvertMapToOptions(map[string]any{"case": NewVariableRef("style")})), nil)),
+					NewLocalDeclaration("style", mustExpression(t, NewLiteral("title"), nil, nil)),
 				},
-				NewPattern([]PatternElement{NewTextElement("test")}),
-				"",
-			),
+				mustPattern(t, []PatternElement{NewTextElement("test")}),
+				""),
+
 			wantType: "duplicate-declaration",
 		},
 		{
 			name: "local option self reference",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				[]Declaration{
-					NewLocalDeclaration("formatted", NewExpression(NewLiteral("value"), NewFunctionRef("string", ConvertMapToOptions(map[string]any{"case": NewVariableRef("formatted")})), nil)),
+					NewLocalDeclaration("formatted", mustExpression(t, NewLiteral("value"), mustFunctionRef(t, "string", ConvertMapToOptions(map[string]any{"case": NewVariableRef("formatted")})), nil)),
 				},
-				NewPattern([]PatternElement{NewTextElement("test")}),
-				"",
-			),
+				mustPattern(t, []PatternElement{NewTextElement("test")}),
+				""),
+
 			wantType: "duplicate-declaration",
 		},
 		{
 			name: "select without fallback",
-			message: NewSelectMessage(
+			message: mustSelectMessage(t,
 				[]Declaration{
-					NewInputDeclaration(
-						"count",
-						NewVariableRefExpression(NewVariableRef("count"), NewFunctionRef("number", nil), nil),
-					),
+					mustInputDeclaration(t,
+
+						mustExpression(t, NewVariableRef("count"), mustFunctionRef(t, "number", nil), nil)),
 				},
 				[]VariableRef{*NewVariableRef("count")},
 				[]Variant{
-					*NewVariant([]VariantKey{NewLiteral("one")}, NewPattern([]PatternElement{NewTextElement("one")})),
+					*mustVariant(t, []VariantKey{NewLiteral("one")}, mustPattern(t, []PatternElement{NewTextElement("one")})),
 				},
-				"",
-			),
+				""),
+
 			wantType: "missing-fallback",
 		},
 	}

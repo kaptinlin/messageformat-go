@@ -193,29 +193,23 @@ user  * *      {{User {$name} has {$count} messages}}
 	elapsed := time.Since(start)
 	fmt.Printf("   Processed %d items in %v\n\n", len(items), elapsed)
 
-	// Example 6: Error handling with custom error handler
-	fmt.Println("6. Error Handling with Custom Error Handler:")
-
-	var errorCount int
-	errorHandler := func(err error) {
-		errorCount++
-		fmt.Printf("   Error #%d: %v\n", errorCount, err)
-	}
+	// Example 6: Recoverable diagnostics returned with fallback output
+	fmt.Println("6. Returned Formatting Diagnostics:")
 
 	mf6, err := messageformat.Parse([]string{"en"}, "Value: {$missing_var}, Count: {$count :number}")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	result6, err := mf6.Format(map[string]any{
+	result6, formatErr := mf6.Format(map[string]any{
 		"count": 42,
 		// Intentionally missing "missing_var"
 	})
-	if err != nil {
-		errorHandler(err)
+	if formatErr != nil {
+		fmt.Printf("   Diagnostic: %v\n", formatErr)
 	}
 	fmt.Printf("   Result with missing variable: %s\n", result6)
-	fmt.Printf("   Total errors handled: %d\n\n", errorCount)
+	fmt.Println()
 
 	// Example 7: Nested patterns and declarations
 	fmt.Println("7. Nested Patterns and Declarations:")

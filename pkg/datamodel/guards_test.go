@@ -34,8 +34,8 @@ func TestIsExpression(t *testing.T) {
 		input    any
 		expected bool
 	}{
-		{"valid expression", NewExpression(nil, nil, nil), true},
-		{"expression with literal", NewExpression(NewLiteral("test"), nil, nil), true},
+		{"valid expression", mustExpression(t, nil, mustFunctionRef(t, "string", nil), nil), true},
+		{"expression with literal", mustExpression(t, NewLiteral("test"), nil, nil), true},
 		{"literal", NewLiteral("test"), false},
 		{"nil", nil, false},
 		{"string", "test", false},
@@ -55,8 +55,8 @@ func TestIsFunctionRef(t *testing.T) {
 		input    any
 		expected bool
 	}{
-		{"valid function ref", NewFunctionRef("number", nil), true},
-		{"function ref with options", NewFunctionRef("number", ConvertMapToOptions(map[string]any{"style": "decimal"})), true},
+		{"valid function ref", mustFunctionRef(t, "number", nil), true},
+		{"function ref with options", mustFunctionRef(t, "number", ConvertMapToOptions(map[string]any{"style": "decimal"})), true},
 		{"literal", NewLiteral("test"), false},
 		{"nil", nil, false},
 		{"string", "test", false},
@@ -78,7 +78,7 @@ func TestIsLiteral(t *testing.T) {
 	}{
 		{"valid literal", NewLiteral("test"), true},
 		{"empty literal", NewLiteral(""), true},
-		{"expression", NewExpression(nil, nil, nil), false},
+		{"expression", mustExpression(t, NewLiteral("test"), nil, nil), false},
 		{"nil", nil, false},
 		{"string", "test", false},
 	}
@@ -114,9 +114,9 @@ func TestIsMarkup(t *testing.T) {
 }
 
 func TestIsMessage(t *testing.T) {
-	pattern := NewPattern([]PatternElement{NewTextElement("Hello")})
-	patternMsg := NewPatternMessage(nil, pattern, "")
-	selectMsg := NewSelectMessage(nil, nil, nil, "")
+	pattern := mustPattern(t, []PatternElement{NewTextElement("Hello")})
+	patternMsg := mustPatternMessage(t, nil, pattern, "")
+	selectMsg := mustSelectMessage(t, nil, nil, nil, "")
 
 	tests := []struct {
 		name     string
@@ -139,9 +139,9 @@ func TestIsMessage(t *testing.T) {
 }
 
 func TestIsPatternMessage(t *testing.T) {
-	pattern := NewPattern([]PatternElement{NewTextElement("Hello")})
-	patternMsg := NewPatternMessage(nil, pattern, "")
-	selectMsg := NewSelectMessage(nil, nil, nil, "")
+	pattern := mustPattern(t, []PatternElement{NewTextElement("Hello")})
+	patternMsg := mustPatternMessage(t, nil, pattern, "")
+	selectMsg := mustSelectMessage(t, nil, nil, nil, "")
 
 	tests := []struct {
 		name     string
@@ -161,9 +161,9 @@ func TestIsPatternMessage(t *testing.T) {
 }
 
 func TestIsSelectMessage(t *testing.T) {
-	pattern := NewPattern([]PatternElement{NewTextElement("Hello")})
-	patternMsg := NewPatternMessage(nil, pattern, "")
-	selectMsg := NewSelectMessage(nil, nil, nil, "")
+	pattern := mustPattern(t, []PatternElement{NewTextElement("Hello")})
+	patternMsg := mustPatternMessage(t, nil, pattern, "")
+	selectMsg := mustSelectMessage(t, nil, nil, nil, "")
 
 	tests := []struct {
 		name     string
@@ -204,8 +204,8 @@ func TestIsVariableRef(t *testing.T) {
 }
 
 func TestIsInputDeclaration(t *testing.T) {
-	expr := NewExpression(NewLiteral("test"), nil, nil)
-	inputDecl := NewInputDeclaration("input1", ConvertExpressionToVariableRefExpression(expr))
+	expr := mustExpression(t, NewLiteral("test"), nil, nil)
+	inputDecl := mustInputDeclaration(t, mustExpression(t, NewVariableRef("input1"), nil, nil))
 	localDecl := NewLocalDeclaration("local1", expr)
 
 	tests := []struct {
@@ -226,8 +226,8 @@ func TestIsInputDeclaration(t *testing.T) {
 }
 
 func TestIsLocalDeclaration(t *testing.T) {
-	expr := NewExpression(NewLiteral("test"), nil, nil)
-	inputDecl := NewInputDeclaration("input1", ConvertExpressionToVariableRefExpression(expr))
+	expr := mustExpression(t, NewLiteral("test"), nil, nil)
+	inputDecl := mustInputDeclaration(t, mustExpression(t, NewVariableRef("input1"), nil, nil))
 	localDecl := NewLocalDeclaration("local1", expr)
 
 	tests := []struct {
@@ -249,7 +249,7 @@ func TestIsLocalDeclaration(t *testing.T) {
 
 func TestIsTextElement(t *testing.T) {
 	textElem := NewTextElement("Hello")
-	expr := NewExpression(NewLiteral("test"), nil, nil)
+	expr := mustExpression(t, NewLiteral("test"), nil, nil)
 
 	tests := []struct {
 		name     string
@@ -319,7 +319,7 @@ func TestIsVariantKey(t *testing.T) {
 
 func TestIsPatternElement(t *testing.T) {
 	textElem := NewTextElement("Hello")
-	expr := NewExpression(NewLiteral("test"), nil, nil)
+	expr := mustExpression(t, NewLiteral("test"), nil, nil)
 	markup := mustMarkup(t, "open", "b", nil, nil)
 
 	tests := []struct {
@@ -346,11 +346,11 @@ func TestIsPatternElement(t *testing.T) {
 func TestIsNode(t *testing.T) {
 	literal := NewLiteral("test")
 	varRef := NewVariableRef("test")
-	funcRef := NewFunctionRef("number", nil)
-	expr := NewExpression(literal, nil, nil)
+	funcRef := mustFunctionRef(t, "number", nil)
+	expr := mustExpression(t, literal, nil, nil)
 	markup := mustMarkup(t, "open", "b", nil, nil)
 	catchall := NewCatchallKey("")
-	inputDecl := NewInputDeclaration("input1", ConvertExpressionToVariableRefExpression(NewExpression(varRef, nil, nil)))
+	inputDecl := mustInputDeclaration(t, mustExpression(t, varRef, nil, nil))
 	localDecl := NewLocalDeclaration("local1", expr)
 
 	tests := []struct {
@@ -398,30 +398,6 @@ func TestIsBooleanAttribute(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := IsBooleanAttribute(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestIsVariableRefExpression(t *testing.T) {
-	varRef := NewVariableRef("test")
-	varRefExpr := NewVariableRefExpression(varRef, nil, nil)
-	regularExpr := NewExpression(NewLiteral("test"), nil, nil)
-
-	tests := []struct {
-		name     string
-		input    any
-		expected bool
-	}{
-		{"variable ref expression", varRefExpr, true},
-		{"regular expression", regularExpr, false},
-		{"literal", NewLiteral("test"), false},
-		{"nil", nil, false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := IsVariableRefExpression(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

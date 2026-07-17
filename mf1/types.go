@@ -1,25 +1,8 @@
 // Package v1 provides MessageFormat v1 (ICU MessageFormat) implementation for Go
-// TypeScript original code:
-// export type ReturnType = 'string' | 'values';
-// export type MessageFunction<ReturnType extends 'string' | 'values'> = (
-//
-//	param?: Record<string, unknown> | unknown[]
-//
-// ) => ReturnType extends 'string' ? string : unknown[];
 package v1
 
 // Type-safe constants for API options (replacing string literals)
 // This provides better IDE support, compile-time checking, and prevents typos
-
-// ReturnType represents the return type of compiled message functions
-type ReturnType string
-
-const (
-	// ReturnTypeString indicates compiled functions return concatenated strings
-	ReturnTypeString ReturnType = "string"
-	// ReturnTypeValues indicates compiled functions return arrays of values
-	ReturnTypeValues ReturnType = "values"
-)
 
 // SignDisplay represents number sign display options
 type SignDisplay string
@@ -221,7 +204,6 @@ const (
 //
 //	// In struct initialization
 //	config := Config{
-//	    ReturnType: Ptr(ReturnTypeValues),
 //	    Strict:     Ptr(true),
 //	}
 func Ptr[T any](v T) *T {

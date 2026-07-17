@@ -90,7 +90,9 @@ func String(value string) *StringValue {
 	return NewStringValue(value, "", "")
 }
 
-// Number creates a new NumberValue for use in custom functions
-func Number(value any) *NumberValue {
+// Number creates a validated NumberValue for use in custom functions.
+// TypeScript original code:
+// const value = getMessageNumber(context, number, {}, true);
+func Number(value any) (*NumberValue, error) {
 	return NewNumberValue(value, "", "", nil)
 }

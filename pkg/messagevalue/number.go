@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -15,7 +16,9 @@ import (
 
 // Static errors to avoid dynamic error creation
 var (
-	ErrNumberNotSelectable = errors.New("number value does not support selection")
+	ErrInvalidNumber        = errors.New("invalid number value")
+	ErrInvalidNumberOptions = errors.New("invalid number format options")
+	ErrNumberNotSelectable  = errors.New("number value does not support selection")
 )
 
 // NumberValue implements MessageValue for numbers.
@@ -23,48 +26,116 @@ var (
 // and pluralrules), matching the TypeScript reference's reliance on
 // Intl.NumberFormat and Intl.PluralRules.
 type NumberValue struct {
-	value      any // int64, float64, or other numeric types
-	locale     string
-	dir        bidi.Direction
-	source     string
-	options    map[string]any
-	selectable bool
+	value       any // int64, float64, or other numeric types
+	locale      string
+	dir         bidi.Direction
+	source      string
+	options     map[string]any
+	selectable  bool
+	formatter   *numberformat.NumberFormat
+	formatValue numberformat.Value
+	pluralRules *pluralrules.PluralRules
 }
 
-// NewNumberValue creates a new number value
-func NewNumberValue(value any, locale, source string, options map[string]any) *NumberValue {
-	return &NumberValue{
-		value:      value,
-		locale:     locale,
-		dir:        bidi.DirAuto,
-		source:     source,
-		options:    cloneOptions(options),
-		selectable: true,
-	}
+// NewNumberValue creates a validated number value.
+// TypeScript original code:
+// return getMessageNumber(ctx, value, options, true);
+func NewNumberValue(value any, locale, source string, options map[string]any) (*NumberValue, error) {
+	return newNumberValue(value, locale, source, bidi.DirAuto, options, true)
 }
 
-// NewNumberValueWithDir creates a new number value with explicit direction
-func NewNumberValueWithDir(value any, locale, source string, dir bidi.Direction, options map[string]any) *NumberValue {
-	return &NumberValue{
-		value:      value,
-		locale:     locale,
-		dir:        dir,
-		source:     source,
-		options:    cloneOptions(options),
-		selectable: true,
-	}
+// NewNumberValueWithDir creates a validated number value with explicit direction.
+// TypeScript original code:
+// return getMessageNumber({ ...ctx, dir }, value, options, true);
+func NewNumberValueWithDir(value any, locale, source string, dir bidi.Direction, options map[string]any) (*NumberValue, error) {
+	return newNumberValue(value, locale, source, dir, options, true)
 }
 
-// NewNumberValueWithSelection creates a new number value with specified selection capability
-func NewNumberValueWithSelection(value any, locale, source string, dir bidi.Direction, options map[string]any, selectable bool) *NumberValue {
-	return &NumberValue{
-		value:      value,
-		locale:     locale,
-		dir:        dir,
-		source:     source,
-		options:    cloneOptions(options),
-		selectable: selectable,
+// NewNumberValueWithSelection creates a validated number value with specified selection capability.
+// TypeScript original code:
+// return getMessageNumber(ctx, value, options, selectable);
+func NewNumberValueWithSelection(value any, locale, source string, dir bidi.Direction, options map[string]any, selectable bool) (*NumberValue, error) {
+	return newNumberValue(value, locale, source, dir, options, selectable)
+}
+
+// newNumberValue compiles the one formatting plan shared by all projections.
+// TypeScript original code:
+// const formatter = new Intl.NumberFormat(locales, options);
+func newNumberValue(value any, locale, source string, dir bidi.Direction, options map[string]any, selectable bool) (*NumberValue, error) {
+	formatValue, ok := numberFormatValue(value)
+	if !ok {
+		return nil, fmt.Errorf("%w: %T", ErrInvalidNumber, value)
 	}
+	formatter, err := numberformat.New(intlbridge.ParseLocale(locale), intlbridge.NumberOptions(options))
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidNumberOptions, err)
+	}
+	resolved := formatter.ResolvedOptions()
+	resolvedLocale := resolved.Locale.String()
+	selectionRules, err := newPluralRules(resolvedLocale, resolved, options, selectable)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidNumberOptions, err)
+	}
+
+	return &NumberValue{
+		value:       value,
+		locale:      resolvedLocale,
+		dir:         dir,
+		source:      source,
+		options:     cloneOptions(options),
+		selectable:  selectable,
+		formatter:   formatter,
+		formatValue: formatValue,
+		pluralRules: selectionRules,
+	}, nil
+}
+
+// newPluralRules compiles selection with the formatter's resolved locale and digit options.
+// TypeScript original code:
+// cat ??= new Intl.PluralRules(locales, pluralOpt).select(Number(numVal));
+func newPluralRules(
+	locale string,
+	resolved numberformat.ResolvedOptions,
+	options map[string]any,
+	selectable bool,
+) (*pluralrules.PluralRules, error) {
+	if !selectable || options["select"] == "exact" {
+		return nil, nil
+	}
+
+	ruleType := string(pluralrules.Cardinal)
+	if options["select"] == "ordinal" {
+		ruleType = string(pluralrules.Ordinal)
+	}
+	roundingMode := string(resolved.RoundingMode)
+	roundingPriority := string(resolved.RoundingPriority)
+	trailingZeroDisplay := string(resolved.TrailingZeroDisplay)
+	notation := string(resolved.Notation)
+	pluralOptions := pluralrules.Options{
+		Type:                     &ruleType,
+		MinimumIntegerDigits:     intPointer(resolved.MinimumIntegerDigits),
+		MinimumFractionDigits:    resolved.MinimumFractionDigits,
+		MaximumFractionDigits:    resolved.MaximumFractionDigits,
+		MinimumSignificantDigits: resolved.MinimumSignificantDigits,
+		MaximumSignificantDigits: resolved.MaximumSignificantDigits,
+		RoundingIncrement:        intPointer(resolved.RoundingIncrement),
+		RoundingMode:             &roundingMode,
+		RoundingPriority:         &roundingPriority,
+		TrailingZeroDisplay:      &trailingZeroDisplay,
+		Notation:                 &notation,
+	}
+	if resolved.CompactDisplay != nil {
+		compactDisplay := string(*resolved.CompactDisplay)
+		pluralOptions.CompactDisplay = &compactDisplay
+	}
+	return pluralrules.New(intlbridge.ParseLocale(locale), pluralOptions)
+}
+
+// intPointer bridges a resolved Go scalar into a typed dependency option.
+// TypeScript original code:
+// // JavaScript options do not require pointer conversion.
+func intPointer(value int) *int {
+	return &value
 }
 
 func (nv *NumberValue) Type() string {
@@ -95,44 +166,7 @@ func (nv *NumberValue) CanSelect() bool {
 }
 
 func (nv *NumberValue) ToString() (string, error) {
-	formatter, value, ok, err := nv.newFormatter()
-	if err != nil {
-		return fmt.Sprintf("%v", nv.value), err
-	}
-	if !ok {
-		return fmt.Sprintf("%v", nv.value), nil
-	}
-	return formatter.Format(value), nil
-}
-
-// newFormatter resolves the value into go-intl's numeric input and constructs
-// a NumberFormat using the bridge-translated options. The bool indicates whether a formatter
-// could be built (false for non-numeric values, which the caller falls back to
-// fmt.Sprintf for).
-//
-// If go-intl rejects the options (e.g., currency style with no currency code,
-// unit style with no unit identifier), the style-specific fields are dropped
-// and the formatter is rebuilt with the remaining options. ECMA-402 throws on
-// these inputs, but MF2's spec calls for graceful fallback instead of failing
-// the whole message.
-func (nv *NumberValue) newFormatter() (*numberformat.NumberFormat, numberformat.Value, bool, error) {
-	value, ok := numberFormatValue(nv.value)
-	if !ok {
-		return nil, numberformat.Value{}, false, nil
-	}
-	loc := intlbridge.ParseLocale(nv.locale)
-	opts := intlbridge.NumberOptions(nv.options)
-	f, err := numberformat.New(loc, opts)
-	if err == nil {
-		return f, value, true, nil
-	}
-	opts.Style = nil
-	opts.Currency = nil
-	opts.Unit = nil
-	if f2, err2 := numberformat.New(loc, opts); err2 == nil {
-		return f2, value, true, nil
-	}
-	return nil, value, false, err
+	return nv.formatter.Format(nv.formatValue), nil
 }
 
 func numberFormatValue(v any) (numberformat.Value, bool) {
@@ -222,22 +256,8 @@ func numberAsFloat(v any) (float64, bool) {
 }
 
 func (nv *NumberValue) ToParts() ([]MessagePart, error) {
-	formatter, value, ok, err := nv.newFormatter()
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return []MessagePart{
-			&NumberPart{
-				value:  fmt.Sprintf("%v", nv.value),
-				source: nv.source,
-				locale: nv.locale,
-				dir:    nv.dir,
-			},
-		}, nil
-	}
-	intlParts := formatter.FormatToParts(value)
-	formatted := formatter.Format(value)
+	intlParts := nv.formatter.FormatToParts(nv.formatValue)
+	formatted := nv.formatter.Format(nv.formatValue)
 	sub := make([]MessagePart, 0, len(intlParts))
 	for _, p := range intlParts {
 		sub = append(sub, &NumberSubPart{
@@ -312,8 +332,12 @@ func (nv *NumberValue) SelectKeys(keys []string) ([]string, error) {
 		}
 	}
 
-	// 4. Apply plural rules
-	pluralCategory := getPluralCategory(numVal, nv.options, nv.locale)
+	// 4. Apply the plural plan compiled with the formatter's resolved options.
+	if nv.pluralRules == nil {
+		return []string{}, nil
+	}
+	category := nv.pluralRules.Select(pluralrules.Float(numVal))
+	pluralCategory := mapPluralForm(category)
 	for _, key := range keys {
 		if key == pluralCategory {
 			return []string{key}, nil
@@ -329,34 +353,6 @@ func formatNumberForSelection(num float64) string {
 		return strconv.FormatInt(int64(num), 10)
 	}
 	return strconv.FormatFloat(num, 'g', -1, 64)
-}
-
-// getPluralCategory determines the plural category for a number using
-// go-intl's pluralrules (CLDR-backed, ECMA-402 compliant).
-//
-// TypeScript reference: new Intl.PluralRules(locales, pluralOpt).select(Number(numVal))
-// Note: The percent multiplication (*100) is handled by the caller (SelectKeys).
-func getPluralCategory(num float64, options map[string]any, loc string) string {
-	ruleType := pluralrules.Cardinal
-	if selectOpt, ok := options["select"].(string); ok && selectOpt == "ordinal" {
-		ruleType = pluralrules.Ordinal
-	}
-	// select=cardinal and select=exact both keep Cardinal; exact selection has
-	// already been handled by SelectKeys before plural rules are reached.
-
-	parsed := intlbridge.ParseLocale(loc)
-	ruleTypeString := string(ruleType)
-
-	rules, err := pluralrules.New(parsed, pluralrules.Options{Type: &ruleTypeString})
-	if err != nil || rules == nil {
-		return "other"
-	}
-
-	cat, err := rules.Select(pluralrules.Float(num))
-	if err != nil {
-		return "other"
-	}
-	return mapPluralForm(cat)
 }
 
 func mapPluralForm(c pluralrules.Category) string {
@@ -443,5 +439,5 @@ func (np *NumberPart) Dir() bidi.Direction {
 }
 
 func (np *NumberPart) Parts() []MessagePart {
-	return np.parts
+	return slices.Clone(np.parts)
 }

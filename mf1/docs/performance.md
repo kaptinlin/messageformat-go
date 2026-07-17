@@ -23,7 +23,7 @@ if err != nil {
 }
 
 for _, name := range names {
-	_, err := compiled(map[string]any{"name": name})
+	_, err := compiled.Format(map[string]any{"name": name})
 	if err != nil {
 		return
 	}
@@ -40,7 +40,9 @@ go -C mf1 test -bench=. -benchmem ./...
 
 ## Concurrency
 
-`MessageFormat` instances are intended to be safe for concurrent use after construction. Prefer sharing compiled formatters instead of rebuilding them per request.
+`MessageFormat` and `CompiledMessage` instances are safe for concurrent use
+after construction. Prefer sharing compiled messages instead of rebuilding
+them per request.
 
 ## Scope
 

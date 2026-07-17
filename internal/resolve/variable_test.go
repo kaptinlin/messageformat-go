@@ -65,8 +65,7 @@ func TestLookupVariableRef(t *testing.T) {
 			"name": "Alice",
 			"age":  30,
 		},
-		nil,
-	)
+		nil, "best fit")
 
 	// Existing variable
 	ref := datamodel.NewVariableRef("name")
@@ -92,8 +91,7 @@ func TestResolveVariableRef(t *testing.T) {
 			"name": "Alice",
 			"age":  30,
 		},
-		nil,
-	)
+		nil, "best fit")
 
 	// String variable
 	ref := datamodel.NewVariableRef("name")
@@ -112,11 +110,11 @@ func TestResolveVariableRef(t *testing.T) {
 }
 
 func TestUnresolvedExpression(t *testing.T) {
-	expr := datamodel.NewExpression(
+	expr := mustExpression(t,
 		datamodel.NewLiteral("test"),
 		nil,
-		nil,
-	)
+		nil)
+
 	scope := map[string]any{"key": "value"}
 
 	unresolved := NewUnresolvedExpression(expr, scope)
@@ -169,8 +167,7 @@ func TestVariables(t *testing.T) {
 			map[string]any{
 				"val": value,
 			},
-			nil,
-		)
+			nil, "best fit")
 
 		// Resolve the variable
 		return ResolveVariableRef(ctx, varRef)
@@ -293,7 +290,8 @@ func TestVariables(t *testing.T) {
 		options := map[string]any{
 			"minimumFractionDigits": 1,
 		}
-		nv := messagevalue.NewNumberValue(42, "en", "test", options)
+		nv, err := messagevalue.NewNumberValue(42, "en", "test", options)
+		require.NoError(t, err)
 
 		str, err := nv.ToString()
 		require.NoError(t, err)
@@ -328,8 +326,7 @@ func TestVariablePaths(t *testing.T) {
 			[]string{"en"},
 			functions.DefaultFunctionMap(),
 			values,
-			nil,
-		)
+			nil, "best fit")
 
 		// Resolve the variable
 		mv := ResolveVariableRef(ctx, varRef)

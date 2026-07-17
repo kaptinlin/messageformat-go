@@ -3,7 +3,7 @@ module github.com/kaptinlin/messageformat-go/mf1
 go 1.26.5
 
 require (
-	github.com/agentable/go-intl v0.2.13
+	github.com/agentable/go-intl v0.2.15
 	github.com/google/go-cmp v0.7.0
 	github.com/stretchr/testify v1.11.1
 )

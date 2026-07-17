@@ -4,7 +4,6 @@ package messageformat
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"maps"
 
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
@@ -16,14 +15,6 @@ var ErrInvalidOption = errors.New("invalid MessageFormat option")
 // Option represents a functional option for MessageFormat constructor
 // TypeScript original code: MessageFormatOptions interface
 type Option func(*MessageFormatOptions)
-
-// FormatOption represents a functional option for Format methods
-type FormatOption func(*FormatOptions)
-
-// FormatOptions represents options for Format and FormatToParts methods
-type FormatOptions struct {
-	OnError func(error)
-}
 
 // NewMessageFormatOptions applies functional options to a fresh MessageFormatOptions value.
 func NewMessageFormatOptions(options ...Option) *MessageFormatOptions {
@@ -63,18 +54,6 @@ func validateMessageFormatOptions(options *MessageFormatOptions) error {
 	}
 
 	return nil
-}
-
-// NewFormatOptions applies functional options to a fresh FormatOptions value.
-func NewFormatOptions(options ...FormatOption) *FormatOptions {
-	opts := &FormatOptions{}
-	for _, option := range options {
-		if option == nil {
-			continue
-		}
-		option(opts)
-	}
-	return opts
 }
 
 // Options converts a configuration struct into a constructor option.
@@ -132,21 +111,5 @@ func WithFunctions(funcs map[string]functions.MessageFunction) Option {
 			opts.Functions = make(map[string]functions.MessageFunction)
 		}
 		maps.Copy(opts.Functions, funcs)
-	}
-}
-
-// WithErrorHandler sets an error handler for Format methods
-// TypeScript original code:
-// format(msgParams?: Record<string, unknown>, onError?: (error: Error) => void): string
-func WithErrorHandler(handler func(error)) FormatOption {
-	return func(opts *FormatOptions) {
-		opts.OnError = handler
-	}
-}
-
-// WithLogger sets a custom logger for this MessageFormat instance
-func WithLogger(logger *slog.Logger) Option {
-	return func(opts *MessageFormatOptions) {
-		opts.Logger = logger
 	}
 }

@@ -34,12 +34,15 @@ Typical context methods:
 Return a `messagevalue.MessageValue`. The most common choices are:
 
 ```go
-messagevalue.NewStringValue(text, locale, source)
-messagevalue.NewNumberValue(number, locale, source, options)
-messagevalue.NewFallbackValue(source, locale)
+stringValue := messagevalue.NewStringValue(text, locale, source)
+numberValue, err := messagevalue.NewNumberValue(number, locale, source, options)
+fallbackValue := messagevalue.NewFallbackValue(source, locale)
 ```
 
-`NewFallbackValue` is the right choice when the function cannot produce a meaningful result and you want the formatter to degrade gracefully.
+Number construction validates the Intl formatting and plural-selection plan;
+handle its error before returning the value. `NewFallbackValue` is the right
+choice when the function cannot produce a meaningful result and you want the
+formatter to degrade gracefully.
 
 ## Basic Example
 

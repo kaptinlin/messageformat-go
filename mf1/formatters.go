@@ -13,152 +13,46 @@ import (
 	"github.com/kaptinlin/messageformat-go/mf1/internal/intlbridge"
 )
 
-// NumberFmt formats numbers with specified parameters
+// formatNumber formats one numeric value with the closed MF1 style vocabulary.
 // TypeScript original code:
-// export function numberFmt(
-//
-//	value: number,
-//	lc: string | string[],
-//	arg: string,
-//	defaultCurrency: string
-//
-//	) {
-//	  const [type, currency] = (arg && arg.split(':')) || [];
-//	  const opt: Record<string, Intl.NumberFormatOptions | undefined> = {
-//	    integer: { maximumFractionDigits: 0 },
-//	    percent: { style: 'percent' },
-//	    currency: {
-//	      style: 'currency',
-//	      currency: (currency && currency.trim()) || defaultCurrency,
-//	      minimumFractionDigits: 2,
-//	      maximumFractionDigits: 2
-//	    }
-//	  };
-//	  return nf(lc, opt[type] || {}).format(value);
-//	}
-func NumberFmt(value any, lc string, arg string, defaultCurrency string) (string, error) {
-	numValue, err := toFloat64(value)
+// return nf(lc, options).format(value);
+func formatNumber(value any, locale, style, defaultCurrency string) (string, error) {
+	number, err := toFloat64(value)
 	if err != nil {
 		return "", WrapInvalidNumberValue(value)
 	}
 
-	var formatType, currency string
-	if arg != "" {
-		parts := strings.Split(arg, ":")
-		formatType = strings.TrimSpace(parts[0])
-		if len(parts) > 1 {
-			currency = strings.TrimSpace(parts[1])
-		}
+	styleName, currency, hasCurrency := strings.Cut(strings.TrimSpace(style), ":")
+	styleName = strings.TrimSpace(styleName)
+	currency = strings.TrimSpace(currency)
+	if hasCurrency && (styleName != "currency" || strings.Contains(currency, ":")) {
+		return "", WrapInvalidFormatterStyle("number", style)
 	}
 
-	if currency == "" {
-		currency = defaultCurrency
-	}
-
-	switch formatType {
+	var options numberformat.Options
+	switch styleName {
+	case "":
 	case "integer":
-		return NumberInteger(numValue, lc), nil
+		options.MaximumFractionDigits = intPtr(0)
 	case "percent":
-		return NumberPercent(numValue, lc), nil
+		options.Style = stringPtr(string(numberformat.PercentStyle))
 	case "currency":
-		return NumberCurrency(numValue, lc, currency), nil
+		if currency == "" {
+			currency = defaultCurrency
+		}
+		options.Style = stringPtr(string(numberformat.CurrencyStyle))
+		options.Currency = stringPtr(currency)
+		options.MinimumFractionDigits = intPtr(2)
+		options.MaximumFractionDigits = intPtr(2)
 	default:
-		return formatNumberDefault(numValue, lc), nil
-	}
-}
-
-// NumberCurrency formats a number as currency. Mirrors the TypeScript reference,
-// which pins fraction digits at 2 regardless of CLDR's per-currency default
-// (e.g. JPY's CLDR default of 0). Tests rely on "¥9.50" rather than "¥10".
-//
-// TypeScript original code:
-// export const numberCurrency = (
-//
-//	value: number,
-//	lc: string | string[],
-//	arg: string
-//
-// ) =>
-//
-//	nf(lc, {
-//	  style: 'currency',
-//	  currency: arg,
-//	  minimumFractionDigits: 2,
-//	  maximumFractionDigits: 2
-//	}).format(value);
-func NumberCurrency(value any, lc string, currencyCode string) string {
-	numValue, err := toFloat64(value)
-	if err != nil {
-		return fmt.Sprintf("%v", value)
+		return "", WrapInvalidFormatterStyle("number", style)
 	}
 
-	loc := intlbridge.ParseLocale(lc)
-	nf, err := numberformat.New(loc, numberformat.Options{
-		Style:                 stringPtr(string(numberformat.CurrencyStyle)),
-		Currency:              stringPtr(currencyCode),
-		MinimumFractionDigits: intPtr(2),
-		MaximumFractionDigits: intPtr(2),
-	})
+	formatter, err := numberformat.New(intlbridge.ParseLocale(locale), options)
 	if err != nil {
-		return fmt.Sprintf("%v", value)
+		return "", fmt.Errorf("create number formatter: %w", err)
 	}
-	return nf.Format(numberformat.Float(numValue))
-}
-
-// NumberInteger formats a number as integer
-// TypeScript original code:
-// export const numberInteger = (value: number, lc: string | string[]) =>
-//
-//	nf(lc, { maximumFractionDigits: 0 }).format(value);
-func NumberInteger(value any, lc string) string {
-	numValue, err := toFloat64(value)
-	if err != nil {
-		return fmt.Sprintf("%v", value)
-	}
-
-	loc := intlbridge.ParseLocale(lc)
-	nf, err := numberformat.New(loc, numberformat.Options{
-		MaximumFractionDigits: intPtr(0),
-	})
-	if err != nil {
-		return fmt.Sprintf("%v", value)
-	}
-	return nf.Format(numberformat.Float(numValue))
-}
-
-// NumberPercent formats a number as percentage. The input is the fractional
-// proportion (0.5 → "50%") to match Intl.NumberFormat's percent style.
-//
-// TypeScript original code:
-// export const numberPercent = (value: number, lc: string | string[]) =>
-//
-//	nf(lc, { style: 'percent' }).format(value);
-func NumberPercent(value any, lc string) string {
-	numValue, err := toFloat64(value)
-	if err != nil {
-		return fmt.Sprintf("%v", value)
-	}
-
-	loc := intlbridge.ParseLocale(lc)
-	nf, err := numberformat.New(loc, numberformat.Options{
-		Style: stringPtr(string(numberformat.PercentStyle)),
-	})
-	if err != nil {
-		return fmt.Sprintf("%v", value)
-	}
-	return nf.Format(numberformat.Float(numValue))
-}
-
-// formatNumberDefault formats with numberformat's default ECMA-402 options
-// (locale-aware grouping, up to 3 fraction digits). Mirrors Intl.NumberFormat
-// with no overrides — the TS reference for NumberFmt's default branch.
-func formatNumberDefault(value float64, lc string) string {
-	loc := intlbridge.ParseLocale(lc)
-	nf, err := numberformat.New(loc, numberformat.Options{})
-	if err != nil {
-		return strconv.FormatFloat(value, 'g', -1, 64)
-	}
-	return nf.Format(numberformat.Float(value))
+	return formatter.Format(numberformat.Float(number)), nil
 }
 
 func intPtr(v int) *int {
@@ -169,69 +63,42 @@ func stringPtr(v string) *string {
 	return &v
 }
 
-// DateFormatter formats dates with locale-specific formatting using go-intl's
-// datetimeformat. Maps the v1 size enum onto ECMA-402 DateStyle:
-//
-//	"short"  → numeric Y/M/D (e.g. "5/4/2026" in en-US, preserving 4-digit year)
-//	""       → DateStyle=medium (default)
-//	"long"   → DateStyle=long
-//	"full"   → DateStyle=full
-//
+// formatDate formats a date with an optional compiler-configured time zone.
 // TypeScript original code:
-// export function date(
-//
-//	value: number | string,
-//	lc: string | string[],
-//	size?: 'short' | 'default' | 'long' | 'full'
-//
-//	) {
-//	  const o: Intl.DateTimeFormatOptions = {
-//	    day: 'numeric',
-//	    month: 'short',
-//	    year: 'numeric'
-//	  };
-//	  switch (size) {
-//	    case 'full':
-//	      o.weekday = 'long';
-//	    case 'long':
-//	      o.month = 'long';
-//	      break;
-//	    case 'short':
-//	      o.month = 'numeric';
-//	  }
-//	  return new Date(value).toLocaleDateString(lc, o);
-//	}
-func DateFormatter(value any, lc string, size string) (string, error) {
+// return new Date(value).toLocaleDateString(lc, options);
+func formatDate(value any, lc, size, timeZone string) (string, error) {
+	if err := validateDateTimeStyle("date", size); err != nil {
+		return "", err
+	}
 	t, err := coerceDateInput(value)
 	if err != nil {
 		return "", err
 	}
-	return formatDateTimeWithSize(t, lc, size, false)
+	return formatDateTimeWithSize(t, lc, size, timeZone, false)
 }
 
-// TimeFormatter formats time values
-// TypeScript original code: Similar to date formatter but for time
-func TimeFormatter(value any, lc string, size string) (string, error) {
+// TypeScript original code:
+// return new Date(value).toLocaleTimeString(lc, options);
+func formatTime(value any, lc, size, timeZone string) (string, error) {
+	if err := validateDateTimeStyle("time", size); err != nil {
+		return "", err
+	}
 	t, err := coerceTimeInput(value)
 	if err != nil {
 		return "", err
 	}
-	return formatDateTimeWithSize(t, lc, size, true)
+	return formatDateTimeWithSize(t, lc, size, timeZone, true)
 }
 
-// GetFormatter returns a formatter function by name
-func GetFormatter(name string) func(any, string, string) (string, error) {
-	switch name {
-	case "number":
-		return func(value any, lc string, arg string) (string, error) {
-			return NumberFmt(value, lc, arg, "USD")
-		}
-	case "date":
-		return DateFormatter
-	case "time":
-		return TimeFormatter
-	default:
+// validateDateTimeStyle validates the closed MF1 date/time size vocabulary.
+// TypeScript original code:
+// size?: 'short' | 'default' | 'long' | 'full';
+func validateDateTimeStyle(formatter, size string) error {
+	switch size {
+	case "", "default", "short", "long", "full":
 		return nil
+	default:
+		return WrapInvalidFormatterStyle(formatter, size)
 	}
 }
 
@@ -280,10 +147,12 @@ func coerceDateTimeInput(value any, wrapInvalid func(any) error) (time.Time, err
 
 // formatDateTimeWithSize maps the v1 size enum to datetimeformat options and
 // invokes go-intl. The isTime flag toggles between date and time field sets.
-func formatDateTimeWithSize(t time.Time, lc, size string, isTime bool) (string, error) {
+func formatDateTimeWithSize(t time.Time, lc, size, timeZone string, isTime bool) (string, error) {
 	loc := intlbridge.ParseLocale(lc)
 	opts := dateTimeOptionsForSize(size, isTime)
-	if opts.TimeZone == nil {
+	if timeZone != "" {
+		opts.TimeZone = stringPtr(timeZone)
+	} else if opts.TimeZone == nil {
 		// Preserve the input time's location so date-only formatting doesn't
 		// slide a day in non-UTC runtimes, and time-only formatting reflects
 		// the caller's intended wall clock.

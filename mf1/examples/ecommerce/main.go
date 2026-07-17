@@ -35,8 +35,7 @@ type NotificationService struct {
 // NewNotificationService creates a new notification service
 func NewNotificationService(locale string) (*NotificationService, error) {
 	messageFormat, err := mf.New(locale, &mf.MessageFormatOptions{
-		Currency:   "USD",
-		ReturnType: mf.ReturnTypeString,
+		Currency: "USD",
 	})
 	if err != nil {
 		return nil, err
@@ -60,7 +59,7 @@ func (ns *NotificationService) CartMessage(itemCount int, customerGender string)
 		return "", err
 	}
 
-	result, err := msg(map[string]any{
+	result, err := msg.Format(map[string]any{
 		"gender":    customerGender,
 		"itemCount": itemCount,
 	})
@@ -68,7 +67,7 @@ func (ns *NotificationService) CartMessage(itemCount int, customerGender string)
 		return "", err
 	}
 
-	return result.(string), nil
+	return result, nil
 }
 
 // OrderStatusMessage generates order status notifications
@@ -88,7 +87,7 @@ func (ns *NotificationService) OrderStatusMessage(order Order) (string, error) {
 		return "", err
 	}
 
-	result, err := msg(map[string]any{
+	result, err := msg.Format(map[string]any{
 		"status":    order.Status,
 		"orderID":   order.ID,
 		"customer":  order.Customer,
@@ -99,7 +98,7 @@ func (ns *NotificationService) OrderStatusMessage(order Order) (string, error) {
 		return "", err
 	}
 
-	return result.(string), nil
+	return result, nil
 }
 
 // InventoryMessage generates inventory level alerts
@@ -115,7 +114,7 @@ func (ns *NotificationService) InventoryMessage(productName string, stockLevel i
 		return "", err
 	}
 
-	result, err := msg(map[string]any{
+	result, err := msg.Format(map[string]any{
 		"product": productName,
 		"stock":   stockLevel,
 	})
@@ -123,7 +122,7 @@ func (ns *NotificationService) InventoryMessage(productName string, stockLevel i
 		return "", err
 	}
 
-	return result.(string), nil
+	return result, nil
 }
 
 func main() {

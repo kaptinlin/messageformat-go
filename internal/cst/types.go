@@ -14,6 +14,8 @@ import (
 // export type Message = SimpleMessage | ComplexMessage | SelectMessage;
 type Message interface {
 	Type() string
+	Start() int
+	End() int
 	Errors() []*errors.MessageSyntaxError
 }
 
@@ -34,6 +36,16 @@ type SimpleMessage struct {
 // Type returns the message type
 // TypeScript original code: type: 'simple'
 func (m *SimpleMessage) Type() string { return "simple" }
+
+// Start returns the start of the owning pattern.
+// TypeScript original code:
+// const start = message.pattern.start;
+func (m *SimpleMessage) Start() int { return m.pattern.Start() }
+
+// End returns the end of the owning pattern.
+// TypeScript original code:
+// const end = message.pattern.end;
+func (m *SimpleMessage) End() int { return m.pattern.End() }
 
 // Errors returns syntax errors
 // TypeScript original code: errors: MessageSyntaxError[]
@@ -65,6 +77,21 @@ type ComplexMessage struct {
 // Type returns the message type
 // TypeScript original code: type: 'complex'
 func (m *ComplexMessage) Type() string { return "complex" }
+
+// Start returns the start of the first declaration or owning pattern.
+// TypeScript original code:
+// const start = message.declarations[0]?.start ?? message.pattern.start;
+func (m *ComplexMessage) Start() int {
+	if len(m.declarations) > 0 {
+		return m.declarations[0].Start()
+	}
+	return m.pattern.Start()
+}
+
+// End returns the end of the owning pattern.
+// TypeScript original code:
+// const end = message.pattern.end;
+func (m *ComplexMessage) End() int { return m.pattern.End() }
 
 // Errors returns syntax errors
 // TypeScript original code: errors: MessageSyntaxError[]
@@ -100,6 +127,29 @@ type SelectMessage struct {
 // Type returns the message type
 // TypeScript original code: type: 'select'
 func (m *SelectMessage) Type() string { return "select" }
+
+// Start returns the start of the first declaration or match keyword.
+// TypeScript original code:
+// const start = message.declarations[0]?.start ?? message.match.start;
+func (m *SelectMessage) Start() int {
+	if len(m.declarations) > 0 {
+		return m.declarations[0].Start()
+	}
+	return m.match.Start()
+}
+
+// End returns the end of the last variant, selector, or match keyword.
+// TypeScript original code:
+// const end = message.variants.at(-1)?.end ?? message.selectors.at(-1)?.end ?? message.match.end;
+func (m *SelectMessage) End() int {
+	if len(m.variants) > 0 {
+		return m.variants[len(m.variants)-1].End()
+	}
+	if len(m.selectors) > 0 {
+		return m.selectors[len(m.selectors)-1].End()
+	}
+	return m.match.End()
+}
 
 // Errors returns syntax errors
 // TypeScript original code: errors: MessageSyntaxError[]

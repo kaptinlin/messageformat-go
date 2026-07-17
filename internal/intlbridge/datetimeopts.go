@@ -15,9 +15,9 @@ import (
 //   - LDML 48 form (`dateFields`, `dateLength`, `timePrecision`,
 //     `timeZoneStyle`) which lists the visible fields and a length hint.
 //
-// Both are mapped here. go-intl rejects mixing `DateStyle`/`TimeStyle` with
-// per-field options, so legacy and LDML 48 inputs are kept mutually exclusive
-// in the output. Unknown options are silently dropped, matching the MF2 spec.
+// Both are mapped here. When callers mix `DateStyle`/`TimeStyle` with per-field
+// options, both reach go-intl so its typed validation can reject the conflict.
+// Unknown options are silently dropped, matching the MF2 spec.
 func DateTimeOptions(opts map[string]any) datetimeformat.Options {
 	out := datetimeformat.Options{}
 	if len(opts) == 0 {
@@ -49,26 +49,21 @@ func DateTimeOptions(opts map[string]any) datetimeformat.Options {
 		}
 	}
 
-	hasLegacy := applyLegacyStyle(&out, opts)
-	if !hasLegacy {
-		applyLdmlFields(&out, opts)
-	}
+	applyLegacyStyle(&out, opts)
+	applyLdmlFields(&out, opts)
 	return out
 }
 
-// applyLegacyStyle handles `dateStyle` / `timeStyle`. Returns true when at
-// least one was applied so the caller skips the LDML field path.
-func applyLegacyStyle(out *datetimeformat.Options, opts map[string]any) bool {
-	applied := false
+// applyLegacyStyle preserves `dateStyle` / `timeStyle` for dependency validation.
+// TypeScript original code:
+// options.dateStyle = input.dateStyle; options.timeStyle = input.timeStyle;
+func applyLegacyStyle(out *datetimeformat.Options, opts map[string]any) {
 	if s, ok := asOptString(opts["dateStyle"]); ok {
 		out.DateStyle = stringPtr(s)
-		applied = true
 	}
 	if s, ok := asOptString(opts["timeStyle"]); ok {
 		out.TimeStyle = stringPtr(s)
-		applied = true
 	}
-	return applied
 }
 
 // applyLdmlFields expands LDML 48 options into go-intl's per-field option set.

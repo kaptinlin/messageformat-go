@@ -156,7 +156,7 @@ if err != nil {
 }
 ```
 
-Runtime issues are reported through fallbacks and optional error handlers:
+Runtime issues return fallback output together with diagnostics:
 
 ```go
 mf, err := messageformat.Parse([]string{"en"}, "Hello {$name}")
@@ -164,17 +164,11 @@ if err != nil {
 	log.Fatal(err)
 }
 
-out, err := mf.Format(
-	map[string]any{},
-	messageformat.WithErrorHandler(func(err error) {
-		log.Printf("format warning: %v", err)
-	}),
-)
-if err != nil {
-	log.Fatal(err)
-}
-
+out, err := mf.Format(map[string]any{})
 fmt.Println(out)
+if err != nil {
+	log.Printf("format diagnostics: %v", err)
+}
 ```
 
 Use `Parse(...)` for source text and `Compile(...)` for an existing data model. Handle invalid templates through the returned error.

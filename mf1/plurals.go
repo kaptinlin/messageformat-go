@@ -3,6 +3,7 @@ package v1
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -35,6 +36,16 @@ const (
 //	  module?: string;
 //	}
 type PluralFunction func(value any, ord ...bool) (PluralCategory, error)
+
+// PluralProfile describes caller-supplied plural behavior for one locale.
+// TypeScript original code:
+// getPlural(pluralFunction)
+type PluralProfile struct {
+	Locale    string
+	Select    PluralFunction
+	Cardinals []PluralCategory
+	Ordinals  []PluralCategory
+}
 
 // PluralObject represents plural rules and metadata for a specific locale
 // TypeScript original code:
@@ -127,19 +138,61 @@ func GetPlural(locale string) (PluralObject, error) {
 	}, nil
 }
 
-// newCustomPlural creates the plural metadata for a caller-supplied function.
+// newCustomPlural creates plural metadata from a caller-supplied profile.
 // TypeScript original code:
 // getPlural(pluralFunction)
-func newCustomPlural(plural PluralFunction) PluralObject {
+func newCustomPlural(profile PluralProfile) PluralObject {
 	return PluralObject{
 		IsDefault: false,
-		ID:        "custom",
-		LC:        "custom",
-		Locale:    "custom",
-		Func:      plural,
-		Cardinals: []PluralCategory{PluralOne, PluralOther},
-		Ordinals:  []PluralCategory{PluralOther},
+		ID:        profile.Locale,
+		LC:        profile.Locale,
+		Locale:    profile.Locale,
+		Func:      profile.Select,
+		Cardinals: slices.Clone(profile.Cardinals),
+		Ordinals:  slices.Clone(profile.Ordinals),
 	}
+}
+
+// validatePluralProfile validates caller-supplied plural facts at construction.
+// TypeScript original code:
+// getPlural(pluralFunction)
+func validatePluralProfile(profile PluralProfile) error {
+	if _, err := parseStrictLocale(profile.Locale); err != nil {
+		return WrapInvalidLocale(profile.Locale)
+	}
+	if profile.Select == nil {
+		return ErrInvalidPluralFunction
+	}
+	if err := validatePluralCategories("cardinals", profile.Cardinals); err != nil {
+		return err
+	}
+	return validatePluralCategories("ordinals", profile.Ordinals)
+}
+
+// validatePluralCategories validates one complete plural category set.
+// TypeScript original code:
+// cardinals: locale.cardinals || []; ordinals: locale.ordinals || [];
+func validatePluralCategories(name string, categories []PluralCategory) error {
+	if len(categories) == 0 {
+		return fmt.Errorf("%w: %s are empty", ErrInvalidPluralCategories, name)
+	}
+
+	seen := make(map[PluralCategory]struct{}, len(categories))
+	for _, category := range categories {
+		switch category {
+		case PluralZero, PluralOne, PluralTwo, PluralFew, PluralMany, PluralOther:
+		default:
+			return fmt.Errorf("%w: %s contains %q", ErrInvalidPluralCategories, name, category)
+		}
+		if _, exists := seen[category]; exists {
+			return fmt.Errorf("%w: %s contains duplicate %q", ErrInvalidPluralCategories, name, category)
+		}
+		seen[category] = struct{}{}
+	}
+	if _, exists := seen[PluralOther]; !exists {
+		return fmt.Errorf("%w: %s omit %q", ErrInvalidPluralCategories, name, PluralOther)
+	}
+	return nil
 }
 
 // HasPlural checks if a locale has plural support
@@ -184,10 +237,7 @@ func getPluralRules(loc string) (PluralFunction, []PluralCategory, []PluralCateg
 		if rules == nil {
 			return PluralOther, nil
 		}
-		category, err := rules.Select(pluralrules.Int(num))
-		if err != nil {
-			return PluralOther, err
-		}
+		category := rules.Select(pluralrules.Int(num))
 		return mapPluralCategory(category), nil
 	}
 
@@ -244,10 +294,14 @@ func categoriesFromRules(r *pluralrules.PluralRules) []PluralCategory {
 	return out
 }
 
-// hasPluralLocale verifies that go-intl found CLDR data for the parsed locale
-// by checking that SupportedLocalesOf returns the locale unchanged.
+// hasPluralLocale verifies that go-intl has CLDR plural data for the parsed
+// locale. Lookup matching prevents best-fit from expanding the supported set.
 func hasPluralLocale(loc locale.Locale) bool {
-	supported, err := pluralrules.SupportedLocalesOf([]locale.Locale{loc}, pluralrules.Options{})
+	lookup := string(pluralrules.LookupLocaleMatcher)
+	supported, err := pluralrules.SupportedLocalesOf(
+		[]locale.Locale{loc},
+		pluralrules.Options{LocaleMatcher: &lookup},
+	)
 	if err != nil {
 		return false
 	}

@@ -5,9 +5,9 @@
 The root package is the primary user-facing API:
 
 - `Parse(locales, source, options...)` parses source text and validates the resulting data model.
-- `Compile(locales, message, options...)` accepts a public data model and stores a detached snapshot.
-- `Format(values, options...)` returns the string projection of the selected pattern.
-- `FormatToParts(values, options...)` returns the structured-parts projection of the selected pattern.
+- `Compile(locales, message, options...)` accepts the sealed, immutable public data model. Model constructors snapshot mutable inputs before `Compile` can retain the value.
+- `Format(values)` returns the string projection of the selected pattern and any runtime diagnostics.
+- `FormatToParts(values)` returns the structured-parts projection of the selected pattern and any runtime diagnostics.
 
 `Format(values map[string]any)` remains dynamic. Message parameters come from application data, not from Go compile-time schemas.
 
@@ -48,8 +48,7 @@ Constructor option values must use the exported typed constants. `Parse` and
 
 There is no parallel string-helper vocabulary. Callers that load strings from
 configuration convert them to the exported types, then let `Parse` or `Compile`
-validate the value. Logging is instance-scoped through `WithLogger`; a nil
-logger resolves to `slog.Default()` without package-owned mutable logger state.
+validate the value. Formatting does not log or invoke package-owned callbacks.
 
 ## Data Model
 
@@ -62,6 +61,21 @@ Rules:
 - `ParseMessage` owns CST conversion. CST adapters remain internal and CST values must not be retained by public runtime nodes.
 - Constructors must not retain caller-owned mutable slices or maps.
 - Accessors for slices and maps must return detached snapshots.
+- `NewExpression` returns an error unless an argument or function reference is
+  present; typed-nil arguments count as absent.
+- `NewInputDeclaration` accepts one expression, requires a non-nil variable
+  argument, and derives its name from that variable rather than storing a
+  second caller-supplied name.
+- Composite model constructors return errors for nil or typed-nil members in
+  declaration, pattern-element, and variant-key unions. `ErrNilMember` is the
+  stable error identity; nil and empty sequences remain valid empty values.
+- `NewFunctionRef`, `NewExpression`, and `NewMarkup` reject nil or typed-nil
+  option and attribute union values before snapshotting their maps. Nil and
+  empty maps remain valid and mean no options or attributes.
+- `ParseMessage` preserves exact byte spans on parsed message roots and select
+  variants so model-validation errors can identify their owning source range.
+  Programmatically constructed roots and variants use the unknown `(-1, -1)`
+  span.
 - Parser failures return syntax errors; a well-formed parse result that violates data-model invariants returns a data-model error.
 - `Type()` may remain for debugging and JSON-like compatibility, but internal control flow should prefer type switches and small interfaces.
 
@@ -78,7 +92,7 @@ Variable lookup has four distinct states:
 
 Rules:
 
-- Missing values produce fallback values and report through the configured error handler.
+- Missing values produce fallback values and contribute a diagnostic to the returned error.
 - Nil and typed-nil values are found values, not missing variables.
 - Unknown values produce `UnknownValue` and preserve their original Go value.
 - Normalized key matching may find a variable when the stored key's normalized form matches the requested name.
@@ -112,12 +126,12 @@ type MessageFunction func(
 
 `functions.Options` is a read-oriented helper boundary. Use `String`, `Int`, `Bool`, `Value`, `Has`, and `Map` instead of requiring every custom function to repeat ad hoc map coercion.
 
-Built-in function registry rules:
+Function catalog and configuration rules:
 
 - `DefaultFunctionMap()` and `DraftFunctionMap()` return detached snapshots.
 - `DefaultFunctionMap()` contains stable defaults: `:currency`, `:integer`, `:number`, `:offset`, `:percent`, and `:string`.
 - `DraftFunctionMap()` contains draft functions: `:date`, `:datetime`, `:time`, and `:unit`; callers opt in with `WithFunctions`.
-- `FunctionRegistry` is the mutable extension point.
+- `WithFunction` and `WithFunctions` are the only custom-function configuration handoff. Constructors snapshot their input maps.
 - `:math` is an extension function, not an MF2 spec function; callers opt in with `WithFunction`.
 
 ## Message Values and Parts
@@ -130,11 +144,25 @@ Built-in function registry rules:
 - `OptionedValue` carries formatting options.
 
 Concrete part types must expose typed accessors where the value type is known, while keeping `Value() any` for compatibility.
+`Parts()` accessors return detached shallow copies.
 
 `Options()` on package-owned values and parts returns a detached shallow copy.
 Resolver wrappers must preserve that ownership boundary even when a custom
 `OptionedValue` exposes its own mutable map. Opaque option values and functions
 retain identity; the package copies containers, not arbitrary object graphs.
+
+Number-value construction is fallible and validates one immutable Intl plan.
+The value and its parts expose the dependency-resolved locale; string, parts,
+and plural selection apply the same resolved digit semantics. Invalid required
+number options return a typed diagnostic and fallback rather than retrying
+after deleting caller semantics.
+
+Date/time-value construction is fallible and validates one immutable Intl
+plan. The value and its top-level part expose the dependency-resolved locale,
+calendar, and time zone. When no time-zone option is present, UTC, named-zone,
+fixed-offset, and local `time.Time` inputs preserve their wall clock. Invalid
+required options return a typed diagnostic and fallback; style/field conflicts
+remain intact for dependency validation rather than being silently rewritten.
 
 > **Why**: Go should not force every value to implement no-op selector or options methods just to satisfy one broad interface.
 
@@ -144,8 +172,20 @@ The independent module `github.com/kaptinlin/messageformat-go/mf1` exposes one
 typed entry point per caller job:
 
 ```go
+type Formatter func(value any, locale, style string) (string, error)
+
+type PluralProfile struct {
+    Locale    string
+    Select    PluralFunction
+    Cardinals []PluralCategory
+    Ordinals  []PluralCategory
+}
+
 func New(locale string, options *MessageFormatOptions) (*MessageFormat, error)
-func NewWithPlural(plural PluralFunction, options *MessageFormatOptions) (*MessageFormat, error)
+func NewWithPlural(profile PluralProfile, options *MessageFormatOptions) (*MessageFormat, error)
+func (*MessageFormat) Compile(source string) (*CompiledMessage, error)
+func (*CompiledMessage) Format(values map[string]any) (string, error)
+func (*CompiledMessage) FormatValues(values map[string]any) ([]any, error)
 func SupportedLocalesOf(locales []string) ([]string, error)
 func GetPlural(locale string) (PluralObject, error)
 ```
@@ -155,9 +195,31 @@ Rules:
 - Empty, wildcard, and tags rejected by strict locale parsing return `ErrInvalidLocale`.
 - A syntactically valid locale without plural data uses the package-private stable fallback locale.
 - `SupportedLocalesOf` filters the caller-owned candidate list in input order; the module does not publish a partial global locale catalog.
-- `NewWithPlural` rejects nil with `ErrInvalidPluralFunction`.
-- Constructor option maps and plural containers are snapshots. `ResolvedOptions` returns detached maps, slices, and plural-category slices.
+- `NewWithPlural` validates the profile locale, selector, and complete cardinal
+  and ordinal category sets. Invalid category sets return
+  `ErrInvalidPluralCategories`; a nil selector returns
+  `ErrInvalidPluralFunction`.
+- Constructor option maps and profile category slices are snapshots.
+  `ResolvedOptions` returns detached maps, slices, and plural-category slices.
 - `MessageFormat` may compile and execute concurrently after construction.
+- `CompiledMessage` is immutable and may execute both projections concurrently.
+- Nil values maps are empty input. Missing plain arguments become empty strings
+  unless `RequireAllArguments` is enabled, in which case both projections
+  return `ErrMissingArgument`.
+- Built-in `number`, `date`, and `time` arguments format through `go-intl` on
+  the compiled-message path. Number formatting uses no style or `integer`,
+  `percent`, and `currency[:CODE]`; date/time styles are empty/default,
+  `short`, `long`, and `full`.
+- Unknown built-in styles return `ErrInvalidFormatterStyle`. Invalid operands
+  retain the formatter-specific error identity. Constructor `Currency` and
+  `TimeZone` options reach the dependency unchanged.
+- `MessageFormatOptions.CustomFormatters` is `map[string]Formatter`. Names must
+  be lexer-reachable, non-reserved identifiers and handlers must be non-nil;
+  invalid registrations return `ErrInvalidFormatter` at construction.
+- Custom formatters receive the original value, effective locale, and trimmed
+  style. Handler errors preserve identity through both projections. The
+  formatter map is snapshotted; handlers must themselves support concurrent calls
+  when the compiled message is used concurrently.
 
 > **Rejected**: A JavaScript-shaped `New(any, ...)`, wildcard locale catalog,
 > mutable exported default locale, or compatibility overloads. Those surfaces
@@ -165,7 +227,9 @@ Rules:
 
 ## Error Handling
 
-Construction errors return `error`. Format-time recoverable errors flow through the configured error handler and degrade to fallback values when possible.
+Construction errors return `error`. Format-time recoverable failures preserve
+fallback output and are returned as `errors.Join(...)` diagnostics in encounter
+order. Successful format calls return a nil error.
 
 Production code must not panic for user-controlled message syntax, data model shape, or runtime values.
 
@@ -180,6 +244,7 @@ Rules:
 - Do not expose mutable default function maps.
 - Do not add string compatibility helpers for typed constructor options.
 - Do not add package-wide mutable logger state.
+- Do not add format-time logger or error-handler options; callers own error presentation.
 - Do not require all message values to implement selection.
 - Do not require callers to import `internal/` packages.
 - Do not reopen the sealed data model with public CST adapters or external message implementations.
@@ -193,15 +258,16 @@ Rules:
 ## Acceptance Criteria
 
 - Mutating caller-supplied slices or maps after construction does not change the constructed value.
-- Mutating a data model after `Compile` does not change the compiled formatter.
-- Mutating a map returned by `DefaultFunctionMap` or `DraftFunctionMap` does not affect new registries or formatters.
+- Mutating data-model constructor inputs or collection accessor results after
+  `Compile` does not change the compiled formatter.
+- Mutating a map returned by `DefaultFunctionMap` or `DraftFunctionMap` does not affect new formatters.
 - `options_test.go` proves every constructor option vocabulary and `ErrInvalidOption` path through both `Parse` and `Compile`.
-- `pkg/messagevalue/value_test.go` and `internal/resolve/function_ref_test.go` prove option-accessor snapshot ownership.
+- `pkg/messagevalue/value_test.go` and `internal/resolve/function_ref_test.go` prove option and part accessor snapshot ownership.
 - `pkg/datamodel/fromcst_test.go` and `pkg/datamodel/validate_test.go` prove syntax/data-model error ownership and closed construction paths.
 - `mf1/constructor_external_test.go` and `mf1/messageformat_test.go` prove typed constructors, malformed-versus-unsupported locale behavior, detached resolved options, and concurrent use.
 - Tests cover default bidi isolation, resolved options, custom function registration, `Format`, and `FormatToParts`.
 - Tests cover selector no-probe behavior and deterministic candidate order.
 - Tests cover missing, nil, typed nil, and unknown variable states.
-- Tests cover accessor snapshots and compile-time data model snapshots.
+- Tests prove data-model constructor and accessor ownership through compiled formatting.
 - Tests cover `errors.Is`, `errors.As`, and `Kind()`.
 - `task verify` passes after API changes.

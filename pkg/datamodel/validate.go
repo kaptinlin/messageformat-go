@@ -11,11 +11,13 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-// ValidationResult contains the result of message validation
+// ValidationResult contains the functions and external variables used by a message.
+// Ordered model nodes contribute names in first-encounter order. Values owned by
+// Options maps are visited in lexicographic key order.
 // TypeScript original code: validation return value
 type ValidationResult struct {
-	Functions []string // Set of function names used
-	Variables []string // Set of variable names used
+	Functions []string
+	Variables []string
 }
 
 // ValidateMessage validates a message data model
@@ -116,11 +118,13 @@ func validateMessage(msg Message, onError func(string, any)) *ValidationResult {
 type validationState struct {
 	onError func(string, any)
 
-	annotated map[string]bool
-	declared  map[string]bool
-	functions map[string]bool
-	localVars map[string]bool
-	variables map[string]bool
+	annotated     map[string]bool
+	declared      map[string]bool
+	functions     map[string]bool
+	functionOrder []string
+	localVars     map[string]bool
+	variables     map[string]bool
+	variableOrder []string
 
 	variantHashSeed maphash.Seed
 	variants        map[uint64][][]any
@@ -150,7 +154,7 @@ func (state *validationState) scanDeclarations(declarations []Declaration) {
 		state.reportInvalidLocalOptionReferences(declarations, i, decl)
 		state.recordAnnotation(decl)
 		state.recordLocalVariable(decl)
-		visitExpression(decl, state.functions, state.variables)
+		visitDeclarationExpression(decl, state)
 		state.recordDeclaration(decl)
 	}
 }
@@ -178,7 +182,9 @@ func (state *validationState) reportInvalidLocalOptionReferences(declarations []
 		return
 	}
 
-	for _, optValue := range localDecl.value.FunctionRef().Options() {
+	options := localDecl.value.FunctionRef().Options()
+	for _, name := range slices.Sorted(maps.Keys(options)) {
+		optValue := options[name]
 		varRef, ok := optValue.(*VariableRef)
 		if !ok {
 			continue
@@ -232,7 +238,7 @@ func (state *validationState) validateSelectors(selectors []VariableRef) (int, a
 	var missingFallback any
 	for _, selector := range selectors {
 		missingFallback = selector
-		state.variables[selector.Name()] = true
+		state.recordVariable(selector.Name())
 		if !state.annotated[selector.Name()] {
 			state.onError("missing-selector-annotation", selector)
 		}
@@ -292,17 +298,34 @@ func (state *validationState) recordVariantKeys(variant Variant, keyStrs []any) 
 }
 
 func (state *validationState) visitPattern(pattern Pattern) {
-	visitPattern(pattern, state.functions, state.variables)
+	visitPattern(pattern, state)
 }
 
 func (state *validationState) result() *ValidationResult {
-	maps.DeleteFunc(state.variables, func(name string, _ bool) bool {
-		return state.localVars[name]
-	})
+	variables := make([]string, 0, len(state.variableOrder))
+	for _, name := range state.variableOrder {
+		if !state.localVars[name] {
+			variables = append(variables, name)
+		}
+	}
 
 	return &ValidationResult{
-		Functions: slices.Collect(maps.Keys(state.functions)),
-		Variables: slices.Collect(maps.Keys(state.variables)),
+		Functions: slices.Clone(state.functionOrder),
+		Variables: variables,
+	}
+}
+
+func (state *validationState) recordFunction(name string) {
+	if !state.functions[name] {
+		state.functions[name] = true
+		state.functionOrder = append(state.functionOrder, name)
+	}
+}
+
+func (state *validationState) recordVariable(name string) {
+	if !state.variables[name] {
+		state.variables[name] = true
+		state.variableOrder = append(state.variableOrder, name)
 	}
 }
 
@@ -332,82 +355,49 @@ func referencesAnnotatedVariable(decl Declaration, annotated map[string]bool) bo
 	return annotated[varRef.Name()]
 }
 
-// visitExpression visits an expression in a declaration
-// TypeScript: expression({ functionRef }) { if (functionRef) functions.add(functionRef.name); }
-// TypeScript: value(value, context, position) { ... }
-func visitExpression(decl Declaration, functions, variables map[string]bool) {
-	switch d := decl.(type) {
+// visitDeclarationExpression visits one declaration's expression.
+func visitDeclarationExpression(decl Declaration, state *validationState) {
+	switch declaration := decl.(type) {
 	case *InputDeclaration:
-		if d.value != nil {
-			// Add function to functions set
-			if d.value.FunctionRef() != nil {
-				functions[d.value.FunctionRef().Name()] = true
-				// Check function options for variable references
-				visitFunctionOptions(d.value.FunctionRef(), variables)
-			}
-
-			// Handle argument variable
-			// TypeScript: case 'declaration': if (position !== 'arg' || setArgAsDeclared) { declared.add(value.name); }
-			if d.value.Arg() != nil {
-				// For VariableRefExpression, Arg() returns *VariableRef directly
-				varRef := d.value.Arg()
-				variables[varRef.Name()] = true
-				// For input declarations, setArgAsDeclared is false, so we don't add to declared
-				// This matches TypeScript: position === 'arg' && !setArgAsDeclared
-			}
-		}
+		visitExpression(declaration.value, state)
 	case *LocalDeclaration:
-		if d.value != nil {
-			// Add function to functions set
-			if d.value.FunctionRef() != nil {
-				functions[d.value.FunctionRef().Name()] = true
-				// Check function options for variable references
-				visitFunctionOptions(d.value.FunctionRef(), variables)
-			}
+		visitExpression(declaration.value, state)
+	}
+}
 
-			// Handle argument variable
-			if d.value.Arg() != nil {
-				if varRef, ok := d.value.Arg().(*VariableRef); ok {
-					variables[varRef.Name()] = true
-					// For local declarations, do NOT add the argument variable to declared
-					// The argument is a reference to another variable, not a declaration
-					// Only the local variable name itself should be added to declared (which happens above)
-				}
-			}
+// visitExpression records one expression's function, argument, and options.
+func visitExpression(expression *Expression, state *validationState) {
+	if expression == nil {
+		return
+	}
+	if function := expression.FunctionRef(); function != nil {
+		state.recordFunction(function.Name())
+	}
+	if variable, ok := expression.Arg().(*VariableRef); ok {
+		state.recordVariable(variable.Name())
+	}
+	if function := expression.FunctionRef(); function != nil {
+		visitOptions(function.Options(), state)
+	}
+}
+
+// visitOptions records variable values in lexicographic option-key order.
+func visitOptions(options Options, state *validationState) {
+	for _, name := range slices.Sorted(maps.Keys(options)) {
+		if variable, ok := options[name].(*VariableRef); ok {
+			state.recordVariable(variable.Name())
 		}
 	}
 }
 
-// visitFunctionOptions visits function options for variable references
-func visitFunctionOptions(funcRef *FunctionRef, variables map[string]bool) {
-	if funcRef.Options() != nil {
-		for _, optValue := range funcRef.Options() {
-			if varRef, ok := optValue.(*VariableRef); ok {
-				variables[varRef.Name()] = true
-			}
-		}
-	}
-}
-
-// visitPattern visits a pattern for expressions
-func visitPattern(pattern Pattern, functions, variables map[string]bool) {
-	for _, elem := range pattern.Elements() {
-		expr, ok := elem.(*Expression)
-		if !ok {
-			continue
-		}
-
-		// TypeScript: expression({ functionRef }) { if (functionRef) functions.add(functionRef.name); }
-		if expr.FunctionRef() != nil {
-			functions[expr.FunctionRef().Name()] = true
-			visitFunctionOptions(expr.FunctionRef(), variables)
-		}
-
-		// TypeScript: value(value, context, position) { if (value.type !== 'variable') return; variables.add(value.name); }
-		if expr.Arg() != nil {
-			if varRef, ok := expr.Arg().(*VariableRef); ok {
-				variables[varRef.Name()] = true
-			}
+// visitPattern visits expressions and markup in source order.
+func visitPattern(pattern Pattern, state *validationState) {
+	for _, element := range pattern.Elements() {
+		switch element := element.(type) {
+		case *Expression:
+			visitExpression(element, state)
+		case *Markup:
+			visitOptions(element.Options(), state)
 		}
 	}
 }

@@ -20,7 +20,7 @@ func benchmarkHelper(b *testing.B, message string, params map[string]any, opts *
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		_, err := compiled(params)
+		_, err := compiled.Format(params)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -71,10 +71,7 @@ func BenchmarkMessageFormatCompilation(b *testing.B) {
 func BenchmarkTypeSafeCreation(b *testing.B) {
 	b.ResetTimer()
 	for b.Loop() {
-		mf, err := New("en", &MessageFormatOptions{
-			ReturnType: ReturnTypeString,
-			Currency:   "USD",
-		})
+		mf, err := New("en", &MessageFormatOptions{Currency: "USD"})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -85,11 +82,7 @@ func BenchmarkTypeSafeCreation(b *testing.B) {
 }
 
 func BenchmarkTypeSafeOptionsAccess(b *testing.B) {
-	mf, err := New("en", &MessageFormatOptions{
-		ReturnType:  ReturnTypeValues,
-		BiDiSupport: true,
-		Currency:    "EUR",
-	})
+	mf, err := New("en", &MessageFormatOptions{BiDiSupport: true, Currency: "EUR"})
 	require.NoError(b, err)
 
 	b.ResetTimer()

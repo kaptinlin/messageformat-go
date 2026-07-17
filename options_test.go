@@ -59,13 +59,6 @@ func TestOptionConstructors(t *testing.T) {
 	freshMessageOptions := NewMessageFormatOptions()
 	assert.Equal(t, Direction(""), freshMessageOptions.Dir)
 	assert.NotSame(t, messageOptions, freshMessageOptions)
-
-	formatOptions := NewFormatOptions(nil, WithErrorHandler(func(error) {}))
-	assert.NotNil(t, formatOptions.OnError)
-
-	freshFormatOptions := NewFormatOptions()
-	assert.Nil(t, freshFormatOptions.OnError)
-	assert.NotSame(t, formatOptions, freshFormatOptions)
 }
 
 func TestConstructorsRejectInvalidBidiIsolation(t *testing.T) {

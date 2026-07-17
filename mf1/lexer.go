@@ -76,6 +76,7 @@ type LexerToken struct {
 	Line       int    // Line number (1-based)
 	Col        int    // Column number (1-based)
 	LineBreaks int    // Number of line breaks consumed
+	source     string
 }
 
 // LexerState represents the current state of the lexer state machine
@@ -208,6 +209,7 @@ func (l *Lexer) createToken(tokenType, value, text string, lineBreaks int) Lexer
 		Line:       l.line,
 		Col:        l.col,
 		LineBreaks: lineBreaks,
+		source:     l.source,
 	}
 	return token
 }
@@ -445,32 +447,29 @@ func (l *Lexer) matchSelectState() *LexerToken {
 }
 
 // NextToken returns the next token from the lexer
-func (l *Lexer) NextToken() *LexerToken {
-	for !l.atEnd() {
-		state := l.getCurrentState()
-
-		var token *LexerToken
-		switch state {
-		case LexerStateBody:
-			token = l.matchBodyState()
-		case LexerStateArg:
-			token = l.matchArgState()
-		case LexerStateSelect:
-			token = l.matchSelectState()
-		}
-
-		if token != nil {
-			return token
-		}
-
-		// If no token was matched but we're not at end, something is wrong
-		// Skip one character and continue
-		if !l.atEnd() {
-			l.advance(1)
-		}
+func (l *Lexer) NextToken() (*LexerToken, error) {
+	if l.atEnd() {
+		return nil, nil
 	}
 
-	return nil
+	state := l.getCurrentState()
+	var token *LexerToken
+	switch state {
+	case LexerStateBody:
+		token = l.matchBodyState()
+	case LexerStateArg:
+		token = l.matchArgState()
+	case LexerStateSelect:
+		token = l.matchSelectState()
+	}
+
+	if token != nil {
+		return token, nil
+	}
+
+	r, _ := utf8.DecodeRuneInString(l.remaining())
+	invalid := l.createToken("invalid", string(r), string(r), 0)
+	return nil, NewParseError(&invalid, fmt.Sprintf("Unexpected character %q", r))
 }
 
 // Tokenize tokenizes the entire source and returns all tokens
@@ -478,7 +477,10 @@ func (l *Lexer) Tokenize() ([]LexerToken, error) {
 	var tokens []LexerToken
 
 	for {
-		token := l.NextToken()
+		token, err := l.NextToken()
+		if err != nil {
+			return nil, err
+		}
 		if token == nil {
 			break
 		}
@@ -490,9 +492,11 @@ func (l *Lexer) Tokenize() ([]LexerToken, error) {
 }
 
 // Iterator interface for compatibility with TypeScript's for...of pattern
-func (l *Lexer) Iterator() func() *LexerToken {
+func (l *Lexer) Iterator() (func() *LexerToken, error) {
 	if l.tokens == nil {
-		_, _ = l.Tokenize() // Explicitly ignore both return values in iterator context
+		if _, err := l.Tokenize(); err != nil {
+			return nil, err
+		}
 	}
 
 	index := 0
@@ -503,7 +507,7 @@ func (l *Lexer) Iterator() func() *LexerToken {
 		token := &l.tokens[index]
 		index++
 		return token
-	}
+	}, nil
 }
 
 // FormatError formats an error message with position information like TypeScript
@@ -523,13 +527,4 @@ func (l *Lexer) FormatError(token *LexerToken, message string) string {
 
 	return fmt.Sprintf("ParseError: %s at line %d col %d:\n\n%s\n%s",
 		message, token.Line, token.Col, line, pointer)
-}
-
-// Global lexer instance for compatibility
-var globalLexer = NewLexer("")
-
-// Reset resets the global lexer with new source
-func ResetLexer(source string) *Lexer {
-	globalLexer.Reset(source)
-	return globalLexer
 }

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,6 +49,8 @@ func (v customValue) ValueOf() (any, error)                 { return v.part.Valu
 func (v customValue) SelectKeys([]string) ([]string, error) { return nil, nil }
 
 type failingValue struct{}
+
+var errTestFunctionCause = stdErrors.New("test function cause")
 
 func (f failingValue) Type() string              { return "custom" }
 func (f failingValue) Source() string            { return "$value" }
@@ -222,10 +225,11 @@ func TestNew(t *testing.T) {
 
 // TestNewWithDataModelMessage tests constructor with datamodel.Message
 func TestNewWithDataModelMessage(t *testing.T) {
-	pattern := datamodel.NewPattern([]datamodel.PatternElement{
+	pattern := mustPattern(t, []datamodel.PatternElement{
 		datamodel.NewTextElement("Hello World"),
 	})
-	message := datamodel.NewPatternMessage(nil, pattern, "")
+
+	message := mustPatternMessage(t, nil, pattern, "")
 
 	mf, err := Compile([]string{"en"}, message, WithBidiIsolation(BidiNone))
 	require.NoError(t, err)
@@ -306,15 +310,20 @@ func TestCompileRejectsNilMessages(t *testing.T) {
 	}
 }
 
-func TestCompileSnapshotsDataModel(t *testing.T) {
-	pattern := datamodel.NewPattern([]datamodel.PatternElement{
+func TestCompileUsesImmutableDataModelOwnership(t *testing.T) {
+	t.Parallel()
+
+	elements := []datamodel.PatternElement{
 		datamodel.NewTextElement("before"),
-	})
-	message := datamodel.NewPatternMessage(nil, pattern, "")
+	}
+	pattern := mustPattern(t, elements)
+	message := mustPatternMessage(t, nil, pattern, "")
 
 	mf, err := Compile([]string{"en"}, message)
 	require.NoError(t, err)
 
+	elements[0] = datamodel.NewTextElement("changed elements")
+	pattern[0] = datamodel.NewTextElement("changed pattern")
 	message.Pattern().Elements()[0] = datamodel.NewTextElement("after")
 
 	got, err := mf.Format(map[string]any{})
@@ -322,16 +331,34 @@ func TestCompileSnapshotsDataModel(t *testing.T) {
 	assert.Equal(t, "before", got)
 }
 
-func TestCompileSnapshotsNestedDataModelOptions(t *testing.T) {
+// TestCompileAcceptsEmptyCompositeModel characterizes the valid empty composite path through the root API.
+// TypeScript original code:
+// const mf = new MessageFormat([], { type: 'select', declarations: [], selectors: [], variants: [{ keys: [], value: [] }] });
+func TestCompileAcceptsEmptyCompositeModel(t *testing.T) {
+	t.Parallel()
+
+	pattern := mustPattern(t, nil)
+	variant := mustVariant(t, nil, pattern)
+	message := mustSelectMessage(t, nil, nil, []datamodel.Variant{*variant}, "")
+
+	mf, err := Compile(nil, message)
+	require.NoError(t, err)
+	formatted, err := mf.Format(nil)
+	require.NoError(t, err)
+	assert.Empty(t, formatted)
+}
+
+func TestCompileUsesNestedDataModelOwnership(t *testing.T) {
 	t.Parallel()
 
 	functionOptions := datamodel.Options{
 		"minimumFractionDigits": datamodel.NewLiteral("2"),
 	}
-	functionRef := datamodel.NewFunctionRef("number", functionOptions)
-	expression := datamodel.NewExpression(datamodel.NewLiteral("42"), functionRef, nil)
+	functionRef := mustFunctionRef(t, "number", functionOptions)
+	expression, err := datamodel.NewExpression(datamodel.NewLiteral("42"), functionRef, nil)
+	require.NoError(t, err)
 	elements := []datamodel.PatternElement{expression}
-	message := datamodel.NewPatternMessage(nil, datamodel.NewPattern(elements), "")
+	message := mustPatternMessage(t, nil, mustPattern(t, elements), "")
 
 	mf, err := Compile([]string{"en"}, message)
 	require.NoError(t, err)
@@ -393,7 +420,7 @@ func TestCompiledMessageFormatSupportsConcurrentFormatting(t *testing.T) {
 	}
 }
 
-func TestFormatUsesOneRecoverableErrorObserver(t *testing.T) {
+func TestFormatDoesNotLogDiagnostics(t *testing.T) {
 	previousDefault := slog.Default()
 	t.Cleanup(func() { slog.SetDefault(previousDefault) })
 
@@ -403,26 +430,209 @@ func TestFormatUsesOneRecoverableErrorObserver(t *testing.T) {
 	mf, err := Parse([]string{"en"}, "{:missing}", WithBidiIsolation(BidiNone))
 	require.NoError(t, err)
 	_, err = mf.Format(nil)
-	require.NoError(t, err)
-	assert.Equal(t, 1, strings.Count(defaultLogs.String(), "MessageFormat error"))
-
-	defaultLogs.Reset()
-	var handled []error
-	_, err = mf.Format(nil, WithErrorHandler(func(err error) {
-		handled = append(handled, err)
-	}))
-	require.NoError(t, err)
-	require.Len(t, handled, 1)
+	require.Error(t, err)
 	assert.Empty(t, defaultLogs.String())
+}
 
-	var instanceLogs bytes.Buffer
-	instanceLogger := slog.New(slog.NewTextHandler(&instanceLogs, nil))
-	mf, err = Parse([]string{"en"}, "{:missing}", WithBidiIsolation(BidiNone), WithLogger(instanceLogger))
+// TestFormatReturnsRecoverableDiagnostic proves fallback output and typed errors share the ordinary Go return path.
+// TypeScript original code:
+// const result = mf.format(params, onError);
+func TestFormatReturnsRecoverableDiagnostic(t *testing.T) {
+	t.Parallel()
+
+	mf, err := Parse([]string{"en"}, "{:missing}", WithBidiIsolation(BidiNone))
 	require.NoError(t, err)
-	_, err = mf.Format(nil)
+
+	formatted, err := mf.Format(nil)
+	assert.Equal(t, "{:missing}", formatted)
+	require.Error(t, err)
+	var resolutionErr *pkgerrors.MessageResolutionError
+	require.ErrorAs(t, err, &resolutionErr)
+	assert.Equal(t, pkgerrors.ErrorKind(pkgerrors.ErrorTypeUnknownFunction), resolutionErr.Kind())
+}
+
+// TestFormatToPartsReturnsRecoverableDiagnostic proves structured fallback output keeps the same error contract.
+// TypeScript original code:
+// const parts = mf.formatToParts(params, onError);
+func TestFormatToPartsReturnsRecoverableDiagnostic(t *testing.T) {
+	t.Parallel()
+
+	mf, err := Parse([]string{"en"}, "{:missing}", WithBidiIsolation(BidiNone))
 	require.NoError(t, err)
-	assert.Equal(t, 1, strings.Count(instanceLogs.String(), "MessageFormat error"))
-	assert.Empty(t, defaultLogs.String())
+
+	parts, err := mf.FormatToParts(nil)
+	require.Len(t, parts, 1)
+	fallback, ok := parts[0].(*messagevalue.FallbackPart)
+	require.True(t, ok, "got %T", parts[0])
+	assert.Equal(t, ":missing", fallback.Source())
+	require.Error(t, err)
+	var resolutionErr *pkgerrors.MessageResolutionError
+	require.ErrorAs(t, err, &resolutionErr)
+}
+
+// TestFormatReturnsDiagnosticsInEncounterOrder proves joined errors preserve one entry per failing expression.
+// TypeScript original code:
+// for (const expression of pattern) onError(resolve(expression));
+func TestFormatReturnsDiagnosticsInEncounterOrder(t *testing.T) {
+	t.Parallel()
+
+	mf, err := Parse([]string{"en"}, "A {$first} B {$second}", WithBidiIsolation(BidiNone))
+	require.NoError(t, err)
+
+	formatted, err := mf.Format(nil)
+	assert.Equal(t, "A {$first} B {$second}", formatted)
+	require.Error(t, err)
+	joined, ok := err.(interface{ Unwrap() []error })
+	require.True(t, ok, "got %T", err)
+	diagnostics := joined.Unwrap()
+	require.Len(t, diagnostics, 2)
+
+	sources := make([]string, 0, len(diagnostics))
+	for _, diagnostic := range diagnostics {
+		var resolutionErr *pkgerrors.MessageResolutionError
+		require.True(t, stdErrors.As(diagnostic, &resolutionErr))
+		sources = append(sources, resolutionErr.Source)
+	}
+	assert.Equal(t, []string{"$first", "$second"}, sources)
+}
+
+// TestFormatDiagnosticPreservesFunctionCause proves errors.Join keeps typed wrappers and dependency causes.
+// TypeScript original code:
+// context.onError(error);
+func TestFormatDiagnosticPreservesFunctionCause(t *testing.T) {
+	t.Parallel()
+
+	report := func(ctx functions.MessageFunctionContext, _ functions.Options, _ any) messagevalue.MessageValue {
+		reported := pkgerrors.NewMessageFunctionError(pkgerrors.ErrorKind("function-error"), "reported failure")
+		reported.SetSource(ctx.Source())
+		reported.SetCause(errTestFunctionCause)
+		ctx.OnError(reported)
+		return messagevalue.NewStringValue("usable", "en", ctx.Source())
+	}
+	mf, err := Parse(
+		[]string{"en"},
+		"{:report}",
+		WithBidiIsolation(BidiNone),
+		WithFunction("report", report),
+	)
+	require.NoError(t, err)
+
+	formatted, err := mf.Format(nil)
+	assert.Equal(t, "usable", formatted)
+	require.Error(t, err)
+	require.ErrorIs(t, err, errTestFunctionCause)
+	var functionErr *pkgerrors.MessageFunctionError
+	require.ErrorAs(t, err, &functionErr)
+}
+
+// TestInvalidNumberOptionsReturnOneFallbackWithoutSemanticRetry proves required number semantics are never erased.
+// TypeScript original code:
+// const formatter = new Intl.NumberFormat(locales, options);
+func TestInvalidNumberOptionsReturnOneFallbackWithoutSemanticRetry(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{name: "currency", source: "{$value :currency currency=INVALID}"},
+		{name: "unit", source: "{$value :unit unit=lightyear}"},
+		{name: "numbering system", source: "{$value :number numberingSystem=ab}"},
+		{
+			name:   "fraction digit range",
+			source: "{$value :number minimumFractionDigits=2 maximumFractionDigits=1}",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			mf, err := Parse(
+				[]string{"en"},
+				tc.source,
+				WithBidiIsolation(BidiNone),
+				WithFunction("unit", functions.UnitFunction),
+			)
+			require.NoError(t, err)
+
+			formatted, err := mf.Format(map[string]any{"value": 42})
+			assert.Equal(t, "{$value}", formatted)
+			diagnostics := diagnosticsFromError(err)
+			require.Len(t, diagnostics, 1)
+			var resolutionErr *pkgerrors.MessageResolutionError
+			require.ErrorAs(t, diagnostics[0], &resolutionErr)
+			assert.Equal(t, pkgerrors.ErrorTypeBadOption, resolutionErr.ErrorType())
+			assert.ErrorIs(t, diagnostics[0], messagevalue.ErrInvalidNumberOptions)
+
+			parts, partsErr := mf.FormatToParts(map[string]any{"value": 42})
+			require.Len(t, parts, 1)
+			fallback, ok := parts[0].(*messagevalue.FallbackPart)
+			require.True(t, ok, "got %T", parts[0])
+			assert.Equal(t, "$value", fallback.Source())
+			partDiagnostics := diagnosticsFromError(partsErr)
+			require.Len(t, partDiagnostics, 1)
+			var partResolutionErr *pkgerrors.MessageResolutionError
+			require.ErrorAs(t, partDiagnostics[0], &partResolutionErr)
+			assert.Equal(t, pkgerrors.ErrorTypeBadOption, partResolutionErr.ErrorType())
+			assert.ErrorIs(t, partDiagnostics[0], messagevalue.ErrInvalidNumberOptions)
+		})
+	}
+}
+
+// TestInvalidDateTimeOptionsReturnOneFallbackWithoutSemanticRetry proves required datetime semantics are never erased.
+// TypeScript original code:
+// const formatter = new Intl.DateTimeFormat(locales, options);
+func TestInvalidDateTimeOptionsReturnOneFallbackWithoutSemanticRetry(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{name: "calendar", source: "{$value :datetime calendar=ab}"},
+		{name: "time zone", source: "{$value :datetime timeZone=|Mars/Olympus|}"},
+		{name: "numbering system", source: "{$value :datetime numberingSystem=ab}"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			mf, err := Parse(
+				[]string{"en"},
+				tc.source,
+				WithBidiIsolation(BidiNone),
+				WithFunctions(functions.DraftFunctionMap()),
+			)
+			require.NoError(t, err)
+
+			formatted, err := mf.Format(map[string]any{
+				"value": time.Date(2026, 4, 26, 15, 30, 45, 0, time.UTC),
+			})
+			assert.Equal(t, "{$value}", formatted)
+			diagnostics := diagnosticsFromError(err)
+			require.Len(t, diagnostics, 1)
+			var resolutionErr *pkgerrors.MessageResolutionError
+			require.ErrorAs(t, diagnostics[0], &resolutionErr)
+			assert.Equal(t, pkgerrors.ErrorTypeBadOption, resolutionErr.ErrorType())
+			assert.ErrorIs(t, diagnostics[0], messagevalue.ErrInvalidDateTimeOptions)
+
+			parts, partsErr := mf.FormatToParts(map[string]any{
+				"value": time.Date(2026, 4, 26, 15, 30, 45, 0, time.UTC),
+			})
+			require.Len(t, parts, 1)
+			fallback, ok := parts[0].(*messagevalue.FallbackPart)
+			require.True(t, ok, "got %T", parts[0])
+			assert.Equal(t, "$value", fallback.Source())
+			partDiagnostics := diagnosticsFromError(partsErr)
+			require.Len(t, partDiagnostics, 1)
+			var partResolutionErr *pkgerrors.MessageResolutionError
+			require.ErrorAs(t, partDiagnostics[0], &partResolutionErr)
+			assert.Equal(t, pkgerrors.ErrorTypeBadOption, partResolutionErr.ErrorType())
+			assert.ErrorIs(t, partDiagnostics[0], messagevalue.ErrInvalidDateTimeOptions)
+		})
+	}
 }
 
 func TestNewLocalesDefensiveCopy(t *testing.T) {
@@ -503,66 +713,60 @@ func TestNewErrorHandling(t *testing.T) {
 // TestFormat tests the Format method
 func TestFormat(t *testing.T) {
 	tests := []struct {
-		name     string
-		source   string
-		values   map[string]any
-		onError  func(error)
-		expected string
+		name      string
+		source    string
+		values    map[string]any
+		expected  string
+		wantError bool
 	}{
 		{
 			name:     "simple text",
 			source:   "Hello World",
 			values:   nil,
-			onError:  nil,
 			expected: "Hello World",
 		},
 		{
 			name:     "with variable",
 			source:   "Hello {$name}",
 			values:   map[string]any{"name": "Alice"},
-			onError:  nil,
 			expected: "Hello \u2068Alice\u2069",
 		},
 		{
-			name:     "missing variable",
-			source:   "Hello {$missing}",
-			values:   map[string]any{},
-			onError:  nil,
-			expected: "Hello \u2068{$missing}\u2069",
+			name:      "missing variable",
+			source:    "Hello {$missing}",
+			values:    map[string]any{},
+			expected:  "Hello \u2068{$missing}\u2069",
+			wantError: true,
 		},
 		{
-			name:     "nil values",
-			source:   "Hello {$name}",
-			values:   nil,
-			onError:  nil,
-			expected: "Hello \u2068{$name}\u2069",
+			name:      "nil values",
+			source:    "Hello {$name}",
+			values:    nil,
+			expected:  "Hello \u2068{$name}\u2069",
+			wantError: true,
 		},
 		{
 			name:     "number formatting",
 			source:   "Count: {$count :number}",
 			values:   map[string]any{"count": 1234.56},
-			onError:  nil,
 			expected: "Count: 1,234.56",
 		},
 		{
 			name:     "integer formatting",
 			source:   "Items: {$items :integer}",
 			values:   map[string]any{"items": 42.7},
-			onError:  nil,
 			expected: "Items: 43",
 		},
 		{
 			name:     "string function with different types",
 			source:   "Value: {$value :string}",
 			values:   map[string]any{"value": 123},
-			onError:  nil,
 			expected: "Value: \u2068123\u2069",
 		},
 		{
 			name:     "empty pattern",
 			source:   "",
 			values:   map[string]any{"unused": "value"},
-			onError:  nil,
 			expected: "",
 		},
 	}
@@ -572,8 +776,12 @@ func TestFormat(t *testing.T) {
 			mf, err := Parse([]string{"en"}, tc.source)
 			require.NoError(t, err)
 
-			result, err := mf.Format(tc.values, WithErrorHandler(tc.onError))
-			require.NoError(t, err)
+			result, err := mf.Format(tc.values)
+			if tc.wantError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
 			assert.Equal(t, tc.expected, result)
 		})
 	}
@@ -587,6 +795,7 @@ func TestFormatToPartsAPI(t *testing.T) {
 		values        map[string]any
 		expectedParts int
 		expectedTypes []string
+		wantError     bool
 	}{
 		{
 			name:          "simple text",
@@ -608,6 +817,7 @@ func TestFormatToPartsAPI(t *testing.T) {
 			values:        map[string]any{},
 			expectedParts: 4,
 			expectedTypes: []string{"text", "bidiIsolation", "fallback", "bidiIsolation"},
+			wantError:     true,
 		},
 	}
 
@@ -617,7 +827,11 @@ func TestFormatToPartsAPI(t *testing.T) {
 			require.NoError(t, err)
 
 			parts, err := mf.FormatToParts(tc.values)
-			require.NoError(t, err)
+			if tc.wantError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
 			assert.Len(t, parts, tc.expectedParts)
 
 			for i, expectedType := range tc.expectedTypes {
@@ -631,6 +845,32 @@ func TestFormatToPartsAPI(t *testing.T) {
 
 func TestFormatFocusedBehaviors(t *testing.T) {
 	t.Parallel()
+
+	t.Run("configured locale matcher reaches both projections", func(t *testing.T) {
+		var matchers []string
+		capture := func(ctx functions.MessageFunctionContext, _ functions.Options, _ any) messagevalue.MessageValue {
+			matchers = append(matchers, ctx.LocaleMatcher())
+			return messagevalue.NewStringValue("ok", "en", ctx.Source())
+		}
+
+		mf, err := Parse(
+			[]string{"en"},
+			"{$value :capture}",
+			WithBidiIsolation(BidiNone),
+			WithLocaleMatcher(LocaleLookup),
+			WithFunction("capture", capture),
+		)
+		require.NoError(t, err)
+
+		formatted, err := mf.Format(map[string]any{"value": 1})
+		require.NoError(t, err)
+		assert.Equal(t, "ok", formatted)
+
+		parts, err := mf.FormatToParts(map[string]any{"value": 1})
+		require.NoError(t, err)
+		require.NotEmpty(t, parts)
+		assert.Equal(t, []string{"lookup", "lookup"}, matchers)
+	})
 
 	t.Run("markup parts are omitted from formatted string", func(t *testing.T) {
 		t.Parallel()
@@ -693,12 +933,12 @@ func TestFormatFocusedBehaviors(t *testing.T) {
 		require.NoError(t, err)
 
 		values := map[string]any{"count": 2}
-		first, err := mf.Format(values)
-		require.NoError(t, err)
+		first, firstErr := mf.Format(values)
+		require.Error(t, firstErr)
 
 		for range 20 {
 			got, err := mf.Format(values)
-			require.NoError(t, err)
+			require.EqualError(t, err, firstErr.Error())
 			assert.Equal(t, first, got)
 		}
 		assert.Equal(t, "Other 2", first)
@@ -713,14 +953,10 @@ func TestFormatFocusedBehaviors(t *testing.T) {
 		mf, err := Parse([]string{"en"}, "Value {$value :custom}", WithFunction("custom", custom))
 		require.NoError(t, err)
 
-		var captured []error
-		parts, err := mf.FormatToParts(map[string]any{"value": "ignored"}, WithErrorHandler(func(err error) {
-			captured = append(captured, err)
-		}))
-		require.NoError(t, err)
-		require.Len(t, captured, 1)
+		parts, err := mf.FormatToParts(map[string]any{"value": "ignored"})
+		require.Error(t, err)
 		var resolutionErr *pkgerrors.MessageResolutionError
-		require.ErrorAs(t, captured[0], &resolutionErr)
+		require.ErrorAs(t, err, &resolutionErr)
 		assert.Equal(t, pkgerrors.ErrorTypeBadOperand, resolutionErr.ErrorType())
 		require.Len(t, parts, 4)
 		assert.Equal(t, "fallback", parts[2].Type())
@@ -879,15 +1115,11 @@ func TestDraftFunctionsRequireExplicitOptIn(t *testing.T) {
 	mf, err := Parse([]string{"en"}, "Date {$value :date}", WithBidiIsolation(BidiNone))
 	require.NoError(t, err)
 
-	var captured []error
-	result, err := mf.Format(map[string]any{"value": "2024-01-02"}, WithErrorHandler(func(err error) {
-		captured = append(captured, err)
-	}))
-	require.NoError(t, err)
+	result, err := mf.Format(map[string]any{"value": "2024-01-02"})
+	require.Error(t, err)
 	assert.Equal(t, "Date {$value}", result)
-	require.Len(t, captured, 1)
 	var resolutionErr *pkgerrors.MessageResolutionError
-	require.ErrorAs(t, captured[0], &resolutionErr)
+	require.ErrorAs(t, err, &resolutionErr)
 	assert.Equal(t, pkgerrors.ErrorTypeUnknownFunction, resolutionErr.ErrorType())
 
 	mf, err = Parse(
@@ -897,12 +1129,8 @@ func TestDraftFunctionsRequireExplicitOptIn(t *testing.T) {
 		WithFunctions(functions.DraftFunctionMap()),
 	)
 	require.NoError(t, err)
-	captured = nil
-	result, err = mf.Format(map[string]any{"value": "2024-01-02"}, WithErrorHandler(func(err error) {
-		captured = append(captured, err)
-	}))
+	result, err = mf.Format(map[string]any{"value": "2024-01-02"})
 	require.NoError(t, err)
-	assert.Empty(t, captured)
 	assert.NotEqual(t, "Date {$value}", result)
 }
 
@@ -915,15 +1143,11 @@ func TestMathFunctionRequiresExplicitFunction(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	var captured []error
-	result, err := mf.Format(nil, WithErrorHandler(func(err error) {
-		captured = append(captured, err)
-	}))
-	require.NoError(t, err)
+	result, err := mf.Format(nil)
+	require.Error(t, err)
 	assert.Equal(t, "Value {|1|}", result)
-	require.Len(t, captured, 1)
 	var resolutionErr *pkgerrors.MessageResolutionError
-	require.ErrorAs(t, captured[0], &resolutionErr)
+	require.ErrorAs(t, err, &resolutionErr)
 	assert.Equal(t, pkgerrors.ErrorTypeUnknownFunction, resolutionErr.ErrorType())
 
 	mf, err = Parse(
@@ -933,12 +1157,8 @@ func TestMathFunctionRequiresExplicitFunction(t *testing.T) {
 		WithFunction("math", functions.MathFunction),
 	)
 	require.NoError(t, err)
-	captured = nil
-	result, err = mf.Format(nil, WithErrorHandler(func(err error) {
-		captured = append(captured, err)
-	}))
+	result, err = mf.Format(nil)
 	require.NoError(t, err)
-	assert.Empty(t, captured)
 	assert.Equal(t, "Value 3", result)
 }
 
@@ -1152,27 +1372,22 @@ func TestLocalDeclarations(t *testing.T) {
 
 // Error Handling API Tests
 
-// TestErrorCallback tests error callback functionality
-func TestErrorCallback(t *testing.T) {
-	var capturedErrors []error
-	onError := func(err error) {
-		capturedErrors = append(capturedErrors, err)
-	}
-
+// TestFormatErrorReturn tests recoverable diagnostics through the error result.
+func TestFormatErrorReturn(t *testing.T) {
 	mf, err := Parse([]string{"en"}, "Hello {$name}")
 	require.NoError(t, err)
 
 	// Valid case - no errors should be captured
-	result, err := mf.Format(map[string]any{"name": "World"}, WithErrorHandler(onError))
+	result, err := mf.Format(map[string]any{"name": "World"})
 	require.NoError(t, err)
 	assert.Equal(t, "Hello \u2068World\u2069", result)
-	assert.Empty(t, capturedErrors)
 
 	// Missing variable case - should still work with fallback
-	result, err = mf.Format(map[string]any{}, WithErrorHandler(onError))
-	require.NoError(t, err)
+	result, err = mf.Format(map[string]any{})
+	require.Error(t, err)
 	assert.Equal(t, "Hello \u2068{$name}\u2069", result)
-	// Error callback behavior may vary based on implementation
+	var resolutionErr *pkgerrors.MessageResolutionError
+	require.ErrorAs(t, err, &resolutionErr)
 }
 
 // TestInvalidPatterns tests various invalid pattern scenarios
@@ -1295,14 +1510,8 @@ func TestTypeScriptCompatibility(t *testing.T) {
 		mf, err := Parse([]string{"en"}, pattern)
 		require.NoError(t, err)
 
-		var capturedErrors []error
-		result, err := mf.Format(map[string]any{}, WithErrorHandler(func(err error) {
-			capturedErrors = append(capturedErrors, err)
-		}))
-
-		// Should not fail Format() but should capture errors
-		require.NoError(t, err)
-		assert.NotEmpty(t, capturedErrors)
+		result, err := mf.Format(map[string]any{})
+		require.Error(t, err)
 		assert.Contains(t, result, "{") // Should contain fallback
 	})
 
@@ -1368,35 +1577,7 @@ func TestTypeScriptCompatibility(t *testing.T) {
 	})
 }
 
-// Index Exports API Tests
-
-// TestIndexExports tests the exported functions from index.go
-func TestIndexExports(t *testing.T) {
-	t.Run("ParseMessage function", func(t *testing.T) {
-		message, err := ParseMessage("Hello {$name}")
-		require.NoError(t, err)
-		require.NotNil(t, message)
-		assert.True(t, IsPatternMessage(message))
-	})
-
-	t.Run("Validate function", func(t *testing.T) {
-		pattern := datamodel.NewPattern([]datamodel.PatternElement{
-			datamodel.NewTextElement("Hello"),
-		})
-		message := datamodel.NewPatternMessage(nil, pattern, "")
-
-		_, err := Validate(message, nil)
-		require.NoError(t, err)
-	})
-
-	t.Run("Type guards", func(t *testing.T) {
-		expr := datamodel.NewExpression(nil, nil, nil)
-		assert.True(t, IsExpression(expr))
-
-		literal := datamodel.NewLiteral("test")
-		assert.True(t, IsLiteral(literal))
-	})
-
+func TestFunctionMapExports(t *testing.T) {
 	t.Run("DefaultFunctionMap export", func(t *testing.T) {
 		defaults := DefaultFunctionMap()
 		assert.NotNil(t, defaults)
@@ -1577,19 +1758,67 @@ func TestLocalDeclarationsFixes(t *testing.T) {
 	}
 }
 
+func TestInputDeclarationDoesNotBindUnrelatedSoleParameter(t *testing.T) {
+	t.Parallel()
+
+	mf, err := Parse(
+		[]string{"en"},
+		".input {$x}\n{{Value: {$x}}}",
+		WithBidiIsolation(BidiNone),
+	)
+	require.NoError(t, err)
+
+	result, err := mf.Format(map[string]any{"y": "unrelated"})
+	require.Error(t, err)
+	assert.Equal(t, "Value: {$x}", result)
+	var resolutionErr *pkgerrors.MessageResolutionError
+	require.ErrorAs(t, err, &resolutionErr)
+	assert.Equal(t, pkgerrors.ErrorTypeUnresolvedVariable, resolutionErr.ErrorType())
+}
+
+func TestLocalDeclarationsShareLazyResolutionCache(t *testing.T) {
+	t.Parallel()
+
+	var calls int
+	count := func(ctx functions.MessageFunctionContext, _ functions.Options, _ any) messagevalue.MessageValue {
+		calls++
+		return messagevalue.NewStringValue("value", "en", ctx.Source())
+	}
+
+	mf, err := Parse(
+		[]string{"en"},
+		".local $base = {:count}\n.local $left = {$base}\n.local $right = {$base}\n{{{$left} {$right}}}",
+		WithBidiIsolation(BidiNone),
+		WithFunction("count", count),
+	)
+	require.NoError(t, err)
+
+	result, err := mf.Format(nil)
+	require.NoError(t, err)
+	assert.Equal(t, "value value", result)
+	assert.Equal(t, 1, calls)
+
+	result, err = mf.Format(nil)
+	require.NoError(t, err)
+	assert.Equal(t, "value value", result)
+	assert.Equal(t, 2, calls)
+}
+
 // TestMissingVariableHandlingFixes tests the standardized missing variable behavior
 func TestMissingVariableHandlingFixes(t *testing.T) {
 	tests := []struct {
-		name     string
-		source   string
-		values   map[string]any
-		expected string
+		name      string
+		source    string
+		values    map[string]any
+		expected  string
+		wantError bool
 	}{
 		{
-			name:     "simple missing variable",
-			source:   "Hello {$name}!",
-			values:   map[string]any{}, // missing 'name'
-			expected: "Hello \u2068{$name}\u2069!",
+			name:      "simple missing variable",
+			source:    "Hello {$name}!",
+			values:    map[string]any{}, // missing 'name'
+			expected:  "Hello \u2068{$name}\u2069!",
+			wantError: true,
 		},
 		{
 			name:     "null variable value",
@@ -1598,22 +1827,25 @@ func TestMissingVariableHandlingFixes(t *testing.T) {
 			expected: "Hello \u2068null\u2069!",
 		},
 		{
-			name:     "missing variable with function",
-			source:   "Count: {$count :integer}",
-			values:   map[string]any{}, // missing 'count'
-			expected: "Count: \u2068{$count}\u2069",
+			name:      "missing variable with function",
+			source:    "Count: {$count :integer}",
+			values:    map[string]any{}, // missing 'count'
+			expected:  "Count: \u2068{$count}\u2069",
+			wantError: true,
 		},
 		{
-			name:     "missing variable in selector falls back to catchall",
-			source:   ".input {$status :string}\n.match $status\nactive {{User is active}}\n* {{Unknown status}}",
-			values:   map[string]any{}, // missing 'status'
-			expected: "Unknown status",
+			name:      "missing variable in selector falls back to catchall",
+			source:    ".input {$status :string}\n.match $status\nactive {{User is active}}\n* {{Unknown status}}",
+			values:    map[string]any{}, // missing 'status'
+			expected:  "Unknown status",
+			wantError: true,
 		},
 		{
-			name:     "missing local variable reference",
-			source:   ".local $missing = {$undefined :string}\n{{Result: {$missing}}}",
-			values:   map[string]any{}, // missing 'undefined'
-			expected: "Result: \u2068\u2069",
+			name:      "missing local variable reference",
+			source:    ".local $missing = {$undefined :string}\n{{Result: {$missing}}}",
+			values:    map[string]any{}, // missing 'undefined'
+			expected:  "Result: \u2068\u2069",
+			wantError: true,
 		},
 	}
 
@@ -1622,11 +1854,12 @@ func TestMissingVariableHandlingFixes(t *testing.T) {
 			mf, err := Parse([]string{"en"}, tt.source)
 			require.NoError(t, err, "Failed to create MessageFormat for test: %s", tt.name)
 
-			// Use error callback to suppress warnings during testing
-			result, err := mf.Format(tt.values, WithErrorHandler(func(error) {
-				// Suppress warnings for missing variables in tests
-			}))
-			require.NoError(t, err, "Failed to format message for test: %s", tt.name)
+			result, err := mf.Format(tt.values)
+			if tt.wantError {
+				require.Error(t, err, "Expected recoverable diagnostic for test: %s", tt.name)
+			} else {
+				require.NoError(t, err)
+			}
 
 			assert.Equal(t, tt.expected, result, "Unexpected result for test: %s", tt.name)
 		})

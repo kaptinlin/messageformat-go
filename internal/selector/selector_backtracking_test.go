@@ -21,19 +21,18 @@ func TestSelectPatternBacktracksToEarlierSelectorChoice(t *testing.T) {
 		"first":  newMapSelectorValue("primary", "secondary"),
 		"second": newMapSelectorValue("only"),
 	}, nil)
-	message := datamodel.NewSelectMessage(
+	message := mustSelectMessage(t,
 		nil,
 		[]datamodel.VariableRef{
 			*datamodel.NewVariableRef("first"),
 			*datamodel.NewVariableRef("second"),
 		},
 		[]datamodel.Variant{
-			newSelectorCoverageVariantForKeys("primary misses", datamodel.NewLiteral("primary"), datamodel.NewLiteral("missing")),
-			newSelectorCoverageVariantForKeys("secondary matches", datamodel.NewLiteral("secondary"), datamodel.NewLiteral("only")),
-			newSelectorCoverageVariantForKeys("catchall", datamodel.NewCatchallKey("*"), datamodel.NewCatchallKey("*")),
+			newSelectorCoverageVariantForKeys(t, "primary misses", datamodel.NewLiteral("primary"), datamodel.NewLiteral("missing")),
+			newSelectorCoverageVariantForKeys(t, "secondary matches", datamodel.NewLiteral("secondary"), datamodel.NewLiteral("only")),
+			newSelectorCoverageVariantForKeys(t, "catchall", datamodel.NewCatchallKey("*"), datamodel.NewCatchallKey("*")),
 		},
-		"",
-	)
+		"")
 
 	result := SelectPattern(ctx, message)
 	assert.Equal(t, "secondary matches", selectorCoverageText(t, result))
@@ -49,9 +48,9 @@ func TestSelectPatternDoesNotProbeSelectorBeforeSelection(t *testing.T) {
 	}, func(err error) {
 		errs = append(errs, err)
 	})
-	message := newSelectorCoverageMessage("value",
-		newSelectorCoverageVariant(datamodel.NewLiteral("literal"), "literal"),
-		newSelectorCoverageVariant(datamodel.NewCatchallKey("*"), "catchall"),
+	message := newSelectorCoverageMessage(t, "value",
+		newSelectorCoverageVariant(t, datamodel.NewLiteral("literal"), "literal"),
+		newSelectorCoverageVariant(t, datamodel.NewCatchallKey("*"), "catchall"),
 	)
 
 	result := SelectPattern(ctx, message)
@@ -68,9 +67,9 @@ func TestSelectPatternReportsSelectorErrorsDuringSelection(t *testing.T) {
 	}, func(err error) {
 		errs = append(errs, err)
 	})
-	message := newSelectorCoverageMessage("value",
-		newSelectorCoverageVariant(datamodel.NewLiteral("literal"), "literal"),
-		newSelectorCoverageVariant(datamodel.NewCatchallKey("*"), "catchall"),
+	message := newSelectorCoverageMessage(t, "value",
+		newSelectorCoverageVariant(t, datamodel.NewLiteral("literal"), "literal"),
+		newSelectorCoverageVariant(t, datamodel.NewCatchallKey("*"), "catchall"),
 	)
 
 	result := SelectPattern(ctx, message)
@@ -100,10 +99,10 @@ func TestSelectPatternPassesCandidateKeysInVariantOrder(t *testing.T) {
 	ctx := newSelectorBacktrackingContext(map[string]any{"value": value}, nil)
 	variants := make([]datamodel.Variant, 0, len(orderedKeys)+1)
 	for _, key := range orderedKeys {
-		variants = append(variants, newSelectorCoverageVariant(datamodel.NewLiteral(key), key))
+		variants = append(variants, newSelectorCoverageVariant(t, datamodel.NewLiteral(key), key))
 	}
-	variants = append(variants, newSelectorCoverageVariant(datamodel.NewCatchallKey("*"), "catchall"))
-	message := newSelectorCoverageMessage("value", variants...)
+	variants = append(variants, newSelectorCoverageVariant(t, datamodel.NewCatchallKey("*"), "catchall"))
+	message := newSelectorCoverageMessage(t, "value", variants...)
 
 	for range 25 {
 		result := SelectPattern(ctx, message)
@@ -121,11 +120,12 @@ func newSelectorBacktrackingContext(scope map[string]any, onError func(error)) *
 	return ctx
 }
 
-func newSelectorCoverageVariantForKeys(text string, keys ...datamodel.VariantKey) datamodel.Variant {
-	return *datamodel.NewVariant(
+func newSelectorCoverageVariantForKeys(t *testing.T, text string, keys ...datamodel.VariantKey) datamodel.Variant {
+	t.Helper()
+
+	return *mustVariant(t,
 		keys,
-		datamodel.NewPattern([]datamodel.PatternElement{datamodel.NewTextElement(text)}),
-	)
+		mustPattern(t, []datamodel.PatternElement{datamodel.NewTextElement(text)}))
 }
 
 type mapSelectorValue struct {

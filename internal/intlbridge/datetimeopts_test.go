@@ -23,16 +23,16 @@ func TestDateTimeOptions_LegacyStyle(t *testing.T) {
 	assert.Nil(t, got.Weekday)
 }
 
-func TestDateTimeOptions_LegacyTakesPrecedence(t *testing.T) {
+func TestDateTimeOptions_PreservesLegacyFieldConflictsForValidation(t *testing.T) {
 	got := DateTimeOptions(map[string]any{
 		"dateStyle":  "medium",
 		"dateFields": "year-month-day",
 		"dateLength": "long",
 	})
 	assertStringPtr(t, string(datetimeformat.MediumDateTimeStyle), got.DateStyle)
-	assert.Nil(t, got.Year)
-	assert.Nil(t, got.Month)
-	assert.Nil(t, got.Day)
+	assertStringPtr(t, string(datetimeformat.NumericFieldStyle), got.Year)
+	assertStringPtr(t, string(datetimeformat.LongMonthStyle), got.Month)
+	assertStringPtr(t, string(datetimeformat.NumericFieldStyle), got.Day)
 }
 
 func TestDateTimeOptions_DateFields(t *testing.T) {

@@ -82,7 +82,7 @@ func supportsOfficialTag(tag string) bool {
 }
 
 func newOfficialMessageFormat(tc mfwg.Test) (*messageformat.MessageFormat, error) {
-	fns := officialFunctionRegistry()
+	fns := officialFunctionMap()
 
 	opts := []messageformat.Option{messageformat.WithFunctions(fns)}
 	if mfwg.GetBidiIsolation(tc) {
@@ -98,7 +98,7 @@ func newOfficialMessageFormat(tc mfwg.Test) (*messageformat.MessageFormat, error
 	return messageformat.Parse(locales, tc.Src, opts...)
 }
 
-func officialFunctionRegistry() map[string]functions.MessageFunction {
+func officialFunctionMap() map[string]functions.MessageFunction {
 	fns := make(map[string]functions.MessageFunction, len(functions.DefaultFunctionMap())+len(functions.DraftFunctionMap())+4)
 	maps.Copy(fns, functions.DefaultFunctionMap())
 	maps.Copy(fns, functions.DraftFunctionMap())
@@ -112,28 +112,18 @@ func runFormatTest(t *testing.T, tc mfwg.Test) {
 	mf, err := newOfficialMessageFormat(tc)
 	require.NoError(t, err, "Parse should succeed for format-class test")
 
-	var runtimeErrors []error
-	collectError := func(err error) {
-		runtimeErrors = append(runtimeErrors, err)
-	}
-
-	got, formatErr := mf.Format(tc.GetParamsMap(), messageformat.WithErrorHandler(collectError))
-	require.NoError(t, formatErr, "Format should not return a non-recoverable error")
+	got, formatErr := mf.Format(tc.GetParamsMap())
 
 	if exp, ok := mfwg.ExpectedString(tc); ok {
 		assert.Equal(t, exp, got, "formatted output mismatch")
 	}
 
-	matchExpectedErrors(t, runtimeErrors, tc)
+	matchExpectedErrors(t, diagnosticsFromError(formatErr), tc)
 
 	if tc.ExpParts != nil {
-		var partErrors []error
-		parts, partsErr := mf.FormatToParts(tc.GetParamsMap(), messageformat.WithErrorHandler(func(err error) {
-			partErrors = append(partErrors, err)
-		}))
-		require.NoError(t, partsErr, "FormatToParts should not return a non-recoverable error")
+		parts, partsErr := mf.FormatToParts(tc.GetParamsMap())
 		assert.Equal(t, tc.ExpParts, projectMessageParts(tc.ExpParts, parts), "formatted parts mismatch")
-		matchExpectedErrors(t, partErrors, tc)
+		matchExpectedErrors(t, diagnosticsFromError(partsErr), tc)
 	}
 }
 

@@ -16,124 +16,122 @@ func TestStringifyMessage(t *testing.T) {
 	}{
 		{
 			name: "simple pattern message",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{NewTextElement("Hello, world!")}),
-				"",
-			),
+				mustPattern(t, []PatternElement{NewTextElement("Hello, world!")}),
+				""),
+
 			expected: "Hello, world!",
 		},
 		{
 			name: "pattern message with expression",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{
+				mustPattern(t, []PatternElement{
 					NewTextElement("Hello "),
-					NewExpression(NewVariableRef("name"), nil, nil),
+					mustExpression(t, NewVariableRef("name"), nil, nil),
 					NewTextElement("!"),
 				}),
-				"",
-			),
+
+				""),
+
 			expected: "Hello {$name}!",
 		},
 		{
 			name: "pattern message with function",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				nil,
-				NewPattern([]PatternElement{
-					NewExpression(
+				mustPattern(t, []PatternElement{
+					mustExpression(t,
 						NewVariableRef("count"),
-						NewFunctionRef("number", nil),
-						nil,
-					),
+						mustFunctionRef(t, "number", nil),
+						nil),
 				}),
-				"",
-			),
+
+				""),
+
 			expected: "{$count :number}",
 		},
 		{
 			name: "pattern message with input declaration",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				[]Declaration{
-					NewInputDeclaration(
-						"count",
-						NewVariableRefExpression(
+					mustInputDeclaration(t,
+
+						mustExpression(t,
 							NewVariableRef("count"),
-							NewFunctionRef("integer", nil),
-							nil,
-						),
-					),
+							mustFunctionRef(t, "integer", nil),
+							nil)),
 				},
-				NewPattern([]PatternElement{
-					NewExpression(NewVariableRef("count"), nil, nil),
+				mustPattern(t, []PatternElement{
+					mustExpression(t, NewVariableRef("count"), nil, nil),
 				}),
-				"",
-			),
+
+				""),
+
 			expected: ".input {$count :integer}\n{{{$count}}}",
 		},
 		{
 			name: "pattern message with local declaration",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				[]Declaration{
 					NewLocalDeclaration(
 						"formatted",
-						NewExpression(
+						mustExpression(t,
 							NewVariableRef("count"),
-							NewFunctionRef("number", nil),
-							nil,
-						),
+							mustFunctionRef(t, "number", nil),
+							nil),
 					),
 				},
-				NewPattern([]PatternElement{
-					NewExpression(NewVariableRef("formatted"), nil, nil),
+				mustPattern(t, []PatternElement{
+					mustExpression(t, NewVariableRef("formatted"), nil, nil),
 				}),
-				"",
-			),
+
+				""),
+
 			expected: ".local $formatted = {$count :number}\n{{{$formatted}}}",
 		},
 		{
 			name: "simple select message",
-			message: NewSelectMessage(
+			message: mustSelectMessage(t,
 				nil,
 				[]VariableRef{*NewVariableRef("count")},
 				[]Variant{
-					*NewVariant(
+					*mustVariant(t,
 						[]VariantKey{NewLiteral("one")},
-						NewPattern([]PatternElement{NewTextElement("One item")}),
-					),
-					*NewVariant(
+						mustPattern(t, []PatternElement{NewTextElement("One item")})),
+
+					*mustVariant(t,
 						[]VariantKey{NewCatchallKey("")},
-						NewPattern([]PatternElement{NewTextElement("Many items")}),
-					),
+						mustPattern(t, []PatternElement{NewTextElement("Many items")})),
 				},
-				"",
-			),
+				""),
+
 			expected: ".match $count\none {{One item}}\n* {{Many items}}",
 		},
 		{
 			name: "multi-selector message",
-			message: NewSelectMessage(
+			message: mustSelectMessage(t,
 				nil,
 				[]VariableRef{
 					*NewVariableRef("count"),
 					*NewVariableRef("gender"),
 				},
 				[]Variant{
-					*NewVariant(
+					*mustVariant(t,
 						[]VariantKey{NewLiteral("one"), NewLiteral("male")},
-						NewPattern([]PatternElement{NewTextElement("He has one item")}),
-					),
-					*NewVariant(
+						mustPattern(t, []PatternElement{NewTextElement("He has one item")})),
+
+					*mustVariant(t,
 						[]VariantKey{NewLiteral("one"), NewLiteral("female")},
-						NewPattern([]PatternElement{NewTextElement("She has one item")}),
-					),
-					*NewVariant(
+						mustPattern(t, []PatternElement{NewTextElement("She has one item")})),
+
+					*mustVariant(t,
 						[]VariantKey{NewCatchallKey(""), NewCatchallKey("")},
-						NewPattern([]PatternElement{NewTextElement("They have items")}),
-					),
+						mustPattern(t, []PatternElement{NewTextElement("They have items")})),
 				},
-				"",
-			),
+				""),
+
 			expected: ".match $count $gender\none male {{He has one item}}\none female {{She has one item}}\n* * {{They have items}}",
 		},
 	}
@@ -154,69 +152,70 @@ func TestStringifyExpression(t *testing.T) {
 	}{
 		{
 			name:     "variable reference",
-			expr:     NewExpression(NewVariableRef("name"), nil, nil),
+			expr:     mustExpression(t, NewVariableRef("name"), nil, nil),
 			expected: "{$name}",
 		},
 		{
 			name:     "literal argument",
-			expr:     NewExpression(NewLiteral("42"), nil, nil),
+			expr:     mustExpression(t, NewLiteral("42"), nil, nil),
 			expected: "{42}",
 		},
 		{
 			name:     "quoted literal with spaces",
-			expr:     NewExpression(NewLiteral("hello world"), nil, nil),
+			expr:     mustExpression(t, NewLiteral("hello world"), nil, nil),
 			expected: "{|hello world|}",
 		},
 		{
 			name: "expression with function",
-			expr: NewExpression(
+			expr: mustExpression(t,
 				NewVariableRef("count"),
-				NewFunctionRef("number", nil),
-				nil,
-			),
+				mustFunctionRef(t, "number", nil),
+				nil),
+
 			expected: "{$count :number}",
 		},
 		{
 			name: "expression with function and options",
-			expr: NewExpression(
+			expr: mustExpression(t,
 				NewVariableRef("price"),
-				NewFunctionRef("number", ConvertMapToOptions(map[string]any{
+				mustFunctionRef(t, "number", ConvertMapToOptions(map[string]any{
 					"style":    NewLiteral("currency"),
 					"currency": NewLiteral("USD"),
 				})),
-				nil,
-			),
+
+				nil),
+
 			expected: "", // Skip exact match due to map iteration order
 		},
 		{
 			name: "expression with attributes",
-			expr: NewExpression(
+			expr: mustExpression(t,
 				NewVariableRef("value"),
 				nil,
 				ConvertMapToAttributes(map[string]any{
 					"id": NewLiteral("test"),
-				}),
-			),
+				})),
+
 			expected: "{$value @id=test}",
 		},
 		{
 			name: "expression with boolean attribute",
-			expr: NewExpression(
+			expr: mustExpression(t,
 				NewVariableRef("value"),
 				nil,
 				ConvertMapToAttributes(map[string]any{
 					"checked": true,
-				}),
-			),
+				})),
+
 			expected: "{$value @checked}",
 		},
 		{
 			name: "function only (no argument)",
-			expr: NewExpression(
+			expr: mustExpression(t,
 				nil,
-				NewFunctionRef("randomValue", nil),
-				nil,
-			),
+				mustFunctionRef(t, "randomValue", nil),
+				nil),
+
 			expected: "{:randomValue}",
 		},
 	}
@@ -352,60 +351,63 @@ func TestStringifyPattern(t *testing.T) {
 	}{
 		{
 			name:     "simple text",
-			pattern:  NewPattern([]PatternElement{NewTextElement("Hello")}),
+			pattern:  mustPattern(t, []PatternElement{NewTextElement("Hello")}),
 			quoted:   false,
 			expected: "Hello",
 		},
 		{
 			name: "text with expression",
-			pattern: NewPattern([]PatternElement{
+			pattern: mustPattern(t, []PatternElement{
 				NewTextElement("Count: "),
-				NewExpression(NewVariableRef("count"), nil, nil),
+				mustExpression(t, NewVariableRef("count"), nil, nil),
 			}),
+
 			quoted:   false,
 			expected: "Count: {$count}",
 		},
 		{
 			name:     "quoted pattern",
-			pattern:  NewPattern([]PatternElement{NewTextElement("Hello")}),
+			pattern:  mustPattern(t, []PatternElement{NewTextElement("Hello")}),
 			quoted:   true,
 			expected: "{{Hello}}",
 		},
 		{
 			name:     "pattern starting with dot (auto-quoted)",
-			pattern:  NewPattern([]PatternElement{NewTextElement(".local value")}),
+			pattern:  mustPattern(t, []PatternElement{NewTextElement(".local value")}),
 			quoted:   false,
 			expected: "{{.local value}}",
 		},
 		{
 			name: "pattern starting with spaced dot and expression",
-			pattern: NewPattern([]PatternElement{
+			pattern: mustPattern(t, []PatternElement{
 				NewTextElement("  .local "),
-				NewExpression(NewVariableRef("name"), nil, nil),
+				mustExpression(t, NewVariableRef("name"), nil, nil),
 			}),
+
 			quoted:   false,
 			expected: "{{  .local {$name}}}",
 		},
 		{
 			name:     "pattern with special characters",
-			pattern:  NewPattern([]PatternElement{NewTextElement("Hello {world}")}),
+			pattern:  mustPattern(t, []PatternElement{NewTextElement("Hello {world}")}),
 			quoted:   false,
 			expected: "Hello \\{world\\}",
 		},
 		{
 			name:     "pattern with backslash",
-			pattern:  NewPattern([]PatternElement{NewTextElement("Path: C:\\folder")}),
+			pattern:  mustPattern(t, []PatternElement{NewTextElement("Path: C:\\folder")}),
 			quoted:   false,
 			expected: "Path: C:\\\\folder",
 		},
 		{
 			name: "pattern with markup",
-			pattern: NewPattern([]PatternElement{
+			pattern: mustPattern(t, []PatternElement{
 				NewTextElement("Text with "),
 				mustMarkup(t, "open", "b", nil, nil),
 				NewTextElement("bold"),
 				mustMarkup(t, "close", "b", nil, nil),
 			}),
+
 			quoted:   false,
 			expected: "Text with {#b}bold{/b}",
 		},
@@ -458,35 +460,38 @@ func TestStringifyFunctionRef(t *testing.T) {
 	}{
 		{
 			name:     "simple function",
-			funcRef:  NewFunctionRef("number", nil),
+			funcRef:  mustFunctionRef(t, "number", nil),
 			expected: ":number",
 		},
 		{
 			name: "function with single option",
-			funcRef: NewFunctionRef("number", ConvertMapToOptions(map[string]any{
+			funcRef: mustFunctionRef(t, "number", ConvertMapToOptions(map[string]any{
 				"style": NewLiteral("decimal"),
 			})),
+
 			expected: ":number",
 		},
 		{
 			name: "function with multiple options",
-			funcRef: NewFunctionRef("number", ConvertMapToOptions(map[string]any{
+			funcRef: mustFunctionRef(t, "number", ConvertMapToOptions(map[string]any{
 				"style":    NewLiteral("currency"),
 				"currency": NewLiteral("USD"),
 			})),
+
 			// Note: map iteration order is not guaranteed
 			expected: ":number",
 		},
 		{
 			name: "function with variable option",
-			funcRef: NewFunctionRef("number", ConvertMapToOptions(map[string]any{
+			funcRef: mustFunctionRef(t, "number", ConvertMapToOptions(map[string]any{
 				"minDigits": NewVariableRef("digits"),
 			})),
+
 			expected: ":number",
 		},
 		{
 			name:     "namespaced function",
-			funcRef:  NewFunctionRef("custom:format", nil),
+			funcRef:  mustFunctionRef(t, "custom:format", nil),
 			expected: ":custom:format",
 		},
 	}
@@ -736,61 +741,58 @@ func TestStringifyComplexMessages(t *testing.T) {
 	}{
 		{
 			name: "message with multiple declarations",
-			message: NewPatternMessage(
+			message: mustPatternMessage(t,
 				[]Declaration{
-					NewInputDeclaration(
-						"price",
-						NewVariableRefExpression(
+					mustInputDeclaration(t,
+
+						mustExpression(t,
 							NewVariableRef("price"),
-							NewFunctionRef("number", nil),
-							nil,
-						),
-					),
+							mustFunctionRef(t, "number", nil),
+							nil)),
+
 					NewLocalDeclaration(
 						"tax",
-						NewExpression(
+						mustExpression(t,
 							NewVariableRef("price"),
-							NewFunctionRef("number", ConvertMapToOptions(map[string]any{
+							mustFunctionRef(t, "number", ConvertMapToOptions(map[string]any{
 								"style": NewLiteral("percent"),
 							})),
-							nil,
-						),
+
+							nil),
 					),
 				},
-				NewPattern([]PatternElement{
+				mustPattern(t, []PatternElement{
 					NewTextElement("Price: "),
-					NewExpression(NewVariableRef("price"), nil, nil),
+					mustExpression(t, NewVariableRef("price"), nil, nil),
 					NewTextElement(", Tax: "),
-					NewExpression(NewVariableRef("tax"), nil, nil),
+					mustExpression(t, NewVariableRef("tax"), nil, nil),
 				}),
-				"",
-			),
+
+				""),
 		},
 		{
 			name: "select with expressions in variants",
-			message: NewSelectMessage(
+			message: mustSelectMessage(t,
 				nil,
 				[]VariableRef{*NewVariableRef("count")},
 				[]Variant{
-					*NewVariant(
+					*mustVariant(t,
 						[]VariantKey{NewLiteral("one")},
-						NewPattern([]PatternElement{
+						mustPattern(t, []PatternElement{
 							NewTextElement("You have "),
-							NewExpression(NewVariableRef("count"), nil, nil),
+							mustExpression(t, NewVariableRef("count"), nil, nil),
 							NewTextElement(" item"),
-						}),
-					),
-					*NewVariant(
+						})),
+
+					*mustVariant(t,
 						[]VariantKey{NewCatchallKey("")},
-						NewPattern([]PatternElement{
+						mustPattern(t, []PatternElement{
 							NewTextElement("You have "),
-							NewExpression(NewVariableRef("count"), nil, nil),
+							mustExpression(t, NewVariableRef("count"), nil, nil),
 							NewTextElement(" items"),
-						}),
-					),
+						})),
 				},
-				"",
-			),
+				""),
 		},
 	}
 

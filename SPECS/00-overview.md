@@ -24,7 +24,7 @@ The root module owns the MessageFormat 2.0 parser, public data model, resolver, 
 
 - Root and MF1 formatter instances are immutable after construction and safe for concurrent use.
 - Constructor inputs that could mutate compiled behavior must be copied before storage.
-- Built-in function maps returned by public helpers are snapshots. Mutating one returned map must not affect future formatters or registries.
+- Built-in function maps returned by public helpers are snapshots. Mutating one returned map must not affect future formatters.
 - Public collection accessors, including resolved options and message-value options, must return detached snapshots.
 - Public data model variants are package-defined closed unions; construction and validation must not expose CST types or retain caller-owned mutable storage.
 - Runtime data model nodes may preserve source positions, but must not retain parser objects.
@@ -53,7 +53,7 @@ task test-v2
 - Do not delete, quarantine, or rename `mf1/` as "legacy" without an explicit product deprecation plan.
 - Do not describe `mf1/` as part of the root Go module or add a root-to-MF1 runtime dependency.
 - Do not expose `internal/cst` or other internal packages from public API signatures.
-- Do not add mutable package-level public maps for defaults or registries.
+- Do not add mutable package-level public maps for defaults or extension configuration.
 - Do not preserve obsolete API shapes with compatibility aliases when typed construction and one validation owner express the caller job directly.
 
 ## Acceptance Criteria

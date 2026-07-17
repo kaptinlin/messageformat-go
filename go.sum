@@ -1,5 +1,5 @@
-github.com/agentable/go-intl v0.2.13 h1:W0yWsL+g+MBjcqm8zAoDjUcHjTEH95Y0gz1OWYXCkG0=
-github.com/agentable/go-intl v0.2.13/go.mod h1:hsOt+l7AVK/j2pQrgQ3BzmZVKk50J+Gy3naVrbpNnKI=
+github.com/agentable/go-intl v0.2.15 h1:dLoBDj4oXxkqz/fEmyh96yZvWfHR1WLfGKc82fecqk0=
+github.com/agentable/go-intl v0.2.15/go.mod h1:dTVfDMS4F0TirLOmeY+T4LPEz9i3zSIF4Dfu2dz77dI=
 github.com/cockroachdb/apd/v3 v3.2.3 h1:4Zx+I3R35bFXMnltzmjP79i2cravE4jTRL6ps9Aux80=
 github.com/cockroachdb/apd/v3 v3.2.3/go.mod h1:klXJcjp+FffLTHlhIG69tezTDvdP065naDsHzKhYSqc=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

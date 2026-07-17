@@ -640,23 +640,20 @@ func TestErrorHandling(t *testing.T) {
 		values         map[string]any
 		expectedResult string
 		expectError    bool
-		errorCallback  bool
 	}{
 		{
 			name:           "missing_variable_fallback",
 			message:        "Hello {$missing}!",
 			values:         map[string]any{},
 			expectedResult: "Hello \u2068{$missing}\u2069!",
-			expectError:    false,
-			errorCallback:  false,
+			expectError:    true,
 		},
 		{
 			name:           "unknown_function_fallback",
 			message:        "Value: {$value :unknown}",
 			values:         map[string]any{"value": "test"},
 			expectedResult: "Value: \u2068{$value}\u2069",
-			expectError:    false,
-			errorCallback:  false,
+			expectError:    true,
 		},
 		{
 			name:           "normal_case",
@@ -664,24 +661,15 @@ func TestErrorHandling(t *testing.T) {
 			values:         map[string]any{"name": "World"},
 			expectedResult: "Hello \u2068World\u2069!",
 			expectError:    false,
-			errorCallback:  false,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var errorCalled bool
-			var capturedError error
-
-			onError := func(err error) {
-				errorCalled = true
-				capturedError = err
-			}
-
 			mf, err := messageformat.Parse([]string{"en"}, tc.message)
 			require.NoError(t, err, "should parse message")
 
-			result, err := mf.Format(tc.values, messageformat.WithErrorHandler(onError))
+			result, err := mf.Format(tc.values)
 
 			if tc.expectError {
 				assert.Error(t, err, "should return error for invalid cases")
@@ -689,29 +677,17 @@ func TestErrorHandling(t *testing.T) {
 				assert.NoError(t, err, "should not return error, should use fallback representation")
 			}
 
-			if tc.errorCallback {
-				assert.True(t, errorCalled, "error callback should be called")
-				assert.NotNil(t, capturedError, "should capture error in callback")
-			}
-
 			assert.Equal(t, tc.expectedResult, result)
 		})
 	}
 
-	// Test error callback functionality
-	t.Run("error_callback_functionality", func(t *testing.T) {
-		var errors []error
-		onError := func(err error) {
-			errors = append(errors, err)
-		}
-
+	t.Run("successful_format_returns_nil_error", func(t *testing.T) {
 		mf, err := messageformat.Parse([]string{"en"}, "Hello {$name}!")
 		require.NoError(t, err)
 
-		result, err := mf.Format(map[string]any{"name": "World"}, messageformat.WithErrorHandler(onError))
+		result, err := mf.Format(map[string]any{"name": "World"})
 		require.NoError(t, err)
 		assert.Equal(t, "Hello \u2068World\u2069!", result)
-		assert.Empty(t, errors, "no errors should be captured for valid formatting")
 	})
 }
 
@@ -725,13 +701,14 @@ func TestMessageDataInterface(t *testing.T) {
 	}{
 		{
 			name: "pattern_message_simple_text",
-			message: datamodel.NewPatternMessage(
-				nil, // no declarations
-				datamodel.NewPattern([]datamodel.PatternElement{
+			message: mustPatternMessage(t,
+				nil,
+				mustPattern(t, []datamodel.PatternElement{
 					datamodel.NewTextElement("Hello World!"),
 				}),
-				"", // no comment
-			),
+
+				""),
+
 			values:   nil,
 			expected: "Hello World!",
 		},
@@ -760,20 +737,18 @@ func TestMessageDataInterface(t *testing.T) {
 		}
 
 		variants := []datamodel.Variant{
-			*datamodel.NewVariant(
+			*mustVariant(t,
 				[]datamodel.VariantKey{datamodel.NewCatchallKey("*")},
-				datamodel.NewPattern([]datamodel.PatternElement{
+				mustPattern(t, []datamodel.PatternElement{
 					datamodel.NewTextElement("Default message"),
-				}),
-			),
+				})),
 		}
 
-		selectMessage := datamodel.NewSelectMessage(
-			nil, // no declarations
+		selectMessage := mustSelectMessage(t,
+			nil,
 			selectors,
 			variants,
-			"", // no comment
-		)
+			"")
 
 		assert.Equal(t, selectMessage.Type(), "select")
 
@@ -1058,7 +1033,7 @@ func TestEdgeCases(t *testing.T) {
 			message:     "Hello {$missing}!",
 			values:      map[string]any{},
 			expected:    "Hello \u2068{$missing}\u2069!",
-			shouldError: false,
+			shouldError: true,
 		},
 		{
 			name:        "whitespace_only",
@@ -1154,9 +1129,9 @@ func TestEdgeCases(t *testing.T) {
 			if tc.shouldError {
 				assert.Error(t, err, "should return error for invalid cases")
 			} else {
-				require.NoError(t, err, "should not return error, should use fallback representation")
-				assert.Equal(t, tc.expected, result, "result should match expected fallback")
+				require.NoError(t, err)
 			}
+			assert.Equal(t, tc.expected, result, "result should match expected output")
 		})
 	}
 }

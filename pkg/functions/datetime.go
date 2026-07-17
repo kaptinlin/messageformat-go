@@ -116,6 +116,14 @@ func dateTimeImplementation(
 				"Invalid :"+functionName+" calendar option value", source))
 		}
 	}
+	if numberingSystem, ok := exprOpt.Value("numberingSystem"); ok && numberingSystem != nil {
+		if strVal, err := asString(numberingSystem); err == nil {
+			dtOptions["numberingSystem"] = strVal
+		} else {
+			ctx.OnError(errors.NewBadOptionError(
+				"Invalid :"+functionName+" numberingSystem option value", source))
+		}
+	}
 
 	// Override hour12 option from expression (TS: lines 125-131)
 	// Only applies to datetime and time, not date
@@ -203,7 +211,17 @@ func dateTimeImplementation(
 
 	// Return DateTimeValue with all options
 	// This will be formatted using the new helper functions
-	return messagevalue.NewDateTimeValue(dateTime, locale, source, dtOptions)
+	dateTimeValue, err := messagevalue.NewDateTimeValue(dateTime, locale, source, dtOptions)
+	if err != nil {
+		ctx.OnError(errors.NewMessageResolutionError(
+			errors.ErrorTypeBadOption,
+			"Invalid datetime formatting options",
+			source,
+			err,
+		))
+		return messagevalue.NewFallbackValue(source, locale)
+	}
+	return dateTimeValue
 }
 
 // parseDateTimeValue extracts time.Time from various operand types

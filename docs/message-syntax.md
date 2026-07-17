@@ -207,7 +207,7 @@ Examples:
 ```text
 {$amount :currency currency=USD}
 {$count :integer}
-{$createdAt :datetime dateStyle=full timeStyle=short}
+{$createdAt :datetime dateLength=long timePrecision=second}
 ```
 
 See [Formatting Functions](formatting-functions.md) for details and option behavior.

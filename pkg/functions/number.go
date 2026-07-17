@@ -243,8 +243,8 @@ func NumberFunction(
 				msg := fmt.Sprintf("Value %v is not valid for :number option %s", optval, name)
 				ctx.OnError(pkgErrors.NewBadOptionError(msg, ctx.Source()))
 			}
-		case "roundingMode", "roundingPriority", "select", "signDisplay",
-			"trailingZeroDisplay", "useGrouping":
+		case "numberingSystem", "roundingMode", "roundingPriority", "select",
+			"signDisplay", "trailingZeroDisplay", "useGrouping":
 			if strVal, err := asString(optval); err == nil {
 				mergedOptions[name] = strVal
 			} else {
@@ -434,7 +434,17 @@ func getMessageNumber(
 	// Convert string direction to bidi.Direction
 	bidiDir := bidi.ParseDirection(dir)
 
-	return messagevalue.NewNumberValueWithSelection(value, locale, ctx.Source(), bidiDir, options, selectable)
+	number, err := messagevalue.NewNumberValueWithSelection(value, locale, ctx.Source(), bidiDir, options, selectable)
+	if err != nil {
+		ctx.OnError(pkgErrors.NewMessageResolutionError(
+			pkgErrors.ErrorTypeBadOption,
+			"Invalid number formatting options",
+			ctx.Source(),
+			err,
+		))
+		return messagevalue.NewFallbackValue(ctx.Source(), locale)
+	}
+	return number
 }
 
 // mergeNumberOptions merges options from operand and expression sources

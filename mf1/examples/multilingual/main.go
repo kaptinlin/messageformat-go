@@ -70,12 +70,12 @@ func (lm *LocalizedMessage) Format(locale string, data map[string]any) (string, 
 		return "", fmt.Errorf("failed to compile template for %s: %w", locale, err)
 	}
 
-	result, err := msg(data)
+	result, err := msg.Format(data)
 	if err != nil {
 		return "", fmt.Errorf("failed to format message for %s: %w", locale, err)
 	}
 
-	return result.(string), nil
+	return result, nil
 }
 
 // getCurrencyForLocale returns appropriate currency for locale
@@ -208,34 +208,16 @@ func demonstrateComplexMessages() {
 	}
 }
 
-func demonstrateReturnTypes() {
-	fmt.Println("\n\n=== Return Types Demonstration ===")
+func demonstrateProjections() {
+	fmt.Println("\n\n=== Message Projections Demonstration ===")
 
-	// String return type (default)
-	stringMF, err := mf.New("en", &mf.MessageFormatOptions{
-		ReturnType: mf.ReturnTypeString,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Values array return type
-	valuesMF, err := mf.New("en", &mf.MessageFormatOptions{
-		ReturnType: mf.ReturnTypeValues,
-	})
+	compiler, err := mf.New("en", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	template := "Hello {name}, you have {count} new messages!"
-
-	// Compile for both return types
-	stringMsg, err := stringMF.Compile(template)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	valuesMsg, err := valuesMF.Compile(template)
+	message, err := compiler.Compile(template)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -246,14 +228,14 @@ func demonstrateReturnTypes() {
 	}
 
 	// String result
-	stringResult, err := stringMsg(data)
+	stringResult, err := message.Format(data)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("String result: %s\n", stringResult)
 
 	// Values result
-	valuesResult, err := valuesMsg(data)
+	valuesResult, err := message.FormatValues(data)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -270,7 +252,7 @@ func main() {
 	demonstrateComplexMessages()
 
 	// Demonstrate different return types
-	demonstrateReturnTypes()
+	demonstrateProjections()
 
 	fmt.Println("\n=== Multilingual examples completed successfully! ===")
 }

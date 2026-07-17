@@ -26,11 +26,10 @@ func TestResolveVariableRef_CircularReference(t *testing.T) {
 		}
 
 		// Create context where variable "a" references itself
-		expr := datamodel.NewExpression(
+		expr := mustExpression(t,
 			datamodel.NewVariableRef("a"),
 			nil,
-			nil,
-		)
+			nil)
 
 		ctx := NewContext(
 			[]string{"en"},
@@ -38,8 +37,7 @@ func TestResolveVariableRef_CircularReference(t *testing.T) {
 			map[string]any{
 				"a": NewUnresolvedExpression(expr, nil),
 			},
-			onError,
-		)
+			onError, "best fit")
 
 		ref := datamodel.NewVariableRef("a")
 		result := ResolveVariableRef(ctx, ref)
@@ -57,16 +55,15 @@ func TestResolveVariableRef_CircularReference(t *testing.T) {
 		}
 
 		// Create expressions for A and B that reference each other
-		exprA := datamodel.NewExpression(
+		exprA := mustExpression(t,
 			datamodel.NewVariableRef("b"),
 			nil,
-			nil,
-		)
-		exprB := datamodel.NewExpression(
+			nil)
+
+		exprB := mustExpression(t,
 			datamodel.NewVariableRef("a"),
 			nil,
-			nil,
-		)
+			nil)
 
 		scope := map[string]any{
 			"a": NewUnresolvedExpression(exprA, nil),
@@ -77,8 +74,7 @@ func TestResolveVariableRef_CircularReference(t *testing.T) {
 			[]string{"en"},
 			functions.DefaultFunctionMap(),
 			scope,
-			onError,
-		)
+			onError, "best fit")
 
 		// Try to resolve "a", which references "b", which references "a"
 		ref := datamodel.NewVariableRef("a")
@@ -91,11 +87,10 @@ func TestResolveVariableRef_CircularReference(t *testing.T) {
 
 	t.Run("no circular reference with proper resolution", func(t *testing.T) {
 		// Create expression where A references B, and B is a concrete value
-		exprA := datamodel.NewExpression(
+		exprA := mustExpression(t,
 			datamodel.NewVariableRef("b"),
 			nil,
-			nil,
-		)
+			nil)
 
 		scope := map[string]any{
 			"a": NewUnresolvedExpression(exprA, nil),
@@ -106,8 +101,7 @@ func TestResolveVariableRef_CircularReference(t *testing.T) {
 			[]string{"en"},
 			functions.DefaultFunctionMap(),
 			scope,
-			nil,
-		)
+			nil, "best fit")
 
 		ref := datamodel.NewVariableRef("a")
 		result := ResolveVariableRef(ctx, ref)
@@ -208,8 +202,7 @@ func TestResolveVariableRef_NestedPaths(t *testing.T) {
 				[]string{"en"},
 				functions.DefaultFunctionMap(),
 				tt.scope,
-				nil,
-			)
+				nil, "best fit")
 
 			ref := datamodel.NewVariableRef(tt.variablePath)
 			result := ResolveVariableRef(ctx, ref)
@@ -243,8 +236,7 @@ func TestResolveVariableRef_MissingVariables(t *testing.T) {
 		[]string{"en"},
 		functions.DefaultFunctionMap(),
 		map[string]any{},
-		onError,
-	)
+		onError, "best fit")
 
 	ref := datamodel.NewVariableRef("nonexistent")
 	result := ResolveVariableRef(ctx, ref)
@@ -265,8 +257,7 @@ func TestResolveVariableRef_NilValueIsNotMissing(t *testing.T) {
 		},
 		func(err error) {
 			errs = append(errs, err)
-		},
-	)
+		}, "best fit")
 
 	ref := datamodel.NewVariableRef("value")
 	result := ResolveVariableRef(ctx, ref)
@@ -293,8 +284,7 @@ func TestResolveVariableRef_TypedNilValueIsNotMissing(t *testing.T) {
 		},
 		func(err error) {
 			errs = append(errs, err)
-		},
-	)
+		}, "best fit")
 
 	ref := datamodel.NewVariableRef("value")
 	result := ResolveVariableRef(ctx, ref)
@@ -310,11 +300,10 @@ func TestResolveVariableRef_TypedNilValueIsNotMissing(t *testing.T) {
 func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 	t.Run("basic unresolved expression", func(t *testing.T) {
 		// Create an unresolved expression that references a literal
-		expr := datamodel.NewExpression(
+		expr := mustExpression(t,
 			datamodel.NewLiteral("42"),
-			datamodel.NewFunctionRef("number", nil),
-			nil,
-		)
+			mustFunctionRef(t, "number", nil),
+			nil)
 
 		ctx := NewContext(
 			[]string{"en"},
@@ -322,8 +311,7 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 			map[string]any{
 				"x": NewUnresolvedExpression(expr, nil),
 			},
-			nil,
-		)
+			nil, "best fit")
 
 		ref := datamodel.NewVariableRef("x")
 		result, found := lookupVariableRef(ctx, ref)
@@ -338,11 +326,10 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 
 	t.Run("unresolved expression with custom scope", func(t *testing.T) {
 		// Create an unresolved expression with its own scope
-		expr := datamodel.NewExpression(
+		expr := mustExpression(t,
 			datamodel.NewVariableRef("y"),
 			nil,
-			nil,
-		)
+			nil)
 
 		customScope := map[string]any{
 			"y": "scoped value",
@@ -353,10 +340,9 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 			functions.DefaultFunctionMap(),
 			map[string]any{
 				"x": NewUnresolvedExpression(expr, customScope),
-				"y": "outer value", // This should be ignored
+				"y": "outer value",
 			},
-			nil,
-		)
+			nil, "best fit")
 
 		ref := datamodel.NewVariableRef("x")
 		result, found := lookupVariableRef(ctx, ref)
@@ -378,11 +364,10 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 	t.Run("input declaration without function", func(t *testing.T) {
 		// Test .input declaration case where we have a simple variable reference
 		// without a function - should return the original parameter value
-		expr := datamodel.NewExpression(
+		expr := mustExpression(t,
 			datamodel.NewVariableRef("param"),
 			nil,
-			nil,
-		)
+			nil)
 
 		scopeWithParam := map[string]any{
 			"param": "original value",
@@ -394,8 +379,7 @@ func TestLookupVariableRef_UnresolvedExpression(t *testing.T) {
 			map[string]any{
 				"local": NewUnresolvedExpression(expr, scopeWithParam),
 			},
-			nil,
-		)
+			nil, "best fit")
 
 		ref := datamodel.NewVariableRef("local")
 		result, found := lookupVariableRef(ctx, ref)
@@ -561,8 +545,7 @@ func TestResolveVariableRef_PointerTypes(t *testing.T) {
 			map[string]any{
 				"val": &value,
 			},
-			nil,
-		)
+			nil, "best fit")
 
 		ref := datamodel.NewVariableRef("val")
 		result := ResolveVariableRef(ctx, ref)
@@ -581,8 +564,7 @@ func TestResolveVariableRef_PointerTypes(t *testing.T) {
 			map[string]any{
 				"val": &value,
 			},
-			nil,
-		)
+			nil, "best fit")
 
 		ref := datamodel.NewVariableRef("val")
 		result := ResolveVariableRef(ctx, ref)
@@ -594,11 +576,10 @@ func TestResolveVariableRef_PointerTypes(t *testing.T) {
 
 // TestResolveVariableRef_LocalVarsTracking tests local variable tracking
 func TestResolveVariableRef_LocalVarsTracking(t *testing.T) {
-	expr := datamodel.NewExpression(
+	expr := mustExpression(t,
 		datamodel.NewLiteral("test"),
 		nil,
-		nil,
-	)
+		nil)
 
 	ctx := NewContext(
 		[]string{"en"},
@@ -606,8 +587,7 @@ func TestResolveVariableRef_LocalVarsTracking(t *testing.T) {
 		map[string]any{
 			"local": NewUnresolvedExpression(expr, nil),
 		},
-		nil,
-	)
+		nil, "best fit")
 
 	// Initially, LocalVars should be empty
 	assert.Empty(t, ctx.LocalVars)
@@ -633,8 +613,7 @@ func TestResolveVariableRef_FallbackType(t *testing.T) {
 		map[string]any{
 			"val": fallbackValue,
 		},
-		nil,
-	)
+		nil, "best fit")
 
 	ref := datamodel.NewVariableRef("val")
 	result := ResolveVariableRef(ctx, ref)
@@ -650,8 +629,7 @@ func TestResolveVariableRef_NoErrorHandler(t *testing.T) {
 		[]string{"en"},
 		functions.DefaultFunctionMap(),
 		map[string]any{},
-		nil, // No error handler
-	)
+		nil, "best fit")
 
 	ref := datamodel.NewVariableRef("missing")
 	result := ResolveVariableRef(ctx, ref)
@@ -679,8 +657,7 @@ func TestResolveVariableRef_ComplexObject(t *testing.T) {
 		map[string]any{
 			"obj": customObj,
 		},
-		nil,
-	)
+		nil, "best fit")
 
 	ref := datamodel.NewVariableRef("obj")
 	result := ResolveVariableRef(ctx, ref)

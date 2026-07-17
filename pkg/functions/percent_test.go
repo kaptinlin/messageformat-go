@@ -141,7 +141,7 @@ func TestPercentFunctionRejectsCurrencyStyledOperand(t *testing.T) {
 		"",
 	)
 
-	operand := messagevalue.NewNumberValue(42, "en", "operand", map[string]any{
+	operand := mustNumberValue(t, 42, "en", "operand", map[string]any{
 		"style":    "currency",
 		"currency": "USD",
 	})
@@ -169,7 +169,7 @@ func TestPercentFunctionAllowsDecimalStyledOperand(t *testing.T) {
 		"",
 	)
 
-	operand := messagevalue.NewNumberValue(42, "en", "operand", map[string]any{
+	operand := mustNumberValue(t, 42, "en", "operand", map[string]any{
 		"style": "decimal",
 	})
 
@@ -194,7 +194,7 @@ func TestPercentFunctionDiscardsInheritedSelectionOptions(t *testing.T) {
 		"",
 		"",
 	)
-	operand := messagevalue.NewNumberValue(0.01, "en", "operand", map[string]any{
+	operand := mustNumberValue(t, 0.01, "en", "operand", map[string]any{
 		"style":                "decimal",
 		"minimumIntegerDigits": 3,
 		"roundingIncrement":    5,

@@ -122,22 +122,22 @@ func TestNumberOptions_NilAndUnknown(t *testing.T) {
 	assert.Equal(t, numberformat.Options{}, got)
 }
 
-func TestNumberOptions_FractionDigitsClamp(t *testing.T) {
-	t.Run("max below min clamps to min", func(t *testing.T) {
+func TestNumberOptions_PreservesInvalidDigitRangesForValidation(t *testing.T) {
+	t.Run("fraction max below min remains unchanged", func(t *testing.T) {
 		got := NumberOptions(map[string]any{
 			"minimumFractionDigits": 2,
 			"maximumFractionDigits": 1,
 		})
 		assertIntPtr(t, 2, got.MinimumFractionDigits)
-		assertIntPtr(t, 2, got.MaximumFractionDigits)
+		assertIntPtr(t, 1, got.MaximumFractionDigits)
 	})
-	t.Run("significant max below min clamps", func(t *testing.T) {
+	t.Run("significant max below min remains unchanged", func(t *testing.T) {
 		got := NumberOptions(map[string]any{
 			"minimumSignificantDigits": 4,
 			"maximumSignificantDigits": 2,
 		})
 		assertIntPtr(t, 4, got.MinimumSignificantDigits)
-		assertIntPtr(t, 4, got.MaximumSignificantDigits)
+		assertIntPtr(t, 2, got.MaximumSignificantDigits)
 	})
 }
 

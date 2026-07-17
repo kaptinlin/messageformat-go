@@ -61,13 +61,8 @@ Use `Compile(...)` when you already have a parsed public data model and want to 
 ```go
 func (mf *MessageFormat) Format(
 	values map[string]any,
-	options ...FormatOption,
 ) (string, error)
 ```
-
-Accepted format options:
-
-- `messageformat.WithErrorHandler(...)`
 
 Example:
 
@@ -78,15 +73,14 @@ out, err := mf.Format(map[string]any{
 })
 ```
 
-With a format-time error handler:
+Recoverable diagnostics are returned with usable fallback output:
 
 ```go
-out, err := mf.Format(
-	map[string]any{},
-	messageformat.WithErrorHandler(func(err error) {
-		log.Printf("format warning: %v", err)
-	}),
-)
+out, err := mf.Format(map[string]any{})
+if err != nil {
+	log.Printf("format diagnostics: %v", err)
+}
+fmt.Println(out)
 ```
 
 ### `(*MessageFormat).FormatToParts`
@@ -94,7 +88,6 @@ out, err := mf.Format(
 ```go
 func (mf *MessageFormat) FormatToParts(
 	values map[string]any,
-	options ...FormatOption,
 ) ([]messagevalue.MessagePart, error)
 ```
 
@@ -126,7 +119,6 @@ type MessageFormatOptions struct {
 	Dir           Direction
 	LocaleMatcher LocaleMatcher
 	Functions     map[string]functions.MessageFunction
-	Logger        *slog.Logger
 }
 ```
 
@@ -139,23 +131,21 @@ Available constructor options include:
 - `WithLocaleMatcher(...)`
 - `WithFunction(...)`
 - `WithFunctions(...)`
-- `WithLogger(...)`
 
-Format-time option:
+## Data Model Package
 
-- `WithErrorHandler(...)`
+Import `github.com/kaptinlin/messageformat-go/pkg/datamodel` when working with
+the parsed model directly:
 
-## Exported Helpers
+- `datamodel.ParseMessage`
+- `datamodel.StringifyMessage`
+- `datamodel.ValidateMessage`
+- `datamodel.Visit`
+- type guards such as `datamodel.IsMessage`, `datamodel.IsVariableRef`, and
+  `datamodel.IsFunctionRef`
 
-The root package also re-exports several helpers:
-
-- `ParseMessage`
-- `StringifyMessage`
-- `Validate`
-- `Visit`
-- data-model type guards such as `IsMessage`, `IsVariableRef`, and `IsFunctionRef`
-
-These are useful when you want to work with the parsed message model directly rather than only formatting strings.
+The root package owns formatter construction and rendering; `pkg/datamodel`
+owns model construction and inspection.
 
 ## Parts and Values
 
@@ -171,7 +161,8 @@ The root package re-exports several part aliases:
 Custom functions return concrete values from `pkg/messagevalue`, such as:
 
 - `messagevalue.NewStringValue(...)`
-- `messagevalue.NewNumberValue(...)`
+- `messagevalue.NewNumberValue(...) (*NumberValue, error)`
+- `messagevalue.NewDateTimeValue(...) (*DateTimeValue, error)`
 - `messagevalue.NewFallbackValue(...)`
 
 ## Defaults
@@ -183,11 +174,21 @@ Important runtime defaults:
 - locale input is defensively copied during construction
 - `MessageFormat` instances are safe for concurrent use after construction
 
+Number values validate their Intl plan during construction. Their locale and
+number parts report the dependency-resolved locale, and rendering and plural
+selection apply the same resolved digit options.
+
+Date/time values also validate one Intl plan during construction. Their value
+and `DateTimePart` expose dependency-resolved locale, calendar, and time zone;
+implicit zones preserve the input `time.Time` wall clock.
+
 ## Errors
 
 Construction returns syntax and validation errors immediately.
 
-Formatting uses graceful degradation for recoverable runtime issues and can report them through `WithErrorHandler(...)`.
+Formatting uses graceful degradation for recoverable runtime issues: fallback
+string or parts remain usable, and the returned error joins diagnostics in
+encounter order.
 
 Syntax errors preserve specific categories such as:
 

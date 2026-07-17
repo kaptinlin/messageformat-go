@@ -23,7 +23,7 @@ func TestResolveLiteral(t *testing.T) {
 		literal := datamodel.NewLiteral("quoted literal")
 
 		// Create a basic context
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil, "best fit")
 
 		// Resolve the literal
 		mv := ResolveLiteral(ctx, literal)
@@ -51,7 +51,7 @@ func TestResolveLiteral(t *testing.T) {
 		literal := datamodel.NewLiteral(" quoted \n \\|literal\\|{}")
 
 		// Create a basic context
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil, "best fit")
 
 		// Resolve the literal
 		mv := ResolveLiteral(ctx, literal)
@@ -92,7 +92,7 @@ func TestResolveLiteral(t *testing.T) {
 				literal := datamodel.NewLiteral(value)
 
 				// Create a basic context
-				ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
+				ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil, "best fit")
 
 				// Resolve the literal
 				mv := ResolveLiteral(ctx, literal)
@@ -122,7 +122,7 @@ func TestResolveLiteral(t *testing.T) {
 		literal := datamodel.NewLiteral("")
 
 		// Create a basic context
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil, "best fit")
 
 		// Resolve the literal
 		mv := ResolveLiteral(ctx, literal)
@@ -151,7 +151,7 @@ func TestResolveLiteral(t *testing.T) {
 
 		// Create a context without string function
 		emptyFunctions := make(map[string]functions.MessageFunction)
-		ctx := NewContext([]string{"en"}, emptyFunctions, nil, nil)
+		ctx := NewContext([]string{"en"}, emptyFunctions, nil, nil, "best fit")
 
 		// Resolve the literal
 		mv := ResolveLiteral(ctx, literal)

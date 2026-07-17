@@ -123,153 +123,6 @@ func TestRuntimeHelpers(t *testing.T) {
 	})
 }
 
-func TestFormatterHelpers(t *testing.T) {
-	t.Parallel()
-
-	t.Run("NumberFmt handles styles and invalid input", func(t *testing.T) {
-		t.Parallel()
-
-		formatted, err := NumberFmt(12.5, "en", "", "USD")
-		require.NoError(t, err)
-		assert.Equal(t, "12.5", formatted)
-
-		integer, err := NumberFmt(12.5, "en", "integer", "USD")
-		require.NoError(t, err)
-		assert.Equal(t, "13", integer)
-
-		percent, err := NumberFmt(0.25, "en", "percent", "USD")
-		require.NoError(t, err)
-		assert.Equal(t, "25%", percent)
-
-		currency, err := NumberFmt(3, "en", "currency:EUR", "USD")
-		require.NoError(t, err)
-		assert.Equal(t, "€3.00", currency)
-
-		_, err = NumberFmt("bad", "en", "", "USD")
-		require.ErrorIs(t, err, ErrInvalidNumberValue)
-	})
-
-	t.Run("direct number formatters fall back for invalid values", func(t *testing.T) {
-		t.Parallel()
-
-		assert.Equal(t, "£9.50", NumberCurrency(9.5, "en", "GBP"))
-		assert.Equal(t, "¥9.50", NumberCurrency(9.5, "bad-locale", "JPY"))
-		assert.Equal(t, "bad", NumberCurrency("bad", "en", "USD"))
-		assert.Equal(t, "12", NumberInteger(12.4, "en"))
-		assert.Equal(t, "bad", NumberInteger("bad", "en"))
-		assert.Equal(t, "50%", NumberPercent(0.5, "en"))
-		assert.Equal(t, "bad", NumberPercent("bad", "en"))
-	})
-
-	t.Run("DateFormatter accepts supported inputs and sizes", func(t *testing.T) {
-		t.Parallel()
-
-		instant := time.Date(2026, 5, 4, 15, 30, 45, 0, time.UTC)
-		millis := instant.UnixMilli()
-
-		tests := []struct {
-			name  string
-			value any
-			size  string
-			want  string
-		}{
-			{name: "int64 short", value: millis, size: "short", want: "5/4/2026"},
-			{name: "int long", value: int(millis), size: "long", want: "May 4, 2026"},
-			{name: "float full", value: float64(millis), size: "full", want: "Monday, May 4, 2026"},
-			{name: "date string", value: "2026-05-04", size: "", want: "May 4, 2026"},
-			{name: "rfc3339", value: instant.Format(time.RFC3339), size: "", want: "May 4, 2026"},
-			{name: "timestamp string", value: fmt.Sprint(millis), size: "", want: "May 4, 2026"},
-			{name: "time", value: instant, size: "", want: "May 4, 2026"},
-		}
-
-		for _, tc := range tests {
-			t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
-
-				got, err := DateFormatter(tc.value, "en", tc.size)
-				require.NoError(t, err)
-				assert.Equal(t, tc.want, got)
-			})
-		}
-	})
-
-	t.Run("DateFormatter reports invalid input", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := DateFormatter("not-a-date", "en", "")
-		require.ErrorIs(t, err, ErrInvalidDateValue)
-
-		_, err = DateFormatter(struct{}{}, "en", "")
-		require.ErrorIs(t, err, ErrInvalidType)
-	})
-
-	t.Run("TimeFormatter accepts supported inputs and sizes", func(t *testing.T) {
-		t.Parallel()
-
-		instant := time.Date(2026, 5, 4, 15, 30, 45, 0, time.UTC)
-		localInstant := instant.Local()
-		millis := instant.UnixMilli()
-
-		// go-intl uses ECMA-402 / CLDR formatting: U+202F NARROW NO-BREAK SPACE
-		// between the time and the AM/PM designator, and CLDR-resolved timezone
-		// abbreviations (often "GMT+H" for non-US zones) for the "long"/"full" sizes.
-		localShort, err := TimeFormatter(localInstant, "en", "short")
-		require.NoError(t, err)
-		localLong, err := TimeFormatter(localInstant, "en", "long")
-		require.NoError(t, err)
-		localMedium, err := TimeFormatter(localInstant, "en", "")
-		require.NoError(t, err)
-
-		tests := []struct {
-			name  string
-			value any
-			size  string
-			want  string
-		}{
-			{name: "int64 short", value: millis, size: "short", want: localShort},
-			{name: "int long", value: int(millis), size: "long", want: localLong},
-			{name: "float full", value: float64(millis), size: "full", want: localLong},
-			{name: "date string", value: "2026-05-04", size: "", want: "12:00:00 AM"},
-			{name: "rfc3339", value: instant.Format(time.RFC3339), size: "", want: "3:30:45 PM"},
-			{name: "timestamp string", value: fmt.Sprint(millis), size: "", want: localMedium},
-			{name: "time", value: instant, size: "", want: "3:30:45 PM"},
-		}
-
-		for _, tc := range tests {
-			t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
-
-				got, err := TimeFormatter(tc.value, "en", tc.size)
-				require.NoError(t, err)
-				assert.Equal(t, tc.want, got)
-			})
-		}
-	})
-
-	t.Run("TimeFormatter reports invalid input", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := TimeFormatter("not-a-time", "en", "")
-		require.ErrorIs(t, err, ErrInvalidTimeValue)
-
-		_, err = TimeFormatter(struct{}{}, "en", "")
-		require.ErrorIs(t, err, ErrInvalidType)
-	})
-
-	t.Run("GetFormatter resolves built-ins", func(t *testing.T) {
-		t.Parallel()
-
-		for _, name := range []string{"number", "date", "time"} {
-			t.Run(name, func(t *testing.T) {
-				t.Parallel()
-
-				assert.NotNil(t, GetFormatter(name))
-			})
-		}
-		assert.Nil(t, GetFormatter("missing"))
-	})
-}
-
 func TestDateSkeletonHelpers(t *testing.T) {
 	t.Parallel()
 
@@ -569,7 +422,8 @@ func TestLexerAndParserHelpers(t *testing.T) {
 		require.NotEmpty(t, tokens)
 
 		var tokenTypes []string
-		iter := lexer.Iterator()
+		iter, err := lexer.Iterator()
+		require.NoError(t, err)
 		for token := iter(); token != nil; token = iter() {
 			tokenTypes = append(tokenTypes, token.Type)
 		}
@@ -580,8 +434,6 @@ func TestLexerAndParserHelpers(t *testing.T) {
 		assert.Contains(t, tokenTypes, TokenCase)
 		assert.Contains(t, tokenTypes, TokenOctothorpe)
 
-		global := ResetLexer("{value}")
-		assert.Same(t, globalLexer, global)
 		assert.Contains(t, lexer.FormatError(nil, "bad"), "ParseError: bad")
 		assert.Contains(t, lexer.FormatError(&tokens[0], "bad"), "line 1 col 1")
 	})
@@ -651,32 +503,35 @@ func TestMessageFormatPublicBehavior(t *testing.T) {
 	t.Run("custom plural function drives compiled plural selection", func(t *testing.T) {
 		t.Parallel()
 
-		pluralFn := PluralFunction(func(any, ...bool) (PluralCategory, error) {
-			return PluralMany, nil
-		})
-		mf, err := NewWithPlural(pluralFn, nil)
+		profile := PluralProfile{
+			Locale: "en",
+			Select: func(any, ...bool) (PluralCategory, error) {
+				return PluralMany, nil
+			},
+			Cardinals: []PluralCategory{PluralMany, PluralOther},
+			Ordinals:  []PluralCategory{PluralOther},
+		}
+		mf, err := NewWithPlural(profile, nil)
 		require.NoError(t, err)
-		assert.Equal(t, "custom", mf.ResolvedOptions().Locale)
+		assert.Equal(t, "en", mf.ResolvedOptions().Locale)
 
 		msg, err := mf.Compile("{count, plural, many {many} other {other}}")
 		require.NoError(t, err)
-		got, err := msg(map[string]any{"count": 2})
+		got, err := msg.Format(map[string]any{"count": 2})
 		require.NoError(t, err)
 		assert.Equal(t, "many", got)
 	})
 
-	t.Run("ReturnTypeValues preserves message parts", func(t *testing.T) {
+	t.Run("FormatValues preserves message parts", func(t *testing.T) {
 		t.Parallel()
 
-		mf, err := New("en", &MessageFormatOptions{ReturnType: ReturnTypeValues})
+		mf, err := New("en", nil)
 		require.NoError(t, err)
 
 		simple, err := mf.Compile("Hello {name}!")
 		require.NoError(t, err)
-		got, err := simple(map[string]any{"name": "Ada"})
+		gotParts, err := simple.FormatValues(map[string]any{"name": "Ada"})
 		require.NoError(t, err)
-		gotParts, ok := got.([]any)
-		require.True(t, ok)
 		want := []any{"Hello ", "Ada", "!"}
 		if diff := cmp.Diff(want, gotParts); diff != "" {
 			t.Fatalf("simple values mismatch (-want +got):\n%s", diff)
@@ -684,10 +539,8 @@ func TestMessageFormatPublicBehavior(t *testing.T) {
 
 		plural, err := mf.Compile("{count, plural, one {# item} other {# items}}")
 		require.NoError(t, err)
-		got, err = plural(map[string]any{"count": 3})
+		gotParts, err = plural.FormatValues(map[string]any{"count": 3})
 		require.NoError(t, err)
-		gotParts, ok = got.([]any)
-		require.True(t, ok)
 		want = []any{"3", " items"}
 		if diff := cmp.Diff(want, gotParts); diff != "" {
 			t.Fatalf("plural values mismatch (-want +got):\n%s", diff)
@@ -695,17 +548,15 @@ func TestMessageFormatPublicBehavior(t *testing.T) {
 
 		standard, err := mf.Compile("Report: {count, number} for {name}")
 		require.NoError(t, err)
-		got, err = standard(map[string]any{"count": 7, "name": "Ada"})
+		gotParts, err = standard.FormatValues(map[string]any{"count": 7, "name": "Ada"})
 		require.NoError(t, err)
-		gotParts, ok = got.([]any)
-		require.True(t, ok)
 		want = []any{"Report: ", "7", " for ", "Ada"}
 		if diff := cmp.Diff(want, gotParts); diff != "" {
 			t.Fatalf("standard values mismatch (-want +got):\n%s", diff)
 		}
 	})
 
-	t.Run("compiled functions report caller input errors", func(t *testing.T) {
+	t.Run("compiled messages apply one missing argument policy", func(t *testing.T) {
 		t.Parallel()
 
 		mf, err := New("en", nil)
@@ -713,47 +564,42 @@ func TestMessageFormatPublicBehavior(t *testing.T) {
 
 		simple, err := mf.Compile("Hello {name}")
 		require.NoError(t, err)
-		_, err = simple("bad")
-		require.ErrorIs(t, err, ErrInvalidParamType)
-		_, err = simple(map[string]any{})
-		require.ErrorIs(t, err, ErrMissingArgument)
+		text, err := simple.Format(map[string]any{})
+		require.NoError(t, err)
+		assert.Equal(t, "Hello ", text)
 
 		plural, err := mf.Compile("{count, plural, one {one} other {other}}")
 		require.NoError(t, err)
-		_, err = plural(nil)
-		require.ErrorIs(t, err, ErrMissingParameter)
-		_, err = plural("bad")
-		require.ErrorIs(t, err, ErrInvalidParamType)
-		_, err = plural(map[string]any{})
-		require.ErrorIs(t, err, ErrMissingParameter)
+		text, err = plural.Format(nil)
+		require.NoError(t, err)
+		assert.Equal(t, "other", text)
+		text, err = plural.Format(map[string]any{})
+		require.NoError(t, err)
+		assert.Equal(t, "other", text)
 
 		required, err := New("en", &MessageFormatOptions{RequireAllArguments: true})
 		require.NoError(t, err)
 		standard, err := required.Compile("{name} scored {points, number}")
 		require.NoError(t, err)
-		_, err = standard(map[string]any{"points": 9})
+		_, err = standard.Format(map[string]any{"points": 9})
 		require.ErrorIs(t, err, ErrMissingArgument)
 	})
 
-	t.Run("custom formatter config receives locale argument and value", func(t *testing.T) {
+	t.Run("custom formatter receives locale style and value", func(t *testing.T) {
 		t.Parallel()
 
-		mf, err := New("en-US", &MessageFormatOptions{CustomFormatters: map[string]any{
-			"tag": CustomFormatterConfig{Formatter: func(value any, locale string, arg *string) any {
-				argValue := ""
-				if arg != nil {
-					argValue = *arg
-				}
-				return fmt.Sprintf("%s:%s:%v", locale, argValue, value)
-			}},
+		mf, err := New("en-US", &MessageFormatOptions{CustomFormatters: map[string]Formatter{
+			"tag": func(value any, locale, style string) (string, error) {
+				return fmt.Sprintf("%s:%s:%v", locale, style, value), nil
+			},
 		}})
 		require.NoError(t, err)
 
 		msg, err := mf.Compile("{text, tag, label}")
 		require.NoError(t, err)
-		got, err := msg(map[string]any{"text": "go"})
+		got, err := msg.Format(map[string]any{"text": "go"})
 		require.NoError(t, err)
-		assert.Equal(t, "en-US: label:go", got)
+		assert.Equal(t, "en-US:label:go", got)
 	})
 
 	t.Run("relaxed plural keys allow non CLDR case labels", func(t *testing.T) {
@@ -763,7 +609,7 @@ func TestMessageFormatPublicBehavior(t *testing.T) {
 		require.NoError(t, err)
 		msg, err := mf.Compile("{count, plural, invalid {bad} other {ok}}")
 		require.NoError(t, err)
-		got, err := msg(map[string]any{"count": 1})
+		got, err := msg.Format(map[string]any{"count": 1})
 		require.NoError(t, err)
 		assert.Equal(t, "ok", got)
 	})
@@ -772,13 +618,16 @@ func TestMessageFormatPublicBehavior(t *testing.T) {
 func TestMessagesPublicBehavior(t *testing.T) {
 	t.Parallel()
 
+	compiler, err := New("en", nil)
+	require.NoError(t, err)
+	dynamic, err := compiler.Compile("Hi {name}")
+	require.NoError(t, err)
+
 	messages := NewMessages(map[string]MessageData{
 		"en": {
-			"7": "lucky",
-			"dynamic": func(props map[string]any) (any, error) {
-				return fmt.Sprintf("Hi %s", props["name"]), nil
-			},
-			"object": map[string]any{"title": "Nested"},
+			"7":       "lucky",
+			"dynamic": dynamic,
+			"object":  map[string]any{"title": "Nested"},
 		},
 	}, "en")
 
@@ -800,7 +649,7 @@ func TestMessagesPublicBehavior(t *testing.T) {
 func TestMessageFormatAdditionalBehavior(t *testing.T) {
 	t.Parallel()
 
-	t.Run("standard execution handles map string parameters and optional missing args", func(t *testing.T) {
+	t.Run("standard execution handles typed parameters and optional missing args", func(t *testing.T) {
 		t.Parallel()
 
 		mf, err := New("en", nil)
@@ -808,9 +657,9 @@ func TestMessageFormatAdditionalBehavior(t *testing.T) {
 		msg, err := mf.Compile("{name, number} / {missing}")
 		require.NoError(t, err)
 
-		got, err := msg(map[string]string{"name": "Ada"})
+		got, err := msg.Format(map[string]any{"name": 7})
 		require.NoError(t, err)
-		assert.Equal(t, "Ada / ", got)
+		assert.Equal(t, "7 / ", got)
 	})
 
 	t.Run("invalid octothorpe values fall back to literal hash", func(t *testing.T) {
@@ -821,7 +670,7 @@ func TestMessageFormatAdditionalBehavior(t *testing.T) {
 		msg, err := mf.Compile("prefix {kind, select, use {{count, plural, other {# items}}} other {none}}")
 		require.NoError(t, err)
 
-		got, err := msg(map[string]any{"kind": "use", "count": "not-a-number"})
+		got, err := msg.Format(map[string]any{"kind": "use", "count": "not-a-number"})
 		require.NoError(t, err)
 		assert.Equal(t, "prefix # items", got)
 	})
@@ -834,27 +683,27 @@ func TestMessageFormatAdditionalBehavior(t *testing.T) {
 		msg, err := mf.Compile("prefix {kind, select, known {Known}}")
 		require.NoError(t, err)
 
-		_, err = msg(map[string]any{"kind": "unknown"})
+		_, err = msg.Format(map[string]any{"kind": "unknown"})
 		require.ErrorIs(t, err, ErrNoMatchingCase)
 
-		_, err = msg(map[string]any{})
+		_, err = msg.Format(map[string]any{})
 		require.ErrorIs(t, err, ErrNoOtherCase)
 	})
 
 	t.Run("strict function arguments collapse to formatted content", func(t *testing.T) {
 		t.Parallel()
 
-		mf, err := New("en", &MessageFormatOptions{Strict: true, CustomFormatters: map[string]any{
-			"spellout": CustomFormatter(func(value any, locale string, arg *string) any {
-				require.NotNil(t, arg)
-				return fmt.Sprintf("%s:%s:%v", locale, *arg, value)
-			}),
+		mf, err := New("en", &MessageFormatOptions{Strict: true, CustomFormatters: map[string]Formatter{
+			"spellout": func(value any, locale, style string) (string, error) {
+				require.NotEmpty(t, style)
+				return fmt.Sprintf("%s:%s:%v", locale, style, value), nil
+			},
 		}})
 		require.NoError(t, err)
 		msg, err := mf.Compile("{value, spellout, :: currency/USD}")
 		require.NoError(t, err)
 
-		got, err := msg(map[string]any{"value": 12})
+		got, err := msg.Format(map[string]any{"value": 12})
 		require.NoError(t, err)
 		assert.Equal(t, "en::: currency/USD:12", got)
 	})
@@ -871,7 +720,7 @@ func TestMessageFormatAdditionalBehavior(t *testing.T) {
 			t.Run(fmt.Sprintf("%T", value), func(t *testing.T) {
 				t.Parallel()
 
-				got, err := msg(map[string]any{"count": value})
+				got, err := msg.Format(map[string]any{"count": value})
 				require.NoError(t, err)
 				assert.Equal(t, "2 items", got)
 			})

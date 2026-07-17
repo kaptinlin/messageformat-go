@@ -51,6 +51,7 @@ func NewContext(
 	funcs map[string]functions.MessageFunction,
 	scope map[string]any,
 	onError func(error),
+	localeMatcher string,
 ) *Context {
 	if funcs == nil {
 		funcs = make(map[string]functions.MessageFunction)
@@ -62,7 +63,7 @@ func NewContext(
 	return &Context{
 		Functions:     funcs,
 		OnError:       onError,
-		LocaleMatcher: "best fit",
+		LocaleMatcher: localeMatcher,
 		Locales:       slices.Clone(locales),
 		LocalVars:     make(map[messagevalue.MessageValue]bool),
 		Scope:         scope,

@@ -32,7 +32,7 @@ func TestSimpleOpenClose(t *testing.T) {
 		closeMarkup := mustMarkup(t, "close", "b", nil, nil)
 
 		// Create a basic context
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil, "best fit")
 
 		// Test open markup
 		openPart := FormatMarkup(ctx, openMarkup)
@@ -68,7 +68,7 @@ func TestSimpleOpenClose(t *testing.T) {
 		values := map[string]any{
 			"foo": "foo bar",
 		}
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), values, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), values, nil, "best fit")
 
 		// Test markup with options
 		openPart := FormatMarkup(ctx, openMarkup)
@@ -114,7 +114,7 @@ func TestMultipleOpenClose(t *testing.T) {
 		}
 
 		// Create a basic context
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil, "best fit")
 
 		var parts []messagevalue.MessagePart
 		for _, elem := range elements {
@@ -156,7 +156,7 @@ func TestMultipleOpenClose(t *testing.T) {
 		}
 
 		// Create a basic context
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil, "best fit")
 
 		var parts []messagevalue.MessagePart
 		for _, elem := range elements {
@@ -199,7 +199,7 @@ func TestMultipleOpenClose(t *testing.T) {
 		}
 
 		// Create a basic context
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil, "best fit")
 
 		var parts []messagevalue.MessagePart
 		for _, elem := range elements {
@@ -232,7 +232,7 @@ func TestMultipleOpenClose(t *testing.T) {
 func TestFormatMarkup(t *testing.T) {
 	t.Run("open markup", func(t *testing.T) {
 		markup := mustMarkup(t, "open", "div", nil, nil)
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil, "best fit")
 
 		part := FormatMarkup(ctx, markup)
 		assert.Equal(t, "markup", part.Type())
@@ -245,7 +245,7 @@ func TestFormatMarkup(t *testing.T) {
 
 	t.Run("close markup", func(t *testing.T) {
 		markup := mustMarkup(t, "close", "div", nil, nil)
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil, "best fit")
 
 		part := FormatMarkup(ctx, markup)
 		assert.Equal(t, "markup", part.Type())
@@ -258,7 +258,7 @@ func TestFormatMarkup(t *testing.T) {
 
 	t.Run("standalone markup", func(t *testing.T) {
 		markup := mustMarkup(t, "standalone", "br", nil, nil)
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil, "best fit")
 
 		part := FormatMarkup(ctx, markup)
 		assert.Equal(t, "markup", part.Type())
@@ -276,7 +276,7 @@ func TestFormatMarkup(t *testing.T) {
 		}
 
 		markup := mustMarkup(t, "open", "span", options, nil)
-		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil)
+		ctx := NewContext([]string{"en"}, functions.DefaultFunctionMap(), nil, nil, "best fit")
 
 		part := FormatMarkup(ctx, markup)
 		assert.Equal(t, "markup", part.Type())

@@ -19,7 +19,7 @@ func TestDateTimeValue(t *testing.T) {
 			"timeStyle": "short",
 		}
 
-		dtv := NewDateTimeValue(testTime, "en-US", "test", options)
+		dtv := mustDateTimeValue(t, testTime, "en-US", "test", options)
 
 		assert.Equal(t, "datetime", dtv.Type())
 		assert.Equal(t, "test", dtv.Source())
@@ -39,7 +39,7 @@ func TestDateTimeValue(t *testing.T) {
 			"dateStyle": "long",
 		}
 
-		dtv := NewDateTimeValueWithDir(testTime, "ar", "test", bidi.DirRTL, options)
+		dtv := mustDateTimeValueWithDir(t, testTime, "ar", "test", bidi.DirRTL, options)
 
 		assert.Equal(t, "ar", dtv.Locale())
 		assert.Equal(t, bidi.DirRTL, dtv.Dir())
@@ -51,7 +51,7 @@ func TestDateTimeValue(t *testing.T) {
 			"timeStyle": "short",
 		}
 
-		dtv := NewDateTimeValue(testTime, "en", "test", options)
+		dtv := mustDateTimeValue(t, testTime, "en", "test", options)
 
 		str, err := dtv.ToString()
 		require.NoError(t, err)
@@ -66,7 +66,7 @@ func TestDateTimeValue(t *testing.T) {
 			"dateStyle": "short",
 		}
 
-		dtv := NewDateTimeValue(testTime, "en", "test", options)
+		dtv := mustDateTimeValue(t, testTime, "en", "test", options)
 
 		parts, err := dtv.ToParts()
 		require.NoError(t, err)
@@ -82,7 +82,7 @@ func TestDateTimeValue(t *testing.T) {
 	})
 
 	t.Run("named time zone formatting", func(t *testing.T) {
-		dtv := NewDateTimeValue(testTime, "en-US", "test", map[string]any{
+		dtv := mustDateTimeValue(t, testTime, "en-US", "test", map[string]any{
 			"timePrecision": "minute",
 			"timeZone":      "America/New_York",
 		})
@@ -112,11 +112,140 @@ func TestDateTimeValue(t *testing.T) {
 	})
 
 	t.Run("not selectable", func(t *testing.T) {
-		dtv := NewDateTimeValue(testTime, "en", "test", nil)
+		dtv := mustDateTimeValue(t, testTime, "en", "test", nil)
 
 		_, ok := any(dtv).(Selector)
 		assert.False(t, ok)
 	})
+}
+
+// TestDateTimeValueRejectsInvalidStyles proves the option bridge preserves invalid style semantics for validation.
+// TypeScript original code:
+// new Intl.DateTimeFormat(locales, { dateStyle: 'full', year: 'numeric' });
+func TestDateTimeValueRejectsInvalidStyles(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		options map[string]any
+	}{
+		{name: "invalid style", options: map[string]any{"dateStyle": "bad"}},
+		{
+			name: "style and fields conflict",
+			options: map[string]any{
+				"dateStyle":  "full",
+				"dateFields": "year-month-day",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			value, err := NewDateTimeValue(
+				time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC),
+				"en",
+				"source",
+				tc.options,
+			)
+			assert.Nil(t, value)
+			assert.ErrorIs(t, err, ErrInvalidDateTimeOptions)
+		})
+	}
+}
+
+// TestDateTimeValueUsesResolvedMetadataAndConsistentProjection proves all public projections share one Intl plan.
+// TypeScript original code:
+// const locale = formatter.resolvedOptions().locale;
+// const parts = formatter.formatToParts(value);
+func TestDateTimeValueUsesResolvedMetadataAndConsistentProjection(t *testing.T) {
+	t.Parallel()
+
+	dtv := mustDateTimeValue(
+		t,
+		time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC),
+		"en-us",
+		"source",
+		map[string]any{
+			"calendar":      "gregory",
+			"timePrecision": "second",
+			"timeZone":      "America/New_York",
+		},
+	)
+	assert.Equal(t, "en-US", dtv.Locale())
+	assert.Equal(t, "gregory", dtv.Calendar())
+	assert.Equal(t, "America/New_York", dtv.TimeZone())
+
+	formatted, err := dtv.ToString()
+	require.NoError(t, err)
+	parts, err := dtv.ToParts()
+	require.NoError(t, err)
+	require.Len(t, parts, 1)
+
+	dateTimePart, ok := parts[0].(*DateTimePart)
+	require.True(t, ok)
+	assert.Equal(t, dtv.Locale(), dateTimePart.Locale())
+	assert.Equal(t, dtv.Calendar(), dateTimePart.Calendar())
+	assert.Equal(t, dtv.TimeZone(), dateTimePart.TimeZone())
+
+	var joined string
+	for _, part := range dateTimePart.Parts() {
+		assert.Equal(t, dtv.Locale(), part.Locale())
+		textPart, ok := part.(interface{ Text() string })
+		require.True(t, ok)
+		joined += textPart.Text()
+	}
+	assert.Equal(t, formatted, joined)
+}
+
+// TestDateTimeValuePreservesInputTimeZone proves implicit zones keep the input wall clock.
+// TypeScript original code:
+// options.timeZone = input.options?.timeZone;
+func TestDateTimeValuePreservesInputTimeZone(t *testing.T) {
+	namedLocation, err := time.LoadLocation("America/New_York")
+	require.NoError(t, err)
+	localTime := time.Date(2006, 1, 2, 15, 4, 5, 0, time.Local)
+	localTimeZone, ok := timeZoneFromValue(localTime)
+	require.True(t, ok)
+
+	tests := []struct {
+		name     string
+		value    time.Time
+		timeZone string
+	}{
+		{
+			name:     "UTC",
+			value:    time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC),
+			timeZone: "UTC",
+		},
+		{
+			name:     "named zone",
+			value:    time.Date(2006, 1, 2, 15, 4, 5, 0, namedLocation),
+			timeZone: "America/New_York",
+		},
+		{
+			name:     "fixed offset",
+			value:    time.Date(2006, 1, 2, 15, 4, 5, 0, time.FixedZone("custom", 5*60*60+30*60)),
+			timeZone: "+05:30",
+		},
+		{
+			name:     "local",
+			value:    localTime,
+			timeZone: localTimeZone,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			dtv := mustDateTimeValue(t, tc.value, "en-US", "source", map[string]any{
+				"timePrecision": "minute",
+			})
+			assert.Equal(t, tc.timeZone, dtv.TimeZone())
+
+			formatted, err := dtv.ToString()
+			require.NoError(t, err)
+			assert.Equal(t, "3:04 PM", formatted)
+		})
+	}
 }
 
 func TestDateTimePart(t *testing.T) {

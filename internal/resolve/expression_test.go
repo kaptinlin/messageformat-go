@@ -19,27 +19,9 @@ func TestResolveExpression_NilExpression(t *testing.T) {
 		[]string{"en"},
 		functions.DefaultFunctionMap(),
 		map[string]any{},
-		nil,
-	)
+		nil, "best fit")
 
 	result := ResolveExpression(ctx, nil)
-
-	assert.Equal(t, "fallback", result.Type())
-	assert.Equal(t, "unknown", result.Source())
-}
-
-// TestResolveExpression_NilArg tests expressions with nil arguments
-func TestResolveExpression_NilArg(t *testing.T) {
-	ctx := NewContext(
-		[]string{"en"},
-		functions.DefaultFunctionMap(),
-		map[string]any{},
-		nil,
-	)
-
-	// Create expression with nil arg
-	expr := datamodel.NewExpression(nil, nil, nil)
-	result := ResolveExpression(ctx, expr)
 
 	assert.Equal(t, "fallback", result.Type())
 	assert.Equal(t, "unknown", result.Source())
@@ -87,11 +69,10 @@ func TestResolveExpression_WithFunctionRef(t *testing.T) {
 				[]string{"en"},
 				functions.DefaultFunctionMap(),
 				tt.scope,
-				nil,
-			)
+				nil, "best fit")
 
-			funcRef := datamodel.NewFunctionRef(tt.functionName, tt.options)
-			expr := datamodel.NewExpression(tt.operand, funcRef, nil)
+			funcRef := mustFunctionRef(t, tt.functionName, tt.options)
+			expr := mustExpression(t, tt.operand, funcRef, nil)
 
 			result := ResolveExpression(ctx, expr)
 			assert.Equal(t, tt.expected, result.Type())
@@ -105,11 +86,10 @@ func TestResolveExpression_LiteralOnly(t *testing.T) {
 		[]string{"en"},
 		functions.DefaultFunctionMap(),
 		map[string]any{},
-		nil,
-	)
+		nil, "best fit")
 
 	literal := datamodel.NewLiteral("test value")
-	expr := datamodel.NewExpression(literal, nil, nil)
+	expr := mustExpression(t, literal, nil, nil)
 
 	result := ResolveExpression(ctx, expr)
 
@@ -153,11 +133,10 @@ func TestResolveExpression_VariableOnly(t *testing.T) {
 				[]string{"en"},
 				functions.DefaultFunctionMap(),
 				tt.scope,
-				nil,
-			)
+				nil, "best fit")
 
 			varRef := datamodel.NewVariableRef(tt.variableName)
-			expr := datamodel.NewExpression(varRef, nil, nil)
+			expr := mustExpression(t, varRef, nil, nil)
 
 			result := ResolveExpression(ctx, expr)
 			assert.Equal(t, tt.expectedType, result.Type())
@@ -172,14 +151,13 @@ func TestResolveExpression_ComplexScenarios(t *testing.T) {
 			[]string{"en"},
 			functions.DefaultFunctionMap(),
 			map[string]any{"count": 42},
-			nil,
-		)
+			nil, "best fit")
 
 		varRef := datamodel.NewVariableRef("count")
 		options := make(datamodel.Options)
 		options["minimumFractionDigits"] = datamodel.NewLiteral("2")
-		funcRef := datamodel.NewFunctionRef("number", options)
-		expr := datamodel.NewExpression(varRef, funcRef, nil)
+		funcRef := mustFunctionRef(t, "number", options)
+		expr := mustExpression(t, varRef, funcRef, nil)
 
 		result := ResolveExpression(ctx, expr)
 		assert.Equal(t, "number", result.Type())
@@ -194,12 +172,11 @@ func TestResolveExpression_ComplexScenarios(t *testing.T) {
 			[]string{"en"},
 			functions.DefaultFunctionMap(),
 			map[string]any{},
-			nil,
-		)
+			nil, "best fit")
 
 		literal := datamodel.NewLiteral("100")
-		funcRef := datamodel.NewFunctionRef("number", nil)
-		expr := datamodel.NewExpression(literal, funcRef, nil)
+		funcRef := mustFunctionRef(t, "number", nil)
+		expr := mustExpression(t, literal, funcRef, nil)
 
 		result := ResolveExpression(ctx, expr)
 		assert.Equal(t, "number", result.Type())
@@ -222,12 +199,11 @@ func TestResolveExpression_ErrorHandling(t *testing.T) {
 			[]string{"en"},
 			functions.DefaultFunctionMap(),
 			map[string]any{},
-			onError,
-		)
+			onError, "best fit")
 
 		literal := datamodel.NewLiteral("test")
-		funcRef := datamodel.NewFunctionRef("unknownFunction", nil)
-		expr := datamodel.NewExpression(literal, funcRef, nil)
+		funcRef := mustFunctionRef(t, "unknownFunction", nil)
+		expr := mustExpression(t, literal, funcRef, nil)
 
 		result := ResolveExpression(ctx, expr)
 
@@ -241,13 +217,12 @@ func TestResolveExpression_ErrorHandling(t *testing.T) {
 			[]string{"en"},
 			functions.DefaultFunctionMap(),
 			map[string]any{},
-			nil,
-		)
+			nil, "best fit")
 
 		// Try to use number function with a variable that doesn't exist
 		varRef := datamodel.NewVariableRef("nonexistent")
-		funcRef := datamodel.NewFunctionRef("number", nil)
-		expr := datamodel.NewExpression(varRef, funcRef, nil)
+		funcRef := mustFunctionRef(t, "number", nil)
+		expr := mustExpression(t, varRef, funcRef, nil)
 
 		result := ResolveExpression(ctx, expr)
 
@@ -262,18 +237,17 @@ func TestResolveExpression_WithAnnotations(t *testing.T) {
 		[]string{"en"},
 		functions.DefaultFunctionMap(),
 		map[string]any{"value": 42},
-		nil,
-	)
+		nil, "best fit")
 
 	varRef := datamodel.NewVariableRef("value")
-	funcRef := datamodel.NewFunctionRef("number", nil)
+	funcRef := mustFunctionRef(t, "number", nil)
 
 	// Create annotations
 	annotations := datamodel.Attributes{
 		"test": datamodel.NewLiteral("annotation"),
 	}
 
-	expr := datamodel.NewExpression(varRef, funcRef, annotations)
+	expr := mustExpression(t, varRef, funcRef, annotations)
 
 	result := ResolveExpression(ctx, expr)
 	assert.Equal(t, "number", result.Type())
@@ -309,11 +283,10 @@ func TestResolveExpression_LocaleHandling(t *testing.T) {
 				tt.locales,
 				functions.DefaultFunctionMap(),
 				map[string]any{"value": "test"},
-				nil,
-			)
+				nil, "best fit")
 
 			varRef := datamodel.NewVariableRef("value")
-			expr := datamodel.NewExpression(varRef, nil, nil)
+			expr := mustExpression(t, varRef, nil, nil)
 
 			result := ResolveExpression(ctx, expr)
 			assert.Equal(t, tt.expected, result.Locale())
@@ -331,11 +304,10 @@ func TestResolveExpression_ExternalMessageValuePreservedAsUnknown(t *testing.T) 
 		map[string]any{
 			"preformatted": preformatted,
 		},
-		nil,
-	)
+		nil, "best fit")
 
 	varRef := datamodel.NewVariableRef("preformatted")
-	expr := datamodel.NewExpression(varRef, nil, nil)
+	expr := mustExpression(t, varRef, nil, nil)
 
 	result := ResolveExpression(ctx, expr)
 

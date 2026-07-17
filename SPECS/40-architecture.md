@@ -25,7 +25,7 @@ Each stage owns one responsibility:
 Public packages:
 
 - `pkg/datamodel`: public MessageFormat 2.0 data model and validation helpers.
-- `pkg/functions`: built-in functions, custom function contracts, and registries.
+- `pkg/functions`: built-in functions, immutable function catalogs, and custom function contracts.
 - `pkg/messagevalue`: resolved values and formatted parts.
 - `pkg/parts`: compatibility aliases for part constructors and interfaces.
 - `pkg/errors` and `pkg/bidi`: supporting public utilities.
@@ -60,7 +60,9 @@ Rules:
 - Data model nodes may store source spans for diagnostics.
 - Data model nodes must not retain CST or parser object references.
 - Accessors must return detached slices or maps when returning collection data.
-- `Compile` must clone the supplied data model before storing it.
+- Model constructors snapshot mutable caller inputs. Because the model union is
+  package-sealed and its stored fields are private, `Compile` may retain the
+  resulting immutable model without a redundant second deep copy.
 
 > **Rejected**: Keeping parser nodes attached to public data model nodes for convenience. It couples diagnostics to parser internals and weakens formatter immutability.
 
@@ -112,7 +114,7 @@ Required invariant coverage:
 
 - selector no-probe and deterministic candidate order
 - missing, nil, typed-nil, and unknown variable states
-- data model accessor snapshots and compile-time snapshots
+- data model constructor/accessor ownership through compiled formatting
 - string and parts projection behavior
 - typed error identity through `errors.Is`, `errors.As`, and `Kind()`
 - documentation examples that show the default public path

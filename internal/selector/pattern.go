@@ -111,7 +111,7 @@ func SelectPattern(context *resolve.Context, message datamodel.Message) datamode
 				nil,
 			))
 		}
-		return datamodel.NewPattern(nil)
+		return datamodel.Pattern{}
 	}
 }
 
@@ -369,5 +369,5 @@ loopEnd:
 		))
 	}
 
-	return datamodel.NewPattern(nil)
+	return datamodel.Pattern{}
 }

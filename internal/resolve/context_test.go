@@ -20,7 +20,7 @@ func TestNewContext(t *testing.T) {
 		"name": "Alice",
 	}
 
-	ctx := NewContext(locales, funcs, scope, nil)
+	ctx := NewContext(locales, funcs, scope, nil, "best fit")
 
 	assert.NotNil(t, ctx)
 	assert.Equal(t, locales, ctx.Locales)
@@ -32,14 +32,14 @@ func TestNewContext(t *testing.T) {
 
 func TestNewContext_LocalesDefensiveCopy(t *testing.T) {
 	locales := []string{"en", "fr"}
-	ctx := NewContext(locales, nil, nil, nil)
+	ctx := NewContext(locales, nil, nil, nil, "best fit")
 
 	locales[0] = "zh"
 	assert.Equal(t, []string{"en", "fr"}, ctx.Locales)
 }
 
 func TestNewContextWithNils(t *testing.T) {
-	ctx := NewContext(nil, nil, nil, nil)
+	ctx := NewContext(nil, nil, nil, nil, "best fit")
 
 	assert.NotNil(t, ctx)
 	assert.NotNil(t, ctx.Functions)
@@ -54,8 +54,7 @@ func TestContextClone(t *testing.T) {
 			return messagevalue.NewStringValue("test", "en", "test")
 		}},
 		map[string]any{"name": "Alice"},
-		nil,
-	)
+		nil, "best fit")
 
 	// Add a local var
 	mv := messagevalue.NewStringValue("test", "en", "test")
@@ -84,8 +83,7 @@ func TestContextCloneWithScope(t *testing.T) {
 		[]string{"en"},
 		nil,
 		map[string]any{"name": "Alice"},
-		nil,
-	)
+		nil, "best fit")
 
 	newScope := map[string]any{
 		"age":  30,

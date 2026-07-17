@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,20 +9,20 @@ import (
 
 func TestMessages_AccessorsResolveLocaleAndFallback(t *testing.T) {
 	t.Parallel()
+	compiler, err := New("en", nil)
+	require.NoError(t, err)
+	englishGreeting, err := compiler.Compile("Hello {name}")
+	require.NoError(t, err)
+	frenchGreeting, err := compiler.Compile("Bonjour")
+	require.NoError(t, err)
 
 	messages := NewMessages(map[string]MessageData{
 		"en": {
-			"greeting": MessageFunction(func(param any) (any, error) {
-				props, ok := param.(map[string]any)
-				if !ok {
-					return nil, fmt.Errorf("unexpected props %T", param)
-				}
-				return fmt.Sprintf("Hello %s", props["name"]), nil
-			}),
-			"nested": MessageData{"title": "Dashboard"},
+			"greeting": englishGreeting,
+			"nested":   MessageData{"title": "Dashboard"},
 		},
 		"fr": {
-			"greeting": MessageFunction(func(param any) (any, error) { return "Bonjour", nil }),
+			"greeting": frenchGreeting,
 		},
 		"toString": {"ignored": "value"},
 	}, "en-US")
@@ -62,6 +61,10 @@ func TestMessages_AddMessages(t *testing.T) {
 
 	messages := NewMessages(map[string]MessageData{}, "")
 	locale := "en"
+	compiler, err := New("en", nil)
+	require.NoError(t, err)
+	account, err := compiler.Compile("Account")
+	require.NoError(t, err)
 
 	messages.AddMessages(map[string]any{"toString": "ignored", "title": "Welcome"}, "en", nil)
 	got, err := messages.Get("title", nil, &locale)
@@ -69,9 +72,7 @@ func TestMessages_AddMessages(t *testing.T) {
 	assert.Equal(t, "Welcome", got)
 	assert.False(t, messages.HasMessage("toString", &locale))
 
-	messages.AddMessages(MessageFunction(func(param any) (any, error) {
-		return "Account", nil
-	}), "en", []string{"pages", "account"})
+	messages.AddMessages(account, "en", []string{"pages", "account"})
 
 	assert.True(t, messages.HasObject("pages", &locale))
 	assert.True(t, messages.HasMessage([]string{"pages", "account"}, &locale))

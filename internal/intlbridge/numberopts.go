@@ -131,15 +131,10 @@ func NumberOptions(opts map[string]any) numberformat.Options {
 	return out
 }
 
-// applyFractionDigits clamps max>=min before assigning the typed options.
-// ECMA-402 throws RangeError when maximumFractionDigits < minimumFractionDigits,
-// but MF2's :number is more permissive: callers expect the formatter to honor
-// "at least N" semantics rather than abort the whole message. Clamping max=min
-// preserves caller intent without producing a fallback string.
+// applyFractionDigits preserves both caller bounds for dependency validation.
+// TypeScript original code:
+// options.minimumFractionDigits = min; options.maximumFractionDigits = max;
 func applyFractionDigits(out *numberformat.Options, minVal int, hasMin bool, maxVal int, hasMax bool) {
-	if hasMin && hasMax && maxVal < minVal {
-		maxVal = minVal
-	}
 	if hasMin {
 		out.MinimumFractionDigits = intPtr(minVal)
 	}
@@ -148,10 +143,10 @@ func applyFractionDigits(out *numberformat.Options, minVal int, hasMin bool, max
 	}
 }
 
+// applySignificantDigits preserves both caller bounds for dependency validation.
+// TypeScript original code:
+// options.minimumSignificantDigits = min; options.maximumSignificantDigits = max;
 func applySignificantDigits(out *numberformat.Options, minVal int, hasMin bool, maxVal int, hasMax bool) {
-	if hasMin && hasMax && maxVal < minVal {
-		maxVal = minVal
-	}
 	if hasMin {
 		out.MinimumSignificantDigits = intPtr(minVal)
 	}

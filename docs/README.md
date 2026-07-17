@@ -61,8 +61,8 @@ For quick lookup, these are the APIs most users start with:
 | `messageformat.Compile(...)` | Create an instance from a parsed data model |
 | `mf.Format(...)` | Format to a string |
 | `mf.FormatToParts(...)` | Format to structured parts |
-| `messageformat.ParseMessage(...)` | Parse to the public data model |
-| `messageformat.Validate(...)` | Validate a parsed message |
+| `datamodel.ParseMessage(...)` | Parse to the public data model |
+| `datamodel.ValidateMessage(...)` | Validate a parsed message |
 
 ## Examples
 

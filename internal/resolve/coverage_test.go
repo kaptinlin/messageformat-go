@@ -32,7 +32,7 @@ func TestResolveFunctionRefAppliesUniversalOptions(t *testing.T) {
 			t.Parallel()
 
 			ctx := newResolveCoverageContext(nil)
-			result := ResolveFunctionRef(ctx, datamodel.NewLiteral("hello"), datamodel.NewFunctionRef("identity", datamodel.Options{
+			result := ResolveFunctionRef(ctx, datamodel.NewLiteral("hello"), mustFunctionRef(t, "identity", datamodel.Options{
 				"u:dir": datamodel.NewLiteral(tc.dir),
 				"u:id":  datamodel.NewLiteral("part-id"),
 			}))
@@ -91,7 +91,7 @@ func TestResolveFunctionRefResolvesOptionsAndReportsFailures(t *testing.T) {
 			return messagevalue.NewStringValue("ok", functions.GetFirstLocale(ctx.Locales()), ctx.Source())
 		}
 
-		result := ResolveFunctionRef(ctx, nil, datamodel.NewFunctionRef("capture", datamodel.Options{
+		result := ResolveFunctionRef(ctx, nil, mustFunctionRef(t, "capture", datamodel.Options{
 			"literal": datamodel.NewLiteral("value"),
 			"width":   datamodel.NewVariableRef("width"),
 		}))
@@ -117,7 +117,7 @@ func TestResolveFunctionRefResolvesOptionsAndReportsFailures(t *testing.T) {
 			return messagevalue.NewStringValue("ok", functions.GetFirstLocale(ctx.Locales()), ctx.Source())
 		}
 
-		result := ResolveFunctionRef(ctx, nil, datamodel.NewFunctionRef("capture", datamodel.Options{
+		result := ResolveFunctionRef(ctx, nil, mustFunctionRef(t, "capture", datamodel.Options{
 			"mode":  datamodel.NewLiteral("compact"),
 			"width": datamodel.NewVariableRef("width"),
 			"u:id":  datamodel.NewLiteral("part-id"),
@@ -147,7 +147,7 @@ func TestResolveFunctionRefResolvesOptionsAndReportsFailures(t *testing.T) {
 			return messagevalue.NewStringValue("ok", functions.GetFirstLocale(ctx.Locales()), ctx.Source())
 		}
 
-		result := ResolveFunctionRef(ctx, nil, datamodel.NewFunctionRef("capture", datamodel.Options{
+		result := ResolveFunctionRef(ctx, nil, mustFunctionRef(t, "capture", datamodel.Options{
 			"missing": datamodel.NewVariableRef("missing"),
 		}))
 		require.Equal(t, "string", result.Type())
@@ -163,7 +163,7 @@ func TestResolveFunctionRefResolvesOptionsAndReportsFailures(t *testing.T) {
 		ctx := newResolveCoverageContext(nil)
 		ctx.OnError = func(err error) { errs = append(errs, err) }
 
-		result := ResolveFunctionRef(ctx, datamodel.NewLiteral("hello"), datamodel.NewFunctionRef("identity", datamodel.Options{
+		result := ResolveFunctionRef(ctx, datamodel.NewLiteral("hello"), mustFunctionRef(t, "identity", datamodel.Options{
 			"u:dir": datamodel.NewLiteral("sideways"),
 		}))
 		require.Equal(t, "string", result.Type())
@@ -204,7 +204,7 @@ func TestResolveFunctionRefPassesOperandValue(t *testing.T) {
 				return messagevalue.NewStringValue("ok", functions.GetFirstLocale(ctx.Locales()), ctx.Source())
 			}
 
-			result := ResolveFunctionRef(ctx, tc.operand, datamodel.NewFunctionRef("capture", nil))
+			result := ResolveFunctionRef(ctx, tc.operand, mustFunctionRef(t, "capture", nil))
 			require.Equal(t, "string", result.Type())
 			assert.Equal(t, tc.want, got)
 		})
@@ -216,11 +216,11 @@ func TestResolveFunctionRefUsesFallbackSource(t *testing.T) {
 
 	ctx := newResolveCoverageContext(nil)
 
-	literalResult := ResolveFunctionRef(ctx, datamodel.NewLiteral(`a|b\c`), datamodel.NewFunctionRef("missing", nil))
+	literalResult := ResolveFunctionRef(ctx, datamodel.NewLiteral(`a|b\c`), mustFunctionRef(t, "missing", nil))
 	assert.Equal(t, "fallback", literalResult.Type())
 	assert.Equal(t, `|a\|b\\c|`, literalResult.Source())
 
-	nilResult := ResolveFunctionRef(ctx, nil, datamodel.NewFunctionRef("missing", nil))
+	nilResult := ResolveFunctionRef(ctx, nil, mustFunctionRef(t, "missing", nil))
 	assert.Equal(t, "fallback", nilResult.Type())
 	assert.Equal(t, ":missing", nilResult.Source())
 }
@@ -259,31 +259,31 @@ func TestUnresolvedInputValueShortcutsOriginalInput(t *testing.T) {
 	t.Run("matching variable input", func(t *testing.T) {
 		t.Parallel()
 
-		expr := datamodel.NewExpression(datamodel.NewVariableRef("input"), nil, nil)
+		expr := mustExpression(t, datamodel.NewVariableRef("input"), nil, nil)
 		unresolved := NewUnresolvedExpression(expr, map[string]any{"input": "original"})
 		got, ok := unresolvedInputValue(unresolved)
 		require.True(t, ok)
 		assert.Equal(t, "original", got)
 	})
 
-	t.Run("single concrete scoped value", func(t *testing.T) {
+	t.Run("different variable is not substituted", func(t *testing.T) {
 		t.Parallel()
 
-		expr := datamodel.NewExpression(datamodel.NewVariableRef("missing"), nil, nil)
+		expr := mustExpression(t, datamodel.NewVariableRef("missing"), nil, nil)
 		unresolved := NewUnresolvedExpression(expr, map[string]any{
 			"candidate": "only value",
-			"pending":   NewUnresolvedExpression(datamodel.NewExpression(datamodel.NewLiteral("x"), nil, nil), nil),
+			"pending":   NewUnresolvedExpression(mustExpression(t, datamodel.NewLiteral("x"), nil, nil), nil),
 		})
 		got, ok := unresolvedInputValue(unresolved)
-		require.True(t, ok)
-		assert.Equal(t, "only value", got)
+		assert.False(t, ok)
+		assert.Nil(t, got)
 	})
 }
 
 func TestContextCloneSharesResolvingVarsOnly(t *testing.T) {
 	t.Parallel()
 
-	ctx := NewContext([]string{"en"}, nil, map[string]any{"name": "Ada"}, nil)
+	ctx := NewContext([]string{"en"}, nil, map[string]any{"name": "Ada"}, nil, "best fit")
 	ctx.ResolvingVars["name"] = true
 	cloned := ctx.Clone()
 
@@ -299,8 +299,8 @@ func newResolveCoverageContext(scope map[string]any) *Context {
 		[]string{"en"},
 		map[string]functions.MessageFunction{},
 		scope,
-		nil,
-	)
+		nil, "best fit")
+
 	ctx.Functions["identity"] = func(ctx functions.MessageFunctionContext, options functions.Options, operand any) messagevalue.MessageValue {
 		return messagevalue.NewStringValue(operand.(string), functions.GetFirstLocale(ctx.Locales()), ctx.Source())
 	}

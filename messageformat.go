@@ -3,7 +3,7 @@
 package messageformat
 
 import (
-	"log/slog"
+	"errors"
 	"maps"
 	"slices"
 	"strings"
@@ -72,9 +72,6 @@ type MessageFormatOptions struct {
 	// Custom functions to make available during message resolution.
 	// Extends the default functions.
 	Functions map[string]functions.MessageFunction `json:"functions,omitempty"`
-
-	// Logger for this MessageFormat instance. If nil, uses global logger.
-	Logger *slog.Logger `json:"-"`
 }
 
 // NewOptions creates a new MessageFormatOptions with defaults
@@ -112,10 +109,9 @@ type MessageFormat struct {
 	message       datamodel.Message
 	locales       []string
 	functions     map[string]functions.MessageFunction
-	bidiIsolation bool         // true for "default", false for "none"
-	dir           string       // "ltr" | "rtl" | "auto"
-	localeMatcher string       // "best fit" | "lookup"
-	logger        *slog.Logger // instance-specific logger
+	bidiIsolation bool   // true for "default", false for "none"
+	dir           string // "ltr" | "rtl" | "auto"
+	localeMatcher string // "best fit" | "lookup"
 }
 
 // Parse creates a MessageFormat by parsing source text and applying options.
@@ -158,11 +154,6 @@ func Compile(locales []string, message datamodel.Message, options ...Option) (*M
 		maps.Copy(functionMap, opts.Functions)
 	}
 
-	instanceLogger := slog.Default()
-	if opts.Logger != nil {
-		instanceLogger = opts.Logger
-	}
-
 	return &MessageFormat{
 		message:       message,
 		locales:       localeList,
@@ -170,22 +161,13 @@ func Compile(locales []string, message datamodel.Message, options ...Option) (*M
 		bidiIsolation: bidiIsolation,
 		dir:           dir,
 		localeMatcher: localeMatcher,
-		logger:        instanceLogger,
 	}, nil
 }
 
-// Format formats the message with the given values and format options.
-func (mf *MessageFormat) Format(
-	values map[string]any,
-	options ...FormatOption,
-) (string, error) {
-	formatOptions := NewFormatOptions(options...)
-	onError := func(err error) {
-		mf.logger.Warn("MessageFormat error", "error", err)
-	}
-	if formatOptions.OnError != nil {
-		onError = formatOptions.OnError
-	}
+// Format returns rendered text and any recoverable runtime diagnostics.
+func (mf *MessageFormat) Format(values map[string]any) (string, error) {
+	var diagnostics []error
+	onError := func(err error) { diagnostics = append(diagnostics, err) }
 
 	ctx := mf.createContext(values, onError)
 	pattern := selector.SelectPattern(ctx, mf.message)
@@ -229,25 +211,21 @@ func (mf *MessageFormat) Format(
 		}
 	}
 
-	return result.String(), nil
+	return result.String(), errors.Join(diagnostics...)
 }
 
-// FormatToParts formats the message and returns detailed parts.
-func (mf *MessageFormat) FormatToParts(
-	values map[string]any,
-	options ...FormatOption,
-) ([]messagevalue.MessagePart, error) {
-	formatOptions := NewFormatOptions(options...)
-	onError := func(err error) {
-		mf.logger.Warn("MessageFormat error", "error", err)
-	}
-	if formatOptions.OnError != nil {
-		onError = formatOptions.OnError
-	}
+// FormatToParts returns structured parts and any recoverable runtime diagnostics.
+func (mf *MessageFormat) FormatToParts(values map[string]any) ([]messagevalue.MessagePart, error) {
+	var diagnostics []error
+	onError := func(err error) { diagnostics = append(diagnostics, err) }
 
 	ctx := mf.createContext(values, onError)
 	pattern := selector.SelectPattern(ctx, mf.message)
-	return mf.formatPattern(ctx, pattern)
+	parts, err := mf.formatPattern(ctx, pattern)
+	if err != nil {
+		diagnostics = append(diagnostics, err)
+	}
+	return parts, errors.Join(diagnostics...)
 }
 
 // createContext creates a resolution context with the given values and error handler
@@ -281,22 +259,17 @@ func (mf *MessageFormat) createContext(
 	for _, decl := range mf.message.Declarations() {
 		switch d := decl.(type) {
 		case *datamodel.InputDeclaration:
-			if varRefExpr := d.Value(); varRefExpr != nil {
-				generalExpr := datamodel.NewExpression(varRefExpr.Arg(), varRefExpr.FunctionRef(), varRefExpr.Attributes())
-				scope[d.Name()] = resolve.NewUnresolvedExpression(generalExpr, values)
+			if expression := d.Value(); expression != nil {
+				scope[d.Name()] = resolve.NewUnresolvedExpression(expression, values)
 			}
 		case *datamodel.LocalDeclaration:
 			if localExpr := d.Value(); localExpr != nil {
-				combinedScope := make(map[string]any)
-				maps.Copy(combinedScope, values)
-				// Prefer unresolved declarations from scope over raw message parameters.
-				maps.Copy(combinedScope, scope)
-				scope[d.Name()] = resolve.NewUnresolvedExpression(localExpr, combinedScope)
+				scope[d.Name()] = resolve.NewUnresolvedExpression(localExpr, nil)
 			}
 		}
 	}
 
-	return resolve.NewContext(mf.locales, mf.functions, scope, onError)
+	return resolve.NewContext(mf.locales, mf.functions, scope, onError, mf.localeMatcher)
 }
 
 // formatPattern formats a pattern into message parts with bidi isolation

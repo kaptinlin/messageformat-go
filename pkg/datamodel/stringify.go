@@ -99,9 +99,7 @@ func stringifyDeclaration(decl Declaration) string {
 	case "input":
 		if inputDecl, ok := decl.(*InputDeclaration); ok {
 			if expr := inputDecl.value; expr != nil {
-				// Convert VariableRefExpression to Expression for stringification
-				generalExpr := NewExpression(expr.Arg(), expr.FunctionRef(), expr.Attributes())
-				return fmt.Sprintf(".input %s\n", stringifyExpression(generalExpr))
+				return fmt.Sprintf(".input %s\n", stringifyExpression(expr))
 			}
 		}
 		return ".input\n"

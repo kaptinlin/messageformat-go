@@ -95,7 +95,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - **Two-Phase Processing** — Clean separation: CST parsing → DataModel conversion → Resolution/Formatting. Each phase has clear boundaries and responsibilities.
 - **Keep `mf1` Intact** — The independent `mf1/` module is a supported compatibility surface, not legacy code. Do not prune, delete, sideline, or treat it as dead code during cleanup, modernization, or refactoring.
 - **KISS** — Simple, focused implementations. No premature abstractions. Three similar lines are better than a helper used once.
-- **DRY** — Shared function registry, unified error types, reusable resolution context across all message types.
+- **DRY** — Shared built-in function catalogs, unified error types, reusable resolution context across all message types.
 - **YAGNI** — Only implement what's currently needed. Focus on spec alignment, not feature creep.
 
 ## Coding Rules
@@ -103,25 +103,15 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 ### Must Follow
 
 - Use the Go toolchain pinned in `go.mod` — assume its modern language features are available (generics, `slices` / `maps` packages, `clear()`, `for range N`, range-over-func iterators)
-- **TypeScript comment format** — Every function must include original TypeScript code:
-
-  ```go
-  // FunctionName describes what this function does
-  // TypeScript original code:
-  // export function functionName(param: Type): ReturnType {
-  //   // implementation
-  // }
-  func FunctionName(param Type) ReturnType { ... }
-  ```
-
-- **All comments in English only** — No other languages in code comments
+- **Code comments** — Write comments in English, add godoc for exported APIs, and give concise rationale only for non-obvious contracts, invariants, algorithms, or deliberate divergence
+- **Reference provenance** — When upstream provenance matters, cite an exact, openable repository-relative path such as `.reference/messageformat/mf2/messageformat/src/messageformat.ts`; do not copy reference implementation bodies into Go comments
 - **testify for all tests** — Use `github.com/stretchr/testify/assert` and `testify/require`
 - **Table-driven tests** — Use subtests with `t.Run()` for multiple test cases
 - **Stable error identity** — Define sentinel identities at package scope and wrap them when contextual detail is required
 - **Thread safety** — MessageFormat instances are immutable after construction, safe for concurrent use
 - **Closed options** — Root constructor enum values use exported typed constants; `Parse` and `Compile` reject unsupported values with `ErrInvalidOption`
 - **Snapshot ownership** — Clone caller-owned containers before storage and return detached maps/slices from public inspection accessors
-- **Typed MF1 jobs** — Use `mf1.New(string, ...)` for locale lookup and `mf1.NewWithPlural(...)` for custom plural behavior; malformed locales fail while valid unsupported locales use the stable fallback
+- **Typed MF1 jobs** — Use `mf1.New(string, ...)` for locale lookup and `mf1.NewWithPlural(mf1.PluralProfile, ...)` for custom plural behavior; malformed locales fail while valid unsupported locales use the stable fallback
 - **Error returns** — All errors returned via `error`, never panic in production code
 - **Preserve `mf1` support** — Changes must keep `mf1/` building and tested; do not remove or downgrade `mf1` because it supports ICU MessageFormat v1
 - Follow Google Go Best Practices: <https://google.github.io/go-style/best-practices>
@@ -131,7 +121,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 
 | Feature | Where Used |
 |---------|-----------|
-| `maps.Clone()` | Function registry cloning |
+| `maps.Clone()` | Function catalog and option snapshots |
 | `maps` package | Options and attributes handling |
 | `slices` package | Pattern and variant operations |
 | Generics | `messagevalue` types, `datamodel` nodes |

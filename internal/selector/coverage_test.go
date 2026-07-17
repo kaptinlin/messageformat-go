@@ -18,9 +18,9 @@ func TestSelectPatternChoosesLiteralBeforeCatchall(t *testing.T) {
 	t.Parallel()
 
 	ctx := newSelectorCoverageContext(map[string]any{"tier": "gold"}, nil)
-	message := newSelectorCoverageMessage("tier",
-		newSelectorCoverageVariant(datamodel.NewLiteral("gold"), "literal"),
-		newSelectorCoverageVariant(datamodel.NewCatchallKey("*"), "catchall"),
+	message := newSelectorCoverageMessage(t, "tier",
+		newSelectorCoverageVariant(t, datamodel.NewLiteral("gold"), "literal"),
+		newSelectorCoverageVariant(t, datamodel.NewCatchallKey("*"), "catchall"),
 	)
 
 	result := SelectPattern(ctx, message)
@@ -31,9 +31,9 @@ func TestSelectPatternFallsBackToCatchall(t *testing.T) {
 	t.Parallel()
 
 	ctx := newSelectorCoverageContext(map[string]any{"tier": "silver"}, nil)
-	message := newSelectorCoverageMessage("tier",
-		newSelectorCoverageVariant(datamodel.NewLiteral("gold"), "literal"),
-		newSelectorCoverageVariant(datamodel.NewCatchallKey("*"), "catchall"),
+	message := newSelectorCoverageMessage(t, "tier",
+		newSelectorCoverageVariant(t, datamodel.NewLiteral("gold"), "literal"),
+		newSelectorCoverageVariant(t, datamodel.NewCatchallKey("*"), "catchall"),
 	)
 
 	result := SelectPattern(ctx, message)
@@ -44,9 +44,9 @@ func TestSelectPatternMatchesNormalizedLiteralKeys(t *testing.T) {
 	t.Parallel()
 
 	ctx := newSelectorCoverageContext(map[string]any{"word": "café"}, nil)
-	message := newSelectorCoverageMessage("word",
-		newSelectorCoverageVariant(datamodel.NewLiteral("café"), "normalized"),
-		newSelectorCoverageVariant(datamodel.NewCatchallKey("*"), "catchall"),
+	message := newSelectorCoverageMessage(t, "word",
+		newSelectorCoverageVariant(t, datamodel.NewLiteral("café"), "normalized"),
+		newSelectorCoverageVariant(t, datamodel.NewCatchallKey("*"), "catchall"),
 	)
 
 	result := SelectPattern(ctx, message)
@@ -60,8 +60,8 @@ func TestSelectPatternReportsNoMatchWhenNoVariantSurvives(t *testing.T) {
 	ctx := newSelectorCoverageContext(map[string]any{"tier": "silver"}, func(err error) {
 		errs = append(errs, err)
 	})
-	message := newSelectorCoverageMessage("tier",
-		newSelectorCoverageVariant(datamodel.NewLiteral("gold"), "literal"),
+	message := newSelectorCoverageMessage(t, "tier",
+		newSelectorCoverageVariant(t, datamodel.NewLiteral("gold"), "literal"),
 	)
 
 	result := SelectPattern(ctx, message)
@@ -74,7 +74,7 @@ func TestSelectPatternReportsBadSelectorForNonSelectableValues(t *testing.T) {
 	t.Parallel()
 
 	var errs []error
-	value := messagevalue.NewNumberValueWithSelection(
+	value, err := messagevalue.NewNumberValueWithSelection(
 		42,
 		"en",
 		"$amount",
@@ -82,12 +82,13 @@ func TestSelectPatternReportsBadSelectorForNonSelectableValues(t *testing.T) {
 		map[string]any{"style": "currency", "currency": "USD"},
 		false,
 	)
+	require.NoError(t, err)
 	ctx := newSelectorCoverageContext(map[string]any{"amount": value}, func(err error) {
 		errs = append(errs, err)
 	})
 	ctx.LocalVars[value] = true
-	message := newSelectorCoverageMessage("amount",
-		newSelectorCoverageVariant(datamodel.NewCatchallKey("*"), "fallback"),
+	message := newSelectorCoverageMessage(t, "amount",
+		newSelectorCoverageVariant(t, datamodel.NewCatchallKey("*"), "fallback"),
 	)
 
 	result := SelectPattern(ctx, message)
@@ -105,9 +106,9 @@ func TestSelectPatternRecoversFromSelectorPanic(t *testing.T) {
 		errs = append(errs, err)
 	})
 	ctx.LocalVars[value] = true
-	message := newSelectorCoverageMessage("value",
-		newSelectorCoverageVariant(datamodel.NewLiteral("literal"), "literal"),
-		newSelectorCoverageVariant(datamodel.NewCatchallKey("*"), "catchall"),
+	message := newSelectorCoverageMessage(t, "value",
+		newSelectorCoverageVariant(t, datamodel.NewLiteral("literal"), "literal"),
+		newSelectorCoverageVariant(t, datamodel.NewCatchallKey("*"), "catchall"),
 	)
 
 	result := SelectPattern(ctx, message)
@@ -124,24 +125,25 @@ func newSelectorCoverageContext(scope map[string]any, onError func(error)) *reso
 			"string": functions.StringFunction,
 		},
 		scope,
-		onError,
-	)
+		onError, "best fit")
 }
 
-func newSelectorCoverageMessage(selectorName string, variants ...datamodel.Variant) *datamodel.SelectMessage {
-	return datamodel.NewSelectMessage(
+func newSelectorCoverageMessage(t *testing.T, selectorName string, variants ...datamodel.Variant) *datamodel.SelectMessage {
+	t.Helper()
+
+	return mustSelectMessage(t,
 		nil,
 		[]datamodel.VariableRef{*datamodel.NewVariableRef(selectorName)},
 		variants,
-		"",
-	)
+		"")
 }
 
-func newSelectorCoverageVariant(key datamodel.VariantKey, text string) datamodel.Variant {
-	return *datamodel.NewVariant(
+func newSelectorCoverageVariant(t *testing.T, key datamodel.VariantKey, text string) datamodel.Variant {
+	t.Helper()
+
+	return *mustVariant(t,
 		[]datamodel.VariantKey{key},
-		datamodel.NewPattern([]datamodel.PatternElement{datamodel.NewTextElement(text)}),
-	)
+		mustPattern(t, []datamodel.PatternElement{datamodel.NewTextElement(text)}))
 }
 
 func selectorCoverageText(t *testing.T, pattern datamodel.Pattern) string {

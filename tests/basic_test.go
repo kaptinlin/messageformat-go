@@ -13,7 +13,7 @@ func TestBasicFunctionality(t *testing.T) {
 		mf, err := messageformat.Parse([]string{"en"}, "Hello world!")
 		require.NoError(t, err)
 
-		result, err := mf.Format(nil, nil)
+		result, err := mf.Format(nil)
 		require.NoError(t, err)
 		assert.Equal(t, "Hello world!", result)
 	})
@@ -28,7 +28,7 @@ func TestBasicFunctionality(t *testing.T) {
 		params := map[string]any{
 			"name": "world",
 		}
-		result, err := mf.Format(params, nil)
+		result, err := mf.Format(params)
 		require.NoError(t, err)
 		assert.Equal(t, "Hello world!", result)
 	})
@@ -41,7 +41,7 @@ func TestBasicFunctionality(t *testing.T) {
 		mf, err := messageformat.Parse([]string{"en"}, "{42 :test}", messageformat.Options(*options))
 		require.NoError(t, err)
 
-		result, err := mf.Format(nil, nil)
+		result, err := mf.Format(nil)
 		require.NoError(t, err)
 		assert.Equal(t, "42", result) // test function should format the number
 	})

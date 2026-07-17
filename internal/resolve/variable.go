@@ -220,22 +220,10 @@ func unresolvedInputValue(unresolvedExpr *UnresolvedExpression) (any, bool) {
 		return nil, false
 	}
 
-	if originalValue, exists := unresolvedExpr.Scope[varRef.Name()]; exists {
+	if originalValue, exists := getValue(unresolvedExpr.Scope, varRef.Name()); exists {
 		if _, isUnresolved := originalValue.(*UnresolvedExpression); !isUnresolved {
 			return originalValue, true
 		}
-	}
-
-	var nonUnresolvedValue any
-	var count int
-	for _, scopeValue := range unresolvedExpr.Scope {
-		if _, isUnresolved := scopeValue.(*UnresolvedExpression); !isUnresolved {
-			nonUnresolvedValue = scopeValue
-			count++
-		}
-	}
-	if count == 1 {
-		return nonUnresolvedValue, true
 	}
 
 	return nil, false

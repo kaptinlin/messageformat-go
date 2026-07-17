@@ -43,7 +43,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	result, err := msg(map[string]any{"name": "World"})
+	result, err := msg.Format(map[string]any{"name": "World"})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,6 +51,12 @@ func main() {
 	fmt.Println(result)
 }
 ```
+
+`Compile` returns an immutable `*CompiledMessage`. Use `Format` for text and
+`FormatValues` for the ordered value projection. Both methods accept only
+`map[string]any`; nil means an empty map. Missing arguments render as empty
+values unless `RequireAllArguments` is enabled, in which case formatting
+returns `ErrMissingArgument`.
 
 ## Examples
 

@@ -149,13 +149,10 @@ func main() {
 
 	result6, err := mf6.Format(map[string]any{
 		// Intentionally omit the 'name' variable
-	}, messageformat.WithErrorHandler(func(error) {
-		// Suppress error logging for demo purposes
-	}))
+	})
+	fmt.Printf("   Output when variable is missing: %s\n", result6)
 	if err != nil {
 		fmt.Printf("   Error when variable is missing: %v\n", err)
-	} else {
-		fmt.Printf("   Output when variable is missing: %s\n", result6)
 	}
 
 	// Example 7: Using functional options

@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -117,9 +116,10 @@ func TestIntegerFunction(t *testing.T) {
 	})
 
 	t.Run("clears inherited fraction digits", func(t *testing.T) {
-		operand := messagevalue.NewNumberValue(3, "en", "operand", map[string]any{
+		operand := mustNumberValue(t, 3, "en", "operand", map[string]any{
 			"minimumFractionDigits": 2,
 		})
+
 		result := IntegerFunction(ctx, options, operand)
 		require.NotNil(t, result)
 

@@ -72,7 +72,7 @@ func fromCST(msg cst.Message) (Message, error) {
 			variants[i] = *converted
 		}
 
-		return newSelectMessageWithCST(declarations, selectors, variants, "", nil), nil
+		return newSelectMessageWithCST(declarations, selectors, variants, "", m)
 
 	case *cst.SimpleMessage, *cst.ComplexMessage:
 		// Get pattern from either simple or complex message
@@ -89,7 +89,7 @@ func fromCST(msg cst.Message) (Message, error) {
 			return nil, err
 		}
 
-		return newPatternMessageWithCST(declarations, *convertedPattern, "", nil), nil
+		return newPatternMessageWithCST(declarations, *convertedPattern, "", msg)
 
 	default:
 		end := 1
@@ -142,16 +142,12 @@ func asDeclaration(decl cst.Declaration) (Declaration, error) {
 			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, d.Start(), &end, nil)
 		}
 
-		// Get the variable name from the argument
-		var varName string
-		if varRef, ok := expression.Arg().(*VariableRef); ok {
-			varName = varRef.Name()
-		} else {
+		if varRef, ok := expression.Arg().(*VariableRef); !ok || varRef == nil {
 			end := d.End()
 			return nil, errors.NewMessageSyntaxError(errors.ErrorTypeParseError, d.Start(), &end, nil)
 		}
 
-		return newInputDeclarationWithCST(varName, ConvertExpressionToVariableRefExpression(expression), decl), nil
+		return newInputDeclarationWithCST(expression, decl)
 
 	case *cst.LocalDeclaration:
 		// Convert target variable
@@ -202,7 +198,10 @@ func asPattern(pattern cst.Pattern) (*Pattern, error) {
 		}
 	}
 
-	result := NewPattern(elements)
+	result, err := NewPattern(elements)
+	if err != nil {
+		return nil, err
+	}
 	return &result, nil
 }
 
@@ -258,7 +257,7 @@ func asExpression(exp cst.Node, allowMarkup bool) (PatternElement, error) {
 			}
 		}
 
-		return newExpressionWithCST(arg, functionRef, ConvertMapToAttributes(attributes), e), nil
+		return newExpressionWithCST(arg, functionRef, ConvertMapToAttributes(attributes), e)
 
 	case *cst.Junk:
 		end := e.End()
@@ -350,7 +349,7 @@ func asFunctionRef(funcRef *cst.FunctionRef) (*FunctionRef, error) {
 		}
 	}
 
-	return newFunctionRefWithCST(name, ConvertMapToOptions(options), funcRef), nil
+	return newFunctionRefWithCST(name, ConvertMapToOptions(options), funcRef)
 }
 
 // asVariant converts a CST variant to a data model variant
@@ -379,7 +378,7 @@ func asVariant(variant cst.Variant) (*Variant, error) {
 		return nil, err
 	}
 
-	return newVariantWithCST(keys, *pattern, nil), nil
+	return newVariantWithCST(keys, *pattern, &variant)
 }
 
 // asValue converts a CST value to a data model value

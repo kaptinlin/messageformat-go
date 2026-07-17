@@ -921,7 +921,10 @@ func TestErrors(t *testing.T) {
 			t.Run(input, func(t *testing.T) {
 				_, err := Parse(input, nil)
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "Unexpected message end")
+				var parseErr *ParseError
+				require.ErrorAs(t, err, &parseErr)
+				require.NotNil(t, parseErr.Token)
+				assert.Contains(t, parseErr.Error(), input)
 			})
 		}
 	})
