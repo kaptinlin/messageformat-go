@@ -12,7 +12,7 @@ Performance notes for the supported ICU MessageFormat v1 compatibility module.
 ## Recommended Pattern
 
 ```go
-messageFormat, err := mf.New("en", nil)
+messageFormat, err := mf1.New("en", nil)
 if err != nil {
 	return
 }

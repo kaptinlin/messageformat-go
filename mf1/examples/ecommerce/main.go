@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"log"
 
-	mf "github.com/kaptinlin/messageformat-go/mf1"
+	"github.com/kaptinlin/messageformat-go/mf1"
 )
 
 // Order represents an e-commerce order
@@ -29,12 +29,12 @@ type Order struct {
 
 // NotificationService handles user notifications
 type NotificationService struct {
-	messageFormat *mf.MessageFormat
+	messageFormat *mf1.MessageFormat
 }
 
 // NewNotificationService creates a new notification service
 func NewNotificationService(locale string) (*NotificationService, error) {
-	messageFormat, err := mf.New(locale, &mf.MessageFormatOptions{
+	messageFormat, err := mf1.New(locale, &mf1.MessageFormatOptions{
 		Currency: "USD",
 	})
 	if err != nil {

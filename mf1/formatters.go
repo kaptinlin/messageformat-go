@@ -1,6 +1,6 @@
 // formatters.go - Built-in MessageFormat formatters
 // TypeScript original code: /packages/runtime/src/fmt/ module
-package v1
+package mf1
 
 import (
 	"fmt"

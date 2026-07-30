@@ -25,7 +25,7 @@ go -C mf1 run ./examples/performance
 All examples import the package path below:
 
 ```go
-import mf "github.com/kaptinlin/messageformat-go/mf1"
+import "github.com/kaptinlin/messageformat-go/mf1"
 ```
 
 Install and version the independent MF1 module:

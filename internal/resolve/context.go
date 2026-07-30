@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	"github.com/kaptinlin/messageformat-go/pkg/functions"
-	"github.com/kaptinlin/messageformat-go/pkg/messagevalue"
 )
 
 // Context represents the resolution context for message formatting
@@ -34,8 +33,8 @@ type Context struct {
 	// Available locales
 	Locales []string
 
-	// Set of local variables (for cycle detection)
-	LocalVars map[messagevalue.MessageValue]bool
+	// Names whose declarations have been resolved to MessageValues.
+	ResolvedDeclarations map[string]bool
 
 	// Variable scope
 	Scope map[string]any
@@ -61,13 +60,13 @@ func NewContext(
 	}
 
 	return &Context{
-		Functions:     funcs,
-		OnError:       onError,
-		LocaleMatcher: localeMatcher,
-		Locales:       slices.Clone(locales),
-		LocalVars:     make(map[messagevalue.MessageValue]bool),
-		Scope:         scope,
-		ResolvingVars: make(map[string]bool),
+		Functions:            funcs,
+		OnError:              onError,
+		LocaleMatcher:        localeMatcher,
+		Locales:              slices.Clone(locales),
+		ResolvedDeclarations: make(map[string]bool),
+		Scope:                scope,
+		ResolvingVars:        make(map[string]bool),
 	}
 }
 
@@ -75,13 +74,13 @@ func NewContext(
 // TypeScript original code: { ...ctx } spread operator equivalent
 func (ctx *Context) Clone() *Context {
 	return &Context{
-		Functions:     ctx.Functions, // Immutable, safe to share
-		OnError:       ctx.OnError,
-		LocaleMatcher: ctx.LocaleMatcher,
-		Locales:       slices.Clone(ctx.Locales),
-		LocalVars:     maps.Clone(ctx.LocalVars),
-		Scope:         maps.Clone(ctx.Scope),
-		ResolvingVars: ctx.ResolvingVars, // Share the resolving vars tracking
+		Functions:            ctx.Functions, // Immutable, safe to share
+		OnError:              ctx.OnError,
+		LocaleMatcher:        ctx.LocaleMatcher,
+		Locales:              slices.Clone(ctx.Locales),
+		ResolvedDeclarations: maps.Clone(ctx.ResolvedDeclarations),
+		Scope:                maps.Clone(ctx.Scope),
+		ResolvingVars:        ctx.ResolvingVars, // Share the resolving vars tracking
 	}
 }
 

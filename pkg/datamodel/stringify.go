@@ -4,8 +4,13 @@ package datamodel
 
 import (
 	"fmt"
+	"maps"
 	"regexp"
+	"slices"
 	"strings"
+
+	"github.com/kaptinlin/messageformat-go/internal/cst"
+	pkgerrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 )
 
 // startsWithDotPattern is pre-compiled regex for checking if text starts with a dot
@@ -32,7 +37,24 @@ var startsWithDotPattern = regexp.MustCompile(`^\s*\.`)
 //	  }
 //	  return res;
 //	}
-func StringifyMessage(msg Message) string {
+func StringifyMessage(msg Message) (string, error) {
+	invalid := msg == nil
+	switch message := msg.(type) {
+	case *PatternMessage:
+		invalid = message == nil
+	case *SelectMessage:
+		invalid = message == nil
+	}
+	if invalid {
+		return "", pkgerrors.NewMessageDataModelError(pkgerrors.ErrorTypeInvalidMessage, nil)
+	}
+	if err := validateStringifiableMessage(msg); err != nil {
+		return "", err
+	}
+	if _, err := ValidateMessage(msg, nil); err != nil {
+		return "", err
+	}
+
 	var res strings.Builder
 
 	// Intelligent size estimation based on message complexity
@@ -78,7 +100,118 @@ func StringifyMessage(msg Message) string {
 		}
 	}
 
-	return res.String()
+	return res.String(), nil
+}
+
+func validateStringifiableMessage(msg Message) error {
+	var patterns []Pattern
+	var declarations []Declaration
+	switch message := msg.(type) {
+	case *PatternMessage:
+		declarations = message.declarations
+		patterns = append(patterns, message.pattern)
+	case *SelectMessage:
+		declarations = message.declarations
+		for i := range message.selectors {
+			if !stringifiableName(message.selectors[i].name) {
+				return pkgerrors.NewMessageDataModelError(pkgerrors.ErrorTypeInvalidMessage, &message.selectors[i])
+			}
+		}
+		for _, variant := range message.variants {
+			patterns = append(patterns, variant.value)
+		}
+	}
+
+	for _, declaration := range declarations {
+		switch declaration := declaration.(type) {
+		case *InputDeclaration:
+			if declaration == nil || !stringifiableExpression(declaration.value) {
+				return pkgerrors.NewMessageDataModelError(pkgerrors.ErrorTypeInvalidMessage, declaration)
+			}
+		case *LocalDeclaration:
+			if declaration == nil || !stringifiableName(declaration.name) || !stringifiableExpression(declaration.value) {
+				return pkgerrors.NewMessageDataModelError(pkgerrors.ErrorTypeInvalidMessage, declaration)
+			}
+		}
+	}
+
+	for _, pattern := range patterns {
+		for _, element := range pattern {
+			switch element := element.(type) {
+			case *Expression:
+				if !stringifiableExpression(element) {
+					return pkgerrors.NewMessageDataModelError(pkgerrors.ErrorTypeInvalidMessage, element)
+				}
+			case *Markup:
+				if !stringifiableMarkup(element) {
+					return pkgerrors.NewMessageDataModelError(pkgerrors.ErrorTypeInvalidMessage, element)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func stringifiableExpression(expression *Expression) bool {
+	if expression == nil || (expression.arg == nil && expression.functionRef == nil) {
+		return false
+	}
+	if variable, ok := expression.arg.(*VariableRef); ok && !stringifiableName(variable.name) {
+		return false
+	}
+	if expression.functionRef != nil && !stringifiableIdentifier(expression.functionRef.name) {
+		return false
+	}
+	return (expression.functionRef == nil || stringifiableOptions(expression.functionRef.options)) &&
+		stringifiableAttributes(expression.attributes)
+}
+
+func stringifiableMarkup(markup *Markup) bool {
+	if markup == nil || !validMarkupKind(markup.kind) || !stringifiableIdentifier(markup.name) {
+		return false
+	}
+	return stringifiableOptions(markup.options) && stringifiableAttributes(markup.attributes)
+}
+
+func stringifiableOptions(options Options) bool {
+	for name, value := range options {
+		if !stringifiableIdentifier(name) {
+			return false
+		}
+		if variable, ok := value.(*VariableRef); ok && !stringifiableName(variable.name) {
+			return false
+		}
+	}
+	return true
+}
+
+func stringifiableAttributes(attributes Attributes) bool {
+	for name := range attributes {
+		if !stringifiableIdentifier(name) {
+			return false
+		}
+	}
+	return true
+}
+
+func stringifiableName(name string) bool {
+	parsed := cst.ParseNameValue(name, 0)
+	return parsed != nil && parsed.End == len(name) && parsed.Value == name
+}
+
+func stringifiableIdentifier(identifier string) bool {
+	first := cst.ParseNameValue(identifier, 0)
+	if first == nil || first.Value != identifier[:first.End] {
+		return false
+	}
+	if first.End == len(identifier) {
+		return true
+	}
+	if identifier[first.End] != ':' {
+		return false
+	}
+	second := cst.ParseNameValue(identifier, first.End+1)
+	return second != nil && second.End == len(identifier) && second.Value == identifier[first.End+1:]
 }
 
 // stringifyDeclaration converts a declaration to its string representation
@@ -160,9 +293,9 @@ func stringifyExpression(expr *Expression) string {
 	}
 
 	// Add attributes
-	if expr.Attributes() != nil {
-		for name, value := range expr.Attributes() {
-			parts = append(parts, stringifyAttribute(name, value))
+	if attributes := expr.Attributes(); attributes != nil {
+		for _, name := range slices.Sorted(maps.Keys(attributes)) {
+			parts = append(parts, stringifyAttribute(name, attributes[name]))
 		}
 	}
 
@@ -185,9 +318,9 @@ func stringifyFunctionRef(fr *FunctionRef) string {
 	var result strings.Builder
 	result.WriteString(":" + fr.Name())
 
-	if fr.Options() != nil {
-		for name, value := range fr.Options() {
-			result.WriteString(" " + stringifyOption(name, value))
+	if options := fr.Options(); options != nil {
+		for _, name := range slices.Sorted(maps.Keys(options)) {
+			result.WriteString(" " + stringifyOption(name, options[name]))
 		}
 	}
 
@@ -225,18 +358,18 @@ func stringifyMarkup(markup *Markup) string {
 	result.WriteString(markup.Name())
 
 	// Add options
-	if markup.Options() != nil {
-		for name, value := range markup.Options() {
+	if options := markup.Options(); options != nil {
+		for _, name := range slices.Sorted(maps.Keys(options)) {
 			result.WriteString(" ")
-			result.WriteString(stringifyOption(name, value))
+			result.WriteString(stringifyOption(name, options[name]))
 		}
 	}
 
 	// Add attributes
-	if markup.Attributes() != nil {
-		for name, value := range markup.Attributes() {
+	if attributes := markup.Attributes(); attributes != nil {
+		for _, name := range slices.Sorted(maps.Keys(attributes)) {
 			result.WriteString(" ")
-			result.WriteString(stringifyAttribute(name, value))
+			result.WriteString(stringifyAttribute(name, attributes[name]))
 		}
 	}
 
@@ -380,19 +513,5 @@ func stringifyPattern(pattern Pattern, quoted bool) string {
 // isValidUnquotedLiteral checks if a literal value can be used without quotes
 // Simplified version of the TypeScript isValidUnquotedLiteral function
 func isValidUnquotedLiteral(value string) bool {
-	if value == "" {
-		return false
-	}
-
-	// Check for special characters that require quoting
-	if strings.ContainsAny(value, " \t\n\r{}|\\=@$:#/") {
-		return false
-	}
-
-	// Check if starts with dot
-	if strings.HasPrefix(value, ".") {
-		return false
-	}
-
-	return true
+	return cst.IsValidUnquotedLiteral(value)
 }

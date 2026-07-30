@@ -1,4 +1,4 @@
-package v1
+package mf1
 
 import (
 	"errors"
@@ -662,7 +662,7 @@ func TestMessageFormatAdditionalBehavior(t *testing.T) {
 		assert.Equal(t, "7 / ", got)
 	})
 
-	t.Run("invalid octothorpe values fall back to literal hash", func(t *testing.T) {
+	t.Run("invalid octothorpe values return numeric errors", func(t *testing.T) {
 		t.Parallel()
 
 		mf, err := New("en", nil)
@@ -671,8 +671,8 @@ func TestMessageFormatAdditionalBehavior(t *testing.T) {
 		require.NoError(t, err)
 
 		got, err := msg.Format(map[string]any{"kind": "use", "count": "not-a-number"})
-		require.NoError(t, err)
-		assert.Equal(t, "prefix # items", got)
+		require.ErrorIs(t, err, ErrInvalidNumberStr)
+		assert.Empty(t, got)
 	})
 
 	t.Run("selector reports missing other case", func(t *testing.T) {
@@ -754,7 +754,7 @@ func TestPluralHelpers(t *testing.T) {
 			{name: "int", value: 1, want: PluralOne},
 			{name: "int32", value: int32(1), want: PluralOne},
 			{name: "int64", value: int64(2), want: PluralOther},
-			{name: "float32", value: float32(1.9), want: PluralOne},
+			{name: "float32", value: float32(1.9), want: PluralOther},
 			{name: "float64", value: 2.1, want: PluralOther},
 			{name: "string", value: "1", want: PluralOne},
 		}

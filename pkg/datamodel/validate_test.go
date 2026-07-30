@@ -86,7 +86,7 @@ func TestValidateMessage(t *testing.T) {
 			name: "valid local declaration",
 			message: mustPatternMessage(t,
 				[]Declaration{
-					NewLocalDeclaration(
+					mustLocalDeclaration(t,
 						"formatted",
 						mustExpression(t,
 							NewVariableRef("count"),
@@ -108,8 +108,8 @@ func TestValidateMessage(t *testing.T) {
 			name: "duplicate declaration error",
 			message: mustPatternMessage(t,
 				[]Declaration{
-					NewLocalDeclaration("x", mustExpression(t, NewLiteral("1"), nil, nil)),
-					NewLocalDeclaration("x", mustExpression(t, NewLiteral("2"), nil, nil)),
+					mustLocalDeclaration(t, "x", mustExpression(t, NewLiteral("1"), nil, nil)),
+					mustLocalDeclaration(t, "x", mustExpression(t, NewLiteral("2"), nil, nil)),
 				},
 				mustPattern(t, []PatternElement{NewTextElement("test")}),
 				""),
@@ -121,7 +121,7 @@ func TestValidateMessage(t *testing.T) {
 			name: "self-reference in local declaration",
 			message: mustPatternMessage(t,
 				[]Declaration{
-					NewLocalDeclaration("x", mustExpression(t, NewVariableRef("x"), nil, nil)),
+					mustLocalDeclaration(t, "x", mustExpression(t, NewVariableRef("x"), nil, nil)),
 				},
 				mustPattern(t, []PatternElement{NewTextElement("test")}),
 				""),
@@ -269,7 +269,7 @@ func TestValidateMessage(t *testing.T) {
 							mustFunctionRef(t, "number", nil),
 							nil)),
 
-					NewLocalDeclaration(
+					mustLocalDeclaration(t,
 						"date",
 						mustExpression(t,
 							NewVariableRef("timestamp"),
@@ -293,8 +293,8 @@ func TestValidateMessage(t *testing.T) {
 			name: "forward reference in local declaration",
 			message: mustPatternMessage(t,
 				[]Declaration{
-					NewLocalDeclaration("a", mustExpression(t, NewVariableRef("b"), nil, nil)),
-					NewLocalDeclaration("b", mustExpression(t, NewLiteral("value"), nil, nil)),
+					mustLocalDeclaration(t, "a", mustExpression(t, NewVariableRef("b"), nil, nil)),
+					mustLocalDeclaration(t, "b", mustExpression(t, NewLiteral("value"), nil, nil)),
 				},
 				mustPattern(t, []PatternElement{NewTextElement("test")}),
 				""),
@@ -337,8 +337,8 @@ func TestValidateMessageWithCustomErrorHandler(t *testing.T) {
 
 	msg := mustPatternMessage(t,
 		[]Declaration{
-			NewLocalDeclaration("x", mustExpression(t, NewLiteral("1"), nil, nil)),
-			NewLocalDeclaration("x", mustExpression(t, NewLiteral("2"), nil, nil)),
+			mustLocalDeclaration(t, "x", mustExpression(t, NewLiteral("1"), nil, nil)),
+			mustLocalDeclaration(t, "x", mustExpression(t, NewLiteral("2"), nil, nil)),
 		},
 		mustPattern(t, []PatternElement{NewTextElement("test")}),
 		"")
@@ -543,7 +543,7 @@ func TestValidateAnnotatedVariables(t *testing.T) {
 							mustFunctionRef(t, "integer", nil),
 							nil)),
 
-					NewLocalDeclaration(
+					mustLocalDeclaration(t,
 						"formatted",
 						mustExpression(t, NewVariableRef("count"), nil, nil),
 					),
@@ -614,7 +614,7 @@ func TestValidationResultStructure(t *testing.T) {
 					mustFunctionRef(t, "integer", nil),
 					nil)),
 
-			NewLocalDeclaration(
+			mustLocalDeclaration(t,
 				"date",
 				mustExpression(t,
 					NewVariableRef("timestamp"),
@@ -650,8 +650,8 @@ func TestValidationResultStructure(t *testing.T) {
 func TestValidationResultExcludesAllLocalVariables(t *testing.T) {
 	msg := mustPatternMessage(t,
 		[]Declaration{
-			NewLocalDeclaration("first", mustExpression(t, NewVariableRef("external"), nil, nil)),
-			NewLocalDeclaration("second", mustExpression(t, NewVariableRef("first"), nil, nil)),
+			mustLocalDeclaration(t, "first", mustExpression(t, NewVariableRef("external"), nil, nil)),
+			mustLocalDeclaration(t, "second", mustExpression(t, NewVariableRef("first"), nil, nil)),
 		},
 		mustPattern(t, []PatternElement{
 			mustExpression(t, NewVariableRef("first"), nil, nil),
@@ -689,7 +689,7 @@ func TestValidationResultOrderAndCoverage(t *testing.T) {
 							"z": NewVariableRef("declZ"),
 							"a": NewVariableRef("declA"),
 						}), nil)),
-					NewLocalDeclaration("local", mustExpression(t,
+					mustLocalDeclaration(t, "local", mustExpression(t,
 						NewVariableRef("localArg"),
 						mustFunctionRef(t, "localFn", Options{
 							"z": NewVariableRef("localZ"),
@@ -831,8 +831,8 @@ func TestValidateMessageErrorTypes(t *testing.T) {
 			name: "local option forward reference",
 			message: mustPatternMessage(t,
 				[]Declaration{
-					NewLocalDeclaration("formatted", mustExpression(t, NewLiteral("value"), mustFunctionRef(t, "string", ConvertMapToOptions(map[string]any{"case": NewVariableRef("style")})), nil)),
-					NewLocalDeclaration("style", mustExpression(t, NewLiteral("title"), nil, nil)),
+					mustLocalDeclaration(t, "formatted", mustExpression(t, NewLiteral("value"), mustFunctionRef(t, "string", ConvertMapToOptions(map[string]any{"case": NewVariableRef("style")})), nil)),
+					mustLocalDeclaration(t, "style", mustExpression(t, NewLiteral("title"), nil, nil)),
 				},
 				mustPattern(t, []PatternElement{NewTextElement("test")}),
 				""),
@@ -843,7 +843,7 @@ func TestValidateMessageErrorTypes(t *testing.T) {
 			name: "local option self reference",
 			message: mustPatternMessage(t,
 				[]Declaration{
-					NewLocalDeclaration("formatted", mustExpression(t, NewLiteral("value"), mustFunctionRef(t, "string", ConvertMapToOptions(map[string]any{"case": NewVariableRef("formatted")})), nil)),
+					mustLocalDeclaration(t, "formatted", mustExpression(t, NewLiteral("value"), mustFunctionRef(t, "string", ConvertMapToOptions(map[string]any{"case": NewVariableRef("formatted")})), nil)),
 				},
 				mustPattern(t, []PatternElement{NewTextElement("test")}),
 				""),

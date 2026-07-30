@@ -16,26 +16,26 @@ import (
 	"fmt"
 	"log"
 
-	mf "github.com/kaptinlin/messageformat-go/mf1"
+	"github.com/kaptinlin/messageformat-go/mf1"
 )
 
 // LocalizedMessage represents a message in multiple languages
 type LocalizedMessage struct {
-	formatters map[string]*mf.MessageFormat
+	formatters map[string]*mf1.MessageFormat
 	templates  map[string]string
 }
 
 // NewLocalizedMessage creates a new localized message system
 func NewLocalizedMessage() *LocalizedMessage {
 	return &LocalizedMessage{
-		formatters: make(map[string]*mf.MessageFormat),
+		formatters: make(map[string]*mf1.MessageFormat),
 		templates:  make(map[string]string),
 	}
 }
 
 // AddLocale adds a new locale with its message template
 func (lm *LocalizedMessage) AddLocale(locale, template string) error {
-	messageFormat, err := mf.New(locale, &mf.MessageFormatOptions{
+	messageFormat, err := mf1.New(locale, &mf1.MessageFormatOptions{
 		Currency: getCurrencyForLocale(locale),
 	})
 	if err != nil {
@@ -211,7 +211,7 @@ func demonstrateComplexMessages() {
 func demonstrateProjections() {
 	fmt.Println("\n\n=== Message Projections Demonstration ===")
 
-	compiler, err := mf.New("en", nil)
+	compiler, err := mf1.New("en", nil)
 	if err != nil {
 		log.Fatal(err)
 	}

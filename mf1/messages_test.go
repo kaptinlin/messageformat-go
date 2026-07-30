@@ -1,4 +1,4 @@
-package v1
+package mf1
 
 import (
 	"testing"

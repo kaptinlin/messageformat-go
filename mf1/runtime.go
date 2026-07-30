@@ -1,6 +1,6 @@
-// Package v1 provides MessageFormat v1 runtime functions
+// Package mf1 provides MessageFormat v1 runtime functions.
 // TypeScript original code: /packages/runtime/src/runtime.ts
-package v1
+package mf1
 
 import (
 	"fmt"

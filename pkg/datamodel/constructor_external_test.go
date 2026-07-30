@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/kaptinlin/messageformat-go/pkg/datamodel"
+	pkgerrors "github.com/kaptinlin/messageformat-go/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,6 +29,14 @@ func mustPatternMessage(t *testing.T, declarations []datamodel.Declaration, patt
 	message, err := datamodel.NewPatternMessage(declarations, pattern, comment)
 	require.NoError(t, err)
 	return message
+}
+
+func mustStringifyMessage(t *testing.T, message datamodel.Message) string {
+	t.Helper()
+
+	source, err := datamodel.StringifyMessage(message)
+	require.NoError(t, err)
+	return source
 }
 
 // mustFunctionRef constructs a valid function reference through the public API.
@@ -141,6 +150,53 @@ func TestInputDeclarationRejectsExpressionsWithoutVariable(t *testing.T) {
 	}
 }
 
+// TestPatternMessageRejectsStructurallyInvalidDeclarations proves constructors reject unusable exported zero values.
+func TestPatternMessageRejectsStructurallyInvalidDeclarations(t *testing.T) {
+	t.Parallel()
+
+	message, err := datamodel.NewPatternMessage(
+		[]datamodel.Declaration{&datamodel.InputDeclaration{}},
+		mustPattern(t, nil),
+		"",
+	)
+
+	require.Nil(t, message)
+	require.ErrorIs(t, err, datamodel.ErrInvalidInputDeclaration)
+}
+
+func TestPatternMessageRejectsStructurallyInvalidLocalDeclaration(t *testing.T) {
+	t.Parallel()
+
+	message, err := datamodel.NewPatternMessage(
+		[]datamodel.Declaration{&datamodel.LocalDeclaration{}},
+		mustPattern(t, nil),
+		"",
+	)
+
+	require.Nil(t, message)
+	require.ErrorIs(t, err, datamodel.ErrInvalidLocalDeclaration)
+}
+
+func TestLocalDeclarationRejectsEmptyName(t *testing.T) {
+	t.Parallel()
+
+	expression, err := datamodel.NewExpression(datamodel.NewLiteral("value"), nil, nil)
+	require.NoError(t, err)
+
+	declaration, err := datamodel.NewLocalDeclaration("", expression)
+	require.Nil(t, declaration)
+	require.ErrorIs(t, err, datamodel.ErrInvalidLocalDeclaration)
+}
+
+func TestLocalDeclarationRejectsNilExpression(t *testing.T) {
+	t.Parallel()
+
+	declaration, err := datamodel.NewLocalDeclaration("value", nil)
+
+	require.Nil(t, declaration)
+	require.ErrorIs(t, err, datamodel.ErrInvalidLocalDeclaration)
+}
+
 // TestInputExpressionIsObservedOnceByModelOperations proves every model operation sees the same expression tree.
 // TypeScript original code:
 // visit(message, { expression, functionRef, options, attributes, value });
@@ -165,7 +221,7 @@ func TestInputExpressionIsObservedOnceByModelOperations(t *testing.T) {
 		"",
 	)
 
-	assert.Equal(t, ".input {$count :number style=$style @label=Count}\n{{}}", datamodel.StringifyMessage(message))
+	assert.Equal(t, ".input {$count :number style=$style @label=Count}\n{{}}", mustStringifyMessage(t, message))
 
 	counts := map[string]int{}
 	datamodel.Visit(message, &datamodel.Visitor{
@@ -203,6 +259,246 @@ func TestInputExpressionIsObservedOnceByModelOperations(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{"number"}, result.Functions)
 	assert.ElementsMatch(t, []string{"count", "style"}, result.Variables)
+}
+
+func TestStringifyMessageUsesCanonicalMapOrder(t *testing.T) {
+	t.Parallel()
+
+	options := datamodel.Options{
+		"z": datamodel.NewLiteral("Z"),
+		"a": datamodel.NewLiteral("A"),
+		"m": datamodel.NewLiteral("M"),
+	}
+	attributes := datamodel.Attributes{
+		"z": datamodel.NewLiteral("Z"),
+		"a": datamodel.NewLiteral("A"),
+		"m": datamodel.NewLiteral("M"),
+	}
+	function := mustFunctionRef(t, "custom", options)
+	expression, err := datamodel.NewExpression(datamodel.NewVariableRef("value"), function, attributes)
+	require.NoError(t, err)
+	markup, err := datamodel.NewMarkup(datamodel.MarkupStandalone, "tag", options, attributes)
+	require.NoError(t, err)
+	message := mustPatternMessage(t, nil, mustPattern(t, []datamodel.PatternElement{
+		expression,
+		datamodel.NewTextElement(" "),
+		markup,
+	}), "")
+	want := "{$value :custom a=A m=M z=Z @a=A @m=M @z=Z} {#tag a=A m=M z=Z @a=A @m=M @z=Z /}"
+
+	for range 100 {
+		assert.Equal(t, want, mustStringifyMessage(t, message))
+	}
+}
+
+func TestStringifyMessageRejectsNilMessage(t *testing.T) {
+	t.Parallel()
+
+	source, err := datamodel.StringifyMessage(nil)
+
+	assert.Empty(t, source)
+	require.Error(t, err)
+	var modelErr *pkgerrors.MessageDataModelError
+	require.ErrorAs(t, err, &modelErr)
+	assert.Equal(t, pkgerrors.ErrorTypeInvalidMessage, modelErr.ErrorType())
+}
+
+func TestStringifyMessageRejectsUnrepresentableExpression(t *testing.T) {
+	t.Parallel()
+
+	message, err := datamodel.NewPatternMessage(
+		nil,
+		datamodel.Pattern{&datamodel.Expression{}},
+		"",
+	)
+	require.NoError(t, err)
+
+	source, err := datamodel.StringifyMessage(message)
+
+	assert.Empty(t, source)
+	require.Error(t, err)
+	var modelErr *pkgerrors.MessageDataModelError
+	require.ErrorAs(t, err, &modelErr)
+	assert.Equal(t, pkgerrors.ErrorTypeInvalidMessage, modelErr.ErrorType())
+}
+
+func TestStringifyMessageRejectsUnrepresentableMarkup(t *testing.T) {
+	t.Parallel()
+
+	message, err := datamodel.NewPatternMessage(
+		nil,
+		datamodel.Pattern{&datamodel.Markup{}},
+		"",
+	)
+	require.NoError(t, err)
+
+	source, err := datamodel.StringifyMessage(message)
+
+	assert.Empty(t, source)
+	require.Error(t, err)
+	var modelErr *pkgerrors.MessageDataModelError
+	require.ErrorAs(t, err, &modelErr)
+	assert.Equal(t, pkgerrors.ErrorTypeInvalidMessage, modelErr.ErrorType())
+}
+
+func TestStringifyMessageRejectsEmptyNestedIdentifiers(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		arg         datamodel.ExpressionArg
+		functionRef *datamodel.FunctionRef
+	}{
+		{name: "variable", arg: &datamodel.VariableRef{}},
+		{name: "function", functionRef: &datamodel.FunctionRef{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			expression, err := datamodel.NewExpression(tt.arg, tt.functionRef, nil)
+			require.NoError(t, err)
+			message, err := datamodel.NewPatternMessage(nil, datamodel.Pattern{expression}, "")
+			require.NoError(t, err)
+
+			source, err := datamodel.StringifyMessage(message)
+
+			assert.Empty(t, source)
+			require.Error(t, err)
+			var modelErr *pkgerrors.MessageDataModelError
+			require.ErrorAs(t, err, &modelErr)
+			assert.Equal(t, pkgerrors.ErrorTypeInvalidMessage, modelErr.ErrorType())
+		})
+	}
+}
+
+func TestStringifyMessageRejectsEmptyMapIdentifiers(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		options    datamodel.Options
+		attributes datamodel.Attributes
+	}{
+		{name: "option name", options: datamodel.Options{"": datamodel.NewLiteral("value")}},
+		{name: "option variable", options: datamodel.Options{"option": &datamodel.VariableRef{}}},
+		{name: "attribute name", attributes: datamodel.Attributes{"": datamodel.NewLiteral("value")}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			function, err := datamodel.NewFunctionRef("custom", tt.options)
+			require.NoError(t, err)
+			expression, err := datamodel.NewExpression(datamodel.NewLiteral("value"), function, tt.attributes)
+			require.NoError(t, err)
+			message, err := datamodel.NewPatternMessage(nil, datamodel.Pattern{expression}, "")
+			require.NoError(t, err)
+
+			source, err := datamodel.StringifyMessage(message)
+
+			assert.Empty(t, source)
+			require.Error(t, err)
+			var modelErr *pkgerrors.MessageDataModelError
+			require.ErrorAs(t, err, &modelErr)
+			assert.Equal(t, pkgerrors.ErrorTypeInvalidMessage, modelErr.ErrorType())
+		})
+	}
+}
+
+func TestStringifyMessageRejectsMalformedIdentifiers(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		element func(*testing.T) datamodel.PatternElement
+	}{
+		{
+			name: "variable",
+			element: func(t *testing.T) datamodel.PatternElement {
+				expression, err := datamodel.NewExpression(datamodel.NewVariableRef("bad name"), nil, nil)
+				require.NoError(t, err)
+				return expression
+			},
+		},
+		{
+			name: "function",
+			element: func(t *testing.T) datamodel.PatternElement {
+				function, err := datamodel.NewFunctionRef("bad name", nil)
+				require.NoError(t, err)
+				expression, err := datamodel.NewExpression(nil, function, nil)
+				require.NoError(t, err)
+				return expression
+			},
+		},
+		{
+			name: "option",
+			element: func(t *testing.T) datamodel.PatternElement {
+				function, err := datamodel.NewFunctionRef("custom", datamodel.Options{"bad name": datamodel.NewLiteral("value")})
+				require.NoError(t, err)
+				expression, err := datamodel.NewExpression(nil, function, nil)
+				require.NoError(t, err)
+				return expression
+			},
+		},
+		{
+			name: "attribute",
+			element: func(t *testing.T) datamodel.PatternElement {
+				expression, err := datamodel.NewExpression(datamodel.NewLiteral("value"), nil, datamodel.Attributes{"bad name": datamodel.NewLiteral("value")})
+				require.NoError(t, err)
+				return expression
+			},
+		},
+		{
+			name: "markup",
+			element: func(t *testing.T) datamodel.PatternElement {
+				markup, err := datamodel.NewMarkup(datamodel.MarkupStandalone, "bad name", nil, nil)
+				require.NoError(t, err)
+				return markup
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			message, err := datamodel.NewPatternMessage(nil, datamodel.Pattern{tt.element(t)}, "")
+			require.NoError(t, err)
+
+			source, err := datamodel.StringifyMessage(message)
+
+			assert.Empty(t, source)
+			require.Error(t, err)
+			var modelErr *pkgerrors.MessageDataModelError
+			require.ErrorAs(t, err, &modelErr)
+			assert.Equal(t, pkgerrors.ErrorTypeInvalidMessage, modelErr.ErrorType())
+		})
+	}
+}
+
+func TestStringifyMessageRejectsInvalidModelSemantics(t *testing.T) {
+	t.Parallel()
+
+	variant, err := datamodel.NewVariant(
+		[]datamodel.VariantKey{datamodel.NewCatchallKey("")},
+		mustPattern(t, []datamodel.PatternElement{datamodel.NewTextElement("fallback")}),
+	)
+	require.NoError(t, err)
+	message, err := datamodel.NewSelectMessage(
+		nil,
+		[]datamodel.VariableRef{*datamodel.NewVariableRef("count")},
+		[]datamodel.Variant{*variant},
+		"",
+	)
+	require.NoError(t, err)
+
+	source, err := datamodel.StringifyMessage(message)
+
+	assert.Empty(t, source)
+	require.Error(t, err)
+	var modelErr *pkgerrors.MessageDataModelError
+	require.ErrorAs(t, err, &modelErr)
+	assert.Equal(t, pkgerrors.ErrorTypeMissingSelectorAnnotation, modelErr.ErrorType())
 }
 
 // TestPatternRejectsNilElements proves successful patterns contain only usable union members.
@@ -382,7 +678,8 @@ func TestCompositeConstructorsAcceptEmptySequences(t *testing.T) {
 
 	for _, message := range []datamodel.Message{patternMessage, selectMessage} {
 		assert.NotPanics(t, func() {
-			datamodel.StringifyMessage(message)
+			_, stringifyErr := datamodel.StringifyMessage(message)
+			require.NoError(t, stringifyErr)
 			datamodel.Visit(message, &datamodel.Visitor{})
 			_, validateErr := datamodel.ValidateMessage(message, nil)
 			require.NoError(t, validateErr)

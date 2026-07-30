@@ -1,9 +1,13 @@
 package datamodel
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/kaptinlin/messageformat-go/internal/cst"
+	mfwg "github.com/kaptinlin/messageformat-go/tests/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -75,7 +79,7 @@ func TestStringifyMessage(t *testing.T) {
 			name: "pattern message with local declaration",
 			message: mustPatternMessage(t,
 				[]Declaration{
-					NewLocalDeclaration(
+					mustLocalDeclaration(t,
 						"formatted",
 						mustExpression(t,
 							NewVariableRef("count"),
@@ -94,7 +98,9 @@ func TestStringifyMessage(t *testing.T) {
 		{
 			name: "simple select message",
 			message: mustSelectMessage(t,
-				nil,
+				[]Declaration{
+					mustInputDeclaration(t, mustExpression(t, NewVariableRef("count"), mustFunctionRef(t, "number", nil), nil)),
+				},
 				[]VariableRef{*NewVariableRef("count")},
 				[]Variant{
 					*mustVariant(t,
@@ -107,12 +113,15 @@ func TestStringifyMessage(t *testing.T) {
 				},
 				""),
 
-			expected: ".match $count\none {{One item}}\n* {{Many items}}",
+			expected: ".input {$count :number}\n.match $count\none {{One item}}\n* {{Many items}}",
 		},
 		{
 			name: "multi-selector message",
 			message: mustSelectMessage(t,
-				nil,
+				[]Declaration{
+					mustInputDeclaration(t, mustExpression(t, NewVariableRef("count"), mustFunctionRef(t, "number", nil), nil)),
+					mustInputDeclaration(t, mustExpression(t, NewVariableRef("gender"), mustFunctionRef(t, "string", nil), nil)),
+				},
 				[]VariableRef{
 					*NewVariableRef("count"),
 					*NewVariableRef("gender"),
@@ -132,13 +141,13 @@ func TestStringifyMessage(t *testing.T) {
 				},
 				""),
 
-			expected: ".match $count $gender\none male {{He has one item}}\none female {{She has one item}}\n* * {{They have items}}",
+			expected: ".input {$count :number}\n.input {$gender :string}\n.match $count $gender\none male {{He has one item}}\none female {{She has one item}}\n* * {{They have items}}",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := StringifyMessage(tt.message)
+			result := mustStringifyMessage(t, tt.message)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -273,7 +282,7 @@ func TestStringifyLiteral(t *testing.T) {
 		{
 			name:     "literal starting with dot",
 			literal:  NewLiteral(".hidden"),
-			expected: "|.hidden|",
+			expected: ".hidden",
 		},
 		{
 			name:     "empty literal",
@@ -600,7 +609,7 @@ func TestStringifyRoundTrip(t *testing.T) {
 		},
 		{
 			name:  "select message",
-			input: ".match $count\none {{One item}}\n* {{Other items}}",
+			input: ".input {$count :number}\n.match $count\none {{One item}}\n* {{Other items}}",
 		},
 	}
 
@@ -614,7 +623,7 @@ func TestStringifyRoundTrip(t *testing.T) {
 			require.NoError(t, err)
 
 			// Stringify back
-			result := StringifyMessage(msg)
+			result := mustStringifyMessage(t, msg)
 
 			// Parse again to verify equivalence
 			cstMsg2 := cst.ParseCST(result, false)
@@ -625,6 +634,42 @@ func TestStringifyRoundTrip(t *testing.T) {
 			assert.Equal(t, msg.Type(), msg2.Type())
 			assert.Equal(t, len(msg.Declarations()), len(msg2.Declarations()))
 		})
+	}
+}
+
+func TestOfficialMessagesStringifySemanticRoundTrip(t *testing.T) {
+	scenarios, err := mfwg.TestScenarios("../../tests/messageformat-wg/test/tests")
+	require.NoError(t, err)
+
+	index := 0
+	for _, scenario := range scenarios {
+		for _, testCase := range mfwg.TestCases(scenario) {
+			if mfwg.GetTestType(testCase) != mfwg.TestTypeFormat {
+				continue
+			}
+			t.Run(fmt.Sprintf("%04d", index), func(t *testing.T) {
+				original, err := ParseMessage(testCase.Src)
+				require.NoError(t, err)
+				source, err := StringifyMessage(original)
+				require.NoError(t, err)
+				reparsed, err := ParseMessage(source)
+				require.NoError(t, err)
+
+				diff := cmp.Diff(
+					original,
+					reparsed,
+					cmpopts.EquateEmpty(),
+					cmpopts.IgnoreTypes(sourceSpan{}),
+					cmp.AllowUnexported(
+						PatternMessage{}, SelectMessage{}, InputDeclaration{}, LocalDeclaration{},
+						Expression{}, Literal{}, VariableRef{}, FunctionRef{}, Markup{}, TextElement{},
+						CatchallKey{}, Variant{}, BooleanAttribute{},
+					),
+				)
+				assert.Empty(t, diff, "semantic model mismatch (-original +reparsed)\nsource: %s", source)
+			})
+			index++
+		}
 	}
 }
 
@@ -722,7 +767,7 @@ func TestIsValidUnquotedLiteral(t *testing.T) {
 		{
 			name:     "starts with dot",
 			value:    ".hidden",
-			expected: false,
+			expected: true,
 		},
 	}
 
@@ -750,7 +795,7 @@ func TestStringifyComplexMessages(t *testing.T) {
 							mustFunctionRef(t, "number", nil),
 							nil)),
 
-					NewLocalDeclaration(
+					mustLocalDeclaration(t,
 						"tax",
 						mustExpression(t,
 							NewVariableRef("price"),
@@ -773,7 +818,9 @@ func TestStringifyComplexMessages(t *testing.T) {
 		{
 			name: "select with expressions in variants",
 			message: mustSelectMessage(t,
-				nil,
+				[]Declaration{
+					mustInputDeclaration(t, mustExpression(t, NewVariableRef("count"), mustFunctionRef(t, "number", nil), nil)),
+				},
 				[]VariableRef{*NewVariableRef("count")},
 				[]Variant{
 					*mustVariant(t,
@@ -798,7 +845,7 @@ func TestStringifyComplexMessages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := StringifyMessage(tt.message)
+			result := mustStringifyMessage(t, tt.message)
 
 			// Should not panic and should produce non-empty string
 			assert.NotEmpty(t, result)

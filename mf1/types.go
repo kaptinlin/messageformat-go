@@ -1,5 +1,5 @@
-// Package v1 provides MessageFormat v1 (ICU MessageFormat) implementation for Go
-package v1
+// Package mf1 provides a MessageFormat v1 (ICU MessageFormat) implementation for Go.
+package mf1
 
 // Type-safe constants for API options (replacing string literals)
 // This provides better IDE support, compile-time checking, and prevents typos

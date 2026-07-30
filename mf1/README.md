@@ -11,7 +11,7 @@ go get github.com/kaptinlin/messageformat-go/mf1@latest
 Import the package as:
 
 ```go
-import mf "github.com/kaptinlin/messageformat-go/mf1"
+import "github.com/kaptinlin/messageformat-go/mf1"
 ```
 
 ## Status
@@ -29,11 +29,11 @@ import (
 	"fmt"
 	"log"
 
-	mf "github.com/kaptinlin/messageformat-go/mf1"
+	"github.com/kaptinlin/messageformat-go/mf1"
 )
 
 func main() {
-	messageFormat, err := mf.New("en", nil)
+	messageFormat, err := mf1.New("en", nil)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -206,7 +206,7 @@ func TestIsVariableRef(t *testing.T) {
 func TestIsInputDeclaration(t *testing.T) {
 	expr := mustExpression(t, NewLiteral("test"), nil, nil)
 	inputDecl := mustInputDeclaration(t, mustExpression(t, NewVariableRef("input1"), nil, nil))
-	localDecl := NewLocalDeclaration("local1", expr)
+	localDecl := mustLocalDeclaration(t, "local1", expr)
 
 	tests := []struct {
 		name     string
@@ -228,7 +228,7 @@ func TestIsInputDeclaration(t *testing.T) {
 func TestIsLocalDeclaration(t *testing.T) {
 	expr := mustExpression(t, NewLiteral("test"), nil, nil)
 	inputDecl := mustInputDeclaration(t, mustExpression(t, NewVariableRef("input1"), nil, nil))
-	localDecl := NewLocalDeclaration("local1", expr)
+	localDecl := mustLocalDeclaration(t, "local1", expr)
 
 	tests := []struct {
 		name     string
@@ -351,7 +351,7 @@ func TestIsNode(t *testing.T) {
 	markup := mustMarkup(t, "open", "b", nil, nil)
 	catchall := NewCatchallKey("")
 	inputDecl := mustInputDeclaration(t, mustExpression(t, varRef, nil, nil))
-	localDecl := NewLocalDeclaration("local1", expr)
+	localDecl := mustLocalDeclaration(t, "local1", expr)
 
 	tests := []struct {
 		name     string

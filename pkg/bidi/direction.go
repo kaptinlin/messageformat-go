@@ -1,15 +1,14 @@
-// Package bidi provides bidirectional text direction utilities for MessageFormat 2.0
-// TypeScript original code: dir-utils.ts module
+// Package bidi provides bidirectional text direction utilities for MessageFormat 2.0.
 package bidi
 
 import (
-	"strings"
-	"unicode"
+	intllocale "github.com/agentable/go-intl/locale"
+
+	"golang.org/x/text/language"
+	unicodebidi "golang.org/x/text/unicode/bidi"
 )
 
-// Direction represents text direction
-// TypeScript original code:
-// export type Direction = 'ltr' | 'rtl' | 'auto';
+// Direction represents text direction.
 type Direction string
 
 const (
@@ -18,13 +17,7 @@ const (
 	DirAuto Direction = "auto" // Automatic direction detection
 )
 
-// Unicode bidirectional control characters
-// TypeScript original code: Unicode constants
-// TypeScript original code:
-// export const LRI = '\u2066'; // Left-to-Right Isolate
-// export const RLI = '\u2067'; // Right-to-Left Isolate
-// export const FSI = '\u2068'; // First Strong Isolate
-// export const PDI = '\u2069'; // Pop Directional Isolate
+// Unicode bidirectional control characters.
 const (
 	LRI = '\u2066' // Left-to-Right Isolate
 	RLI = '\u2067' // Right-to-Left Isolate
@@ -47,66 +40,36 @@ func ParseDirection(s string) Direction {
 	}
 }
 
-// GetDirection determines text direction from text content
-// TypeScript original code:
-//
-//	export function getDirection(text: string): Direction {
-//	  for (const char of text) {
-//	    const dir = getCharDirection(char);
-//	    if (dir === 'ltr' || dir === 'rtl') {
-//	      return dir;
-//	    }
-//	  }
-//	  return 'auto';
-//	}
+// GetDirection returns the direction of the first strong character in text.
 func GetDirection(text string) Direction {
 	for _, r := range text {
-		if isRTLChar(r) {
-			return DirRTL
-		}
-		if isLTRChar(r) {
+		properties, _ := unicodebidi.LookupRune(r)
+		switch properties.Class() {
+		case unicodebidi.L:
 			return DirLTR
+		case unicodebidi.R, unicodebidi.AL:
+			return DirRTL
+		default:
 		}
 	}
 	return DirAuto
 }
 
-// GetLocaleDirection determines text direction from locale
-// TypeScript original code:
-//
-//	export function getLocaleDirection(locale: string): Direction {
-//	  const rtlLanguages = new Set(['ar', 'he', 'fa', 'ur', 'yi']);
-//	  const lang = locale.split('-')[0];
-//	  return rtlLanguages.has(lang) ? 'rtl' : 'ltr';
-//	}
-func GetLocaleDirection(locale string) Direction {
-	// Extract language code from locale (e.g., "en-US" -> "en")
-	lang, _, _ := strings.Cut(locale, "-")
-	lang = strings.ToLower(lang)
-
-	switch lang {
-	case "ar", "he", "fa", "ur", "yi":
-		return DirRTL
-	default:
-		return DirLTR
+// GetLocaleDirection returns the direction of a locale's explicit or inferred script.
+// It returns DirAuto when the locale or its script cannot be determined.
+func GetLocaleDirection(localeID string) Direction {
+	loc, err := intllocale.Parse(localeID)
+	if err != nil {
+		return DirAuto
 	}
+	script, confidence := loc.Tag().Script()
+	if confidence == language.No || script.String() == "Zzzz" {
+		return DirAuto
+	}
+	return ParseDirection(loc.GetTextInfo().Direction)
 }
 
-// WrapWithIsolation wraps text with appropriate isolation characters
-// TypeScript original code:
-//
-//	export function wrapWithIsolation(text: string, dir: Direction): string {
-//	  switch (dir) {
-//	    case 'ltr':
-//	      return LRI + text + PDI;
-//	    case 'rtl':
-//	      return RLI + text + PDI;
-//	    case 'auto':
-//	      return FSI + text + PDI;
-//	    default:
-//	      return text;
-//	  }
-//	}
+// WrapWithIsolation wraps text with isolation characters for dir.
 func WrapWithIsolation(text string, dir Direction) string {
 	switch dir {
 	case DirLTR:
@@ -117,60 +80,6 @@ func WrapWithIsolation(text string, dir Direction) string {
 		return string(FSI) + text + string(PDI)
 	default:
 		return text
-	}
-}
-
-// isRTLChar checks if a character is right-to-left
-func isRTLChar(r rune) bool {
-	// Check for Arabic, Hebrew, and other RTL scripts
-	switch {
-	case r >= 0x0590 && r <= 0x05FF: // Hebrew
-		return true
-	case r >= 0x0600 && r <= 0x06FF: // Arabic
-		return true
-	case r >= 0x0700 && r <= 0x074F: // Syriac
-		return true
-	case r >= 0x0750 && r <= 0x077F: // Arabic Supplement
-		return true
-	case r >= 0x0780 && r <= 0x07BF: // Thaana
-		return true
-	case r >= 0x07C0 && r <= 0x07FF: // NKo
-		return true
-	case r >= 0x0800 && r <= 0x083F: // Samaritan
-		return true
-	case r >= 0x08A0 && r <= 0x08FF: // Arabic Extended-A
-		return true
-	case r >= 0xFB1D && r <= 0xFB4F: // Hebrew Presentation Forms
-		return true
-	case r >= 0xFB50 && r <= 0xFDFF: // Arabic Presentation Forms-A
-		return true
-	case r >= 0xFE70 && r <= 0xFEFF: // Arabic Presentation Forms-B
-		return true
-	default:
-		return false
-	}
-}
-
-// isLTRChar checks if a character is left-to-right
-func isLTRChar(r rune) bool {
-	// Check for Latin, Cyrillic, and other LTR scripts
-	switch {
-	case r >= 0x0041 && r <= 0x005A: // Basic Latin uppercase
-		return true
-	case r >= 0x0061 && r <= 0x007A: // Basic Latin lowercase
-		return true
-	case r >= 0x00C0 && r <= 0x00FF: // Latin-1 Supplement
-		return true
-	case r >= 0x0100 && r <= 0x017F: // Latin Extended-A
-		return true
-	case r >= 0x0180 && r <= 0x024F: // Latin Extended-B
-		return true
-	case r >= 0x0400 && r <= 0x04FF: // Cyrillic
-		return true
-	case unicode.IsLetter(r): // Other letters are assumed LTR
-		return true
-	default:
-		return false
 	}
 }
 

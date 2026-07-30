@@ -57,6 +57,38 @@ func TestStringValueWithDir(t *testing.T) {
 	assert.Equal(t, "ar", sv.Locale())
 }
 
+func TestWithPartMetadataPreservesUnspecifiedFields(t *testing.T) {
+	t.Parallel()
+
+	value := NewStringValue("hello", "en", "test")
+	parts, err := value.ToParts()
+	require.NoError(t, err)
+	require.Len(t, parts, 1)
+
+	withID := WithPartMetadata(parts[0], "part-id", "")
+	withDir := WithPartMetadata(withID, "", bidi.DirRTL)
+
+	part, ok := withDir.(*StringPart)
+	require.True(t, ok)
+	assert.Equal(t, "part-id", part.ID())
+	assert.Equal(t, bidi.DirRTL, part.Dir())
+}
+
+func TestWithPartMetadataRejectsNilLikeOwnedParts(t *testing.T) {
+	t.Parallel()
+
+	parts := []MessagePart{
+		(*NumberPart)(nil),
+		(*DateTimePart)(nil),
+		(*StringPart)(nil),
+		(*FallbackPart)(nil),
+		(*UnknownPart)(nil),
+	}
+	for _, part := range parts {
+		assert.Nil(t, WithPartMetadata(part, "part-id", bidi.DirRTL))
+	}
+}
+
 func TestNumberValue(t *testing.T) {
 	nv := mustNumberValue(t, 42, "en", "test", nil)
 

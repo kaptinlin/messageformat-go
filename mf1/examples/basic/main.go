@@ -15,14 +15,14 @@ import (
 	"fmt"
 	"log"
 
-	mf "github.com/kaptinlin/messageformat-go/mf1"
+	"github.com/kaptinlin/messageformat-go/mf1"
 )
 
 func main() {
 	fmt.Println("=== Basic MessageFormat Examples ===")
 
 	// Create a MessageFormat instance
-	messageFormat, err := mf.New("en", nil)
+	messageFormat, err := mf1.New("en", nil)
 	if err != nil {
 		log.Fatal(err)
 	}

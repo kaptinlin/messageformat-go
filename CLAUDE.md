@@ -111,7 +111,11 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - **Thread safety** — MessageFormat instances are immutable after construction, safe for concurrent use
 - **Closed options** — Root constructor enum values use exported typed constants; `Parse` and `Compile` reject unsupported values with `ErrInvalidOption`
 - **Snapshot ownership** — Clone caller-owned containers before storage and return detached maps/slices from public inspection accessors
+- **Fallible model boundaries** — Public model constructors and `StringifyMessage` reject invalid or unrepresentable values with stable errors; serialization is canonical and deterministic
+- **Extension boundaries** — Reject nil-like function values and parts before method dispatch; preserve concrete package part APIs and existing metadata when applying universal options
+- **Unicode facts** — Derive bidi direction and locale/script facts from Unicode-aware dependencies, never from local language or script catalogs
 - **Typed MF1 jobs** — Use `mf1.New(string, ...)` for locale lookup and `mf1.NewWithPlural(mf1.PluralProfile, ...)` for custom plural behavior; malformed locales fail while valid unsupported locales use the stable fallback
+- **MF1 numeric fidelity** — Preserve exact integers through exact selection, offset, plural category, and `#`; propagate selector errors through both projections
 - **Error returns** — All errors returned via `error`, never panic in production code
 - **Preserve `mf1` support** — Changes must keep `mf1/` building and tested; do not remove or downgrade `mf1` because it supports ICU MessageFormat v1
 - Follow Google Go Best Practices: <https://google.github.io/go-style/best-practices>
@@ -144,6 +148,7 @@ Source String → CST (internal/cst) → DataModel (pkg/datamodel) → Resolutio
 - **Patterns:** Table-driven tests with `t.Run()`, `t.Parallel()` where safe
 - **Coverage:** Use coverage reports to find untested behavior; acceptance depends on behavior, race, lint, and pinned-corpus gates rather than a fixed percentage
 - **Official test suite:** Git submodule at `tests/messageformat-wg/` pins the corpus checked by `task test-official`
+- **Reference honesty:** Only the pinned MF2 corpus is official; MF1 reference vectors are normal unit tests with exact `.reference/messageformat` provenance
 
 ```bash
 # Run specific package tests

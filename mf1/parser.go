@@ -55,7 +55,7 @@
 //   lineBreaks: number;
 // }
 
-package v1
+package mf1
 
 import (
 	"errors"

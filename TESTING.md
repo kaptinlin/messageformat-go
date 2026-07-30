@@ -8,8 +8,11 @@ This repository validates the current Unicode MessageFormat 2.0 implementation t
 
 ## 🏆 Specification Compliance
 
-- **MessageFormat 2.0**: `task test-official` checks the implementation against the corpus pinned by `tests/messageformat-wg`
+- **MessageFormat 2.0**: `task test-official` checks only the MF2 implementation against the corpus pinned by `tests/messageformat-wg`
+- **MessageFormat 1**: `mf1/reference_behavior_test.go` contains selected behavior vectors with exact source provenance; these are ordinary MF1 module tests, not an official conformance corpus
 - **Module Coverage**: Root MF2 and `mf1/` have independent `go.mod` files and are both covered by aggregate gates
+
+The `.reference/messageformat` gitlink is design and behavior evidence. Tests and CI do not load it as a build fixture.
 
 ## 🚀 Quick Start
 
@@ -67,7 +70,7 @@ task bench
 1. **Official Test Suite** (`./tests/`): Unicode MessageFormat Working Group tests
 2. **API Tests** (`messageformat_test.go`): Constructor and formatting methods
 3. **Package Tests** (`./pkg/`, `./internal/`): Component-specific functionality
-4. **MF1 Module Tests** (`mf1/*_test.go`): ICU MessageFormat v1 behavior and examples
+4. **MF1 Module Tests** (`mf1/*_test.go`): ICU MessageFormat v1 behavior, reference-derived vectors, and examples
 
 ### File Organization
 
@@ -83,6 +86,7 @@ messageformat-go/
 ├── examples/*/main_test.go           # Root example tests
 └── mf1/                              # Independent MF1 module
     ├── go.mod
+    ├── reference_behavior_test.go      # Selected reference-derived behavior vectors
     ├── *_test.go                     # MF1 API and behavior tests
     └── examples/*/main_test.go        # MF1 example tests
 ```

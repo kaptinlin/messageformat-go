@@ -58,7 +58,7 @@
 //
 // export const lexer = moo.states(states);
 
-package v1
+package mf1
 
 import (
 	"fmt"

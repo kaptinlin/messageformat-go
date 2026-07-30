@@ -86,7 +86,7 @@ func TestSelectPatternReportsBadSelectorForNonSelectableValues(t *testing.T) {
 	ctx := newSelectorCoverageContext(map[string]any{"amount": value}, func(err error) {
 		errs = append(errs, err)
 	})
-	ctx.LocalVars[value] = true
+	ctx.ResolvedDeclarations["amount"] = true
 	message := newSelectorCoverageMessage(t, "amount",
 		newSelectorCoverageVariant(t, datamodel.NewCatchallKey("*"), "fallback"),
 	)
@@ -105,7 +105,7 @@ func TestSelectPatternRecoversFromSelectorPanic(t *testing.T) {
 	ctx := newSelectorCoverageContext(map[string]any{"value": value}, func(err error) {
 		errs = append(errs, err)
 	})
-	ctx.LocalVars[value] = true
+	ctx.ResolvedDeclarations["value"] = true
 	message := newSelectorCoverageMessage(t, "value",
 		newSelectorCoverageVariant(t, datamodel.NewLiteral("literal"), "literal"),
 		newSelectorCoverageVariant(t, datamodel.NewCatchallKey("*"), "catchall"),

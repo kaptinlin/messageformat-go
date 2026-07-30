@@ -5,7 +5,7 @@ Reference for the supported ICU MessageFormat v1 compatibility module.
 ## Import
 
 ```go
-import mf "github.com/kaptinlin/messageformat-go/mf1"
+import "github.com/kaptinlin/messageformat-go/mf1"
 ```
 
 ## Construction
@@ -13,7 +13,7 @@ import mf "github.com/kaptinlin/messageformat-go/mf1"
 Construct from a locale with `New`:
 
 ```go
-messageFormat, err := mf.New("en", nil)
+messageFormat, err := mf1.New("en", nil)
 ```
 
 The first argument is the locale. The second is an optional `*MessageFormatOptions`.
@@ -21,11 +21,11 @@ The first argument is the locale. The second is an optional `*MessageFormatOptio
 Construct from complete custom plural facts with `NewWithPlural`:
 
 ```go
-messageFormat, err := mf.NewWithPlural(mf.PluralProfile{
+messageFormat, err := mf1.NewWithPlural(mf1.PluralProfile{
     Locale:    "fr",
     Select:    selectPlural,
-    Cardinals: []mf.PluralCategory{mf.PluralOne, mf.PluralOther},
-    Ordinals:  []mf.PluralCategory{mf.PluralOther},
+    Cardinals: []mf1.PluralCategory{mf1.PluralOne, mf1.PluralOther},
+    Ordinals:  []mf1.PluralCategory{mf1.PluralOther},
 }, nil)
 ```
 
@@ -37,7 +37,7 @@ both category slices.
 Typical usage is compile once, then execute:
 
 ```go
-messageFormat, err := mf.New("en", nil)
+messageFormat, err := mf1.New("en", nil)
 if err != nil {
 	return
 }
@@ -99,8 +99,8 @@ formatter := func(value any, locale, style string) (string, error) {
     return locale + ":" + style + ":" + value.(string), nil
 }
 
-messageFormat, err := mf.New("en", &mf.MessageFormatOptions{
-    CustomFormatters: map[string]mf.Formatter{"label": formatter},
+messageFormat, err := mf1.New("en", &mf1.MessageFormatOptions{
+    CustomFormatters: map[string]mf1.Formatter{"label": formatter},
 })
 ```
 

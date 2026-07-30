@@ -205,6 +205,7 @@ type DateTimePart struct {
 	source   string
 	locale   string
 	dir      bidi.Direction
+	id       string
 	calendar string
 	timeZone string
 	parts    []MessagePart
@@ -232,6 +233,11 @@ func (dtp *DateTimePart) Locale() string {
 
 func (dtp *DateTimePart) Dir() bidi.Direction {
 	return dtp.dir
+}
+
+// ID returns the universal identifier attached to this part.
+func (dtp *DateTimePart) ID() string {
+	return dtp.id
 }
 
 // Calendar returns the dependency-resolved calendar identifier.

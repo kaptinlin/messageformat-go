@@ -1,5 +1,5 @@
 // errors.go - Common error definitions to satisfy err113 linter
-package v1
+package mf1
 
 import (
 	"errors"

@@ -1,4 +1,4 @@
-// Package v1 provides ICU MessageFormat implementation for Go.
+// Package mf1 provides an ICU MessageFormat v1 implementation for Go.
 //
 // This package implements the ICU MessageFormat specification, providing
 // internationalization support for formatting messages with variables,
@@ -6,7 +6,7 @@
 //
 // Example usage:
 //
-//	mf, err := v1.New("en", nil)
+//	mf, err := mf1.New("en", nil)
 //	if err != nil {
 //		log.Fatal(err)
 //	}
@@ -37,14 +37,13 @@
 // Behavioral reference:
 // .reference/messageformat/mf1/packages/core/src/messageformat.ts
 
-package v1
+package mf1
 
 import (
 	"fmt"
 	"maps"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"unicode"
 )
@@ -105,11 +104,6 @@ type MessageFormatOptions struct {
 	// Default: nil (zero value)
 	CustomFormatters map[string]Formatter `json:"customFormatters,omitempty"`
 
-	// Used to identify and map keys to locale identifiers
-	// Return empty string for null/undefined (following TypeScript pattern)
-	// Default: nil (zero value)
-	LocaleCodeFromKey func(key string) string `json:"-"`
-
 	// Require all message arguments to be set with a defined value
 	// Default: false (zero value)
 	RequireAllArguments bool `json:"requireAllArguments,omitempty"`
@@ -125,14 +119,13 @@ type MessageFormatOptions struct {
 
 // MessageFormatOptionsWithDefaults represents options with default values applied
 type MessageFormatOptionsWithDefaults struct {
-	BiDiSupport         bool                    `json:"biDiSupport"`
-	Currency            string                  `json:"currency"`
-	TimeZone            string                  `json:"timeZone"`
-	CustomFormatters    map[string]Formatter    `json:"customFormatters"`
-	LocaleCodeFromKey   func(key string) string `json:"-"`
-	RequireAllArguments bool                    `json:"requireAllArguments"`
-	Strict              bool                    `json:"strict"`
-	StrictPluralKeys    bool                    `json:"strictPluralKeys"`
+	BiDiSupport         bool                 `json:"biDiSupport"`
+	Currency            string               `json:"currency"`
+	TimeZone            string               `json:"timeZone"`
+	CustomFormatters    map[string]Formatter `json:"customFormatters"`
+	RequireAllArguments bool                 `json:"requireAllArguments"`
+	Strict              bool                 `json:"strict"`
+	StrictPluralKeys    bool                 `json:"strictPluralKeys"`
 }
 
 // ResolvedMessageFormatOptions represents resolved options returned by resolvedOptions
@@ -243,7 +236,6 @@ func New(locale string, options *MessageFormatOptions) (*MessageFormat, error) {
 		Currency:            "USD",            // Default currency
 		TimeZone:            opts.TimeZone,    // Empty string means system timezone
 		CustomFormatters:    maps.Clone(opts.CustomFormatters),
-		LocaleCodeFromKey:   opts.LocaleCodeFromKey,
 		RequireAllArguments: opts.RequireAllArguments, // false is meaningful default
 		Strict:              opts.Strict,              // false is meaningful default
 		StrictPluralKeys:    true,                     // Default to true
@@ -351,6 +343,18 @@ func (mf *MessageFormat) Compile(message string) (*CompiledMessage, error) {
 	if len(mf.plurals) > 0 {
 		plural = &mf.plurals[0]
 	}
+	bidiMark := ""
+	if mf.options.BiDiSupport {
+		locale := defaultLocale
+		if plural != nil && plural.Locale != "" {
+			locale = plural.Locale
+		}
+		var err error
+		bidiMark, err = bidiMarkForLocale(locale)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	tokens, err := Parse(message, &ParseOptions{
 		Strict:           mf.options.Strict,
@@ -364,7 +368,7 @@ func (mf *MessageFormat) Compile(message string) (*CompiledMessage, error) {
 
 	return &CompiledMessage{
 		evaluate: func(values map[string]any) ([]any, error) {
-			result, err := mf.executeTokens(tokens, values, plural, nil)
+			result, err := mf.executeTokens(tokens, values, plural, nil, bidiMark)
 			if err != nil {
 				return nil, fmt.Errorf("execution error: %w", err)
 			}
@@ -381,6 +385,7 @@ func (mf *MessageFormat) executeTokens(
 	values map[string]any,
 	plural *PluralObject,
 	pluralContext *Select,
+	bidiMark string,
 ) ([]any, error) {
 	result := make([]any, 0, len(tokens))
 	for _, token := range tokens {
@@ -395,6 +400,9 @@ func (mf *MessageFormat) executeTokens(
 					return nil, WrapMissingArgument(token.Arg)
 				}
 				value = ""
+			}
+			if bidiMark != "" {
+				value = bidiMark + fmt.Sprint(value) + bidiMark
 			}
 			result = append(result, value)
 
@@ -427,6 +435,7 @@ func (mf *MessageFormat) executeTokens(
 				values,
 				plural,
 				nestedPluralContext,
+				bidiMark,
 			)
 			if err != nil {
 				return nil, err
@@ -530,21 +539,13 @@ func (mf *MessageFormat) selectCase(sel *Select, paramMap map[string]any, plural
 
 	case "plural", "selectordinal":
 		// Numeric matching with plural rules
-		var numValue float64
-		switch v := value.(type) {
-		case int:
-			numValue = float64(v)
-		case float64:
-			numValue = v
-		case string:
-			// Try to parse as number
-			_, _ = fmt.Sscanf(v, "%f", &numValue) // Explicitly ignore parsing errors
-		default:
-			numValue = 0
+		number, err := newCompiledNumber(value)
+		if err != nil {
+			return nil, err
 		}
 
 		// Check exact matches first (=n)
-		exactKey := formatExactKey(numValue)
+		exactKey := number.exactKey()
 		for _, c := range sel.Cases {
 			if c.Key == exactKey {
 				return &c, nil
@@ -553,17 +554,18 @@ func (mf *MessageFormat) selectCase(sel *Select, paramMap map[string]any, plural
 
 		// Exact keys use the original value; only plural category selection uses the offset.
 		if sel.PluralOffset != nil {
-			numValue -= float64(*sel.PluralOffset)
+			number = number.subtract(*sel.PluralOffset)
 		}
 
 		// Use plural function to determine category
 		if plural != nil && plural.Func != nil {
-			category, err := plural.Func(numValue, sel.Type == "selectordinal")
-			if err == nil {
-				for _, c := range sel.Cases {
-					if c.Key == string(category) {
-						return &c, nil
-					}
+			category, err := plural.Func(number.value, sel.Type == "selectordinal")
+			if err != nil {
+				return nil, fmt.Errorf("select plural category: %w", err)
+			}
+			for _, c := range sel.Cases {
+				if c.Key == string(category) {
+					return &c, nil
 				}
 			}
 		}
@@ -586,29 +588,9 @@ func (mf *MessageFormat) selectCase(sel *Select, paramMap map[string]any, plural
 //	  return _nf(lc).format(value - offset);
 //	}
 func (mf *MessageFormat) numberFormatter(locale string, value any, offset int) (string, error) {
-	// Convert value to number
-	var num float64
-	switch v := value.(type) {
-	case int:
-		num = float64(v)
-	case int64:
-		num = float64(v)
-	case float64:
-		num = v
-	case float32:
-		num = float64(v)
-	case string:
-		parsed, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			return "", WrapInvalidNumberStr(v)
-		}
-		num = parsed
-	default:
-		return "", WrapInvalidType(fmt.Sprintf("%T", value))
+	number, err := newCompiledNumber(value)
+	if err != nil {
+		return "", err
 	}
-
-	// Apply offset
-	result := num - float64(offset)
-
-	return formatNumber(result, locale, "", mf.options.Currency)
+	return number.subtract(offset).format(locale)
 }

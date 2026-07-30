@@ -84,6 +84,11 @@ func TestGetDirection(t *testing.T) {
 			expected: DirRTL,
 		},
 		{
+			name:     "Adlam supplementary-plane text",
+			text:     "𞤀",
+			expected: DirRTL,
+		},
+		{
 			name:     "Mixed text with LTR first",
 			text:     "Hello مرحبا",
 			expected: DirLTR,
@@ -111,6 +116,11 @@ func TestGetDirection(t *testing.T) {
 		{
 			name:     "Neutral prefix before LTR",
 			text:     "123 ! Hello",
+			expected: DirLTR,
+		},
+		{
+			name:     "Combining prefix before LTR",
+			text:     "\u0301\u0308Hello",
 			expected: DirLTR,
 		},
 		{
@@ -248,6 +258,26 @@ func TestGetLocaleDirection(t *testing.T) {
 			expected: DirLTR,
 		},
 		{
+			name:     "English with Arabic script",
+			locale:   "en-Arab",
+			expected: DirRTL,
+		},
+		{
+			name:     "Arabic with Arabic script",
+			locale:   "ar-Arab",
+			expected: DirRTL,
+		},
+		{
+			name:     "Arabic with Latin script",
+			locale:   "ar-Latn",
+			expected: DirLTR,
+		},
+		{
+			name:     "Hebrew with Hebrew script",
+			locale:   "he-Hebr",
+			expected: DirRTL,
+		},
+		{
 			name:     "French locale",
 			locale:   "fr",
 			expected: DirLTR,
@@ -260,12 +290,27 @@ func TestGetLocaleDirection(t *testing.T) {
 		{
 			name:     "Empty locale",
 			locale:   "",
-			expected: DirLTR,
+			expected: DirAuto,
 		},
 		{
 			name:     "Unknown locale",
 			locale:   "xx",
+			expected: DirAuto,
+		},
+		{
+			name:     "Malformed locale",
+			locale:   "en--US",
+			expected: DirAuto,
+		},
+		{
+			name:     "Undetermined locale uses its inferred script",
+			locale:   "und",
 			expected: DirLTR,
+		},
+		{
+			name:     "Explicit unknown script",
+			locale:   "und-Zzzz",
+			expected: DirAuto,
 		},
 	}
 

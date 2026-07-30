@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -33,7 +34,8 @@ func (p testPart) Locale() string { return "en" }
 func (p testPart) Dir() Direction { return DirAuto }
 
 type customValue struct {
-	part messagevalue.MessagePart
+	part   messagevalue.MessagePart
+	labels []string
 }
 
 func (v customValue) Type() string              { return v.part.Type() }
@@ -61,8 +63,20 @@ func (f failingValue) ToString() (string, error) { return "", nil }
 func (f failingValue) ToParts() ([]messagevalue.MessagePart, error) {
 	return nil, pkgerrors.NewMessageResolutionError(pkgerrors.ErrorTypeBadOperand, "bad operand", "$value")
 }
-func (f failingValue) ValueOf() (any, error)                 { return nil, nil }
-func (f failingValue) SelectKeys([]string) ([]string, error) { return nil, nil }
+
+type partsValue struct {
+	parts []messagevalue.MessagePart
+}
+
+func (v partsValue) Type() string                                 { return "custom" }
+func (v partsValue) Source() string                               { return ":custom" }
+func (v partsValue) Dir() Direction                               { return DirAuto }
+func (v partsValue) Locale() string                               { return "en" }
+func (v partsValue) ToString() (string, error)                    { return "custom", nil }
+func (v partsValue) ToParts() ([]messagevalue.MessagePart, error) { return v.parts, nil }
+func (v partsValue) ValueOf() (any, error)                        { return "custom", nil }
+func (f failingValue) ValueOf() (any, error)                      { return nil, nil }
+func (f failingValue) SelectKeys([]string) ([]string, error)      { return nil, nil }
 
 func normalizeTestLocales(locales any) []string {
 	switch v := locales.(type) {
@@ -390,6 +404,149 @@ func TestCompileSnapshotsFunctionOptions(t *testing.T) {
 	got, err := mf.Format(nil)
 	require.NoError(t, err)
 	assert.Equal(t, "before", got)
+}
+
+func TestFormatRejectsNilLikeFunctionResult(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		result messagevalue.MessageValue
+	}{
+		{name: "nil"},
+		{name: "typed nil", result: (*customValue)(nil)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			broken := func(functions.MessageFunctionContext, functions.Options, any) messagevalue.MessageValue {
+				return tt.result
+			}
+			mf, err := Parse([]string{"en"}, "{:broken}", WithFunction("broken", broken), WithBidiIsolation(BidiNone))
+			require.NoError(t, err)
+
+			formatted, err := mf.Format(nil)
+
+			assert.Equal(t, "{:broken}", formatted)
+			require.Error(t, err)
+			var resolutionErr *pkgerrors.MessageResolutionError
+			require.ErrorAs(t, err, &resolutionErr)
+			assert.Equal(t, pkgerrors.ErrorTypeBadFunctionResult, resolutionErr.ErrorType())
+			assert.Equal(t, 1, strings.Count(err.Error(), string(pkgerrors.ErrorTypeBadFunctionResult)))
+		})
+	}
+}
+
+func TestFormatToPartsRejectsNilLikeFunctionResult(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		result messagevalue.MessageValue
+	}{
+		{name: "nil"},
+		{name: "typed nil", result: (*customValue)(nil)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			broken := func(functions.MessageFunctionContext, functions.Options, any) messagevalue.MessageValue {
+				return tt.result
+			}
+			mf, err := Parse([]string{"en"}, "{:broken}", WithFunction("broken", broken), WithBidiIsolation(BidiNone))
+			require.NoError(t, err)
+
+			parts, err := mf.FormatToParts(nil)
+
+			require.Len(t, parts, 1)
+			assert.Equal(t, "fallback", parts[0].Type())
+			assert.Equal(t, ":broken", parts[0].Source())
+			require.Error(t, err)
+			var resolutionErr *pkgerrors.MessageResolutionError
+			require.ErrorAs(t, err, &resolutionErr)
+			assert.Equal(t, pkgerrors.ErrorTypeBadFunctionResult, resolutionErr.ErrorType())
+			assert.Equal(t, 1, strings.Count(err.Error(), string(pkgerrors.ErrorTypeBadFunctionResult)))
+		})
+	}
+}
+
+func TestFunctionResultBoundaryAcceptsValidResult(t *testing.T) {
+	t.Parallel()
+
+	valid := func(ctx functions.MessageFunctionContext, _ functions.Options, _ any) messagevalue.MessageValue {
+		return messagevalue.NewStringValue("valid", ctx.Locales()[0], ctx.Source())
+	}
+	mf, err := Parse([]string{"en"}, "{:valid}", WithFunction("valid", valid), WithBidiIsolation(BidiNone))
+	require.NoError(t, err)
+
+	formatted, err := mf.Format(nil)
+	require.NoError(t, err)
+	assert.Equal(t, "valid", formatted)
+
+	parts, err := mf.FormatToParts(nil)
+	require.NoError(t, err)
+	require.Len(t, parts, 1)
+	assert.Equal(t, "string", parts[0].Type())
+	assert.Equal(t, "valid", parts[0].Value())
+}
+
+func TestFormatSupportsNonComparableLocalValue(t *testing.T) {
+	t.Parallel()
+
+	custom := func(functions.MessageFunctionContext, functions.Options, any) messagevalue.MessageValue {
+		return customValue{
+			part:   testPart{typ: "custom", value: "value"},
+			labels: []string{"non-comparable"},
+		}
+	}
+	mf, err := Parse(
+		[]string{"en"},
+		".local $local = {:custom}\n{{{$local}}}",
+		WithFunction("custom", custom),
+		WithBidiIsolation(BidiNone),
+	)
+	require.NoError(t, err)
+
+	formatted, err := mf.Format(nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, "value", formatted)
+}
+
+func TestProjectionsSupportChainedNonComparableLocalValue(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int64
+	custom := func(functions.MessageFunctionContext, functions.Options, any) messagevalue.MessageValue {
+		calls.Add(1)
+		return customValue{
+			part:   testPart{typ: "custom", value: "value"},
+			labels: []string{"non-comparable"},
+		}
+	}
+	mf, err := Parse(
+		[]string{"en"},
+		".local $first = {:custom}\n.local $second = {$first}\n{{{$second}}}",
+		WithFunction("custom", custom),
+		WithBidiIsolation(BidiNone),
+	)
+	require.NoError(t, err)
+
+	formatted, err := mf.Format(nil)
+	require.NoError(t, err)
+	assert.Equal(t, "value", formatted)
+	assert.EqualValues(t, 1, calls.Load())
+
+	parts, err := mf.FormatToParts(nil)
+	require.NoError(t, err)
+	require.Len(t, parts, 1)
+	assert.Equal(t, "custom", parts[0].Type())
+	assert.Equal(t, "value", parts[0].Value())
+	assert.EqualValues(t, 2, calls.Load())
 }
 
 func TestCompiledMessageFormatSupportsConcurrentFormatting(t *testing.T) {
@@ -963,17 +1120,26 @@ func TestFormatFocusedBehaviors(t *testing.T) {
 		assert.Equal(t, "{$value}", parts[2].Value())
 	})
 
-	t.Run("RTL locale enables default bidi isolation", func(t *testing.T) {
+	t.Run("explicit RTL script locale isolates both projections", func(t *testing.T) {
 		t.Parallel()
 
-		mf, err := Parse([]string{"ar"}, "Hello {$name}")
+		mf, err := Parse([]string{"en-Arab"}, "Hello {$name :string}")
 		require.NoError(t, err)
 		assert.True(t, mf.BidiIsolation())
+		assert.Equal(t, "rtl", mf.Dir())
 
 		formatted, err := mf.Format(map[string]any{"name": "World"})
 		require.NoError(t, err)
-		assert.Contains(t, formatted, string('\u2068'))
-		assert.Contains(t, formatted, string('\u2069'))
+		assert.Equal(t, "Hello \u2068World\u2069", formatted)
+
+		parts, err := mf.FormatToParts(map[string]any{"name": "World"})
+		require.NoError(t, err)
+		require.Len(t, parts, 4)
+		assert.Equal(t, "bidiIsolation", parts[1].Type())
+		assert.Equal(t, "\u2068", parts[1].Value())
+		assert.Equal(t, "string", parts[2].Type())
+		assert.Equal(t, "bidiIsolation", parts[3].Type())
+		assert.Equal(t, "\u2069", parts[3].Value())
 	})
 
 	t.Run("universal options annotate parts and force isolation", func(t *testing.T) {
@@ -981,6 +1147,10 @@ func TestFormatFocusedBehaviors(t *testing.T) {
 
 		mf, err := Parse([]string{"en"}, `Hello {$name :string u:dir=rtl u:locale=ar u:id=user-name}`, WithBidiIsolation(BidiDefault))
 		require.NoError(t, err)
+
+		formatted, err := mf.Format(map[string]any{"name": "ليلى"})
+		require.NoError(t, err)
+		assert.Equal(t, "Hello \u2067ليلى\u2069", formatted)
 
 		parts, err := mf.FormatToParts(map[string]any{"name": "ليلى"})
 		require.NoError(t, err)
@@ -996,9 +1166,294 @@ func TestFormatFocusedBehaviors(t *testing.T) {
 		withID, ok := parts[2].(interface{ ID() string })
 		require.True(t, ok)
 		assert.Equal(t, "user-name", withID.ID())
-		withLocale, ok := parts[2].(interface{ PartLocale() string })
-		require.True(t, ok)
-		assert.Equal(t, "en", withLocale.PartLocale())
+	})
+
+	t.Run("universal metadata preserves number part", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name    string
+			options string
+			wantID  string
+			wantDir Direction
+		}{
+			{name: "none", wantDir: DirLTR},
+			{name: "id", options: " u:id=amount", wantID: "amount", wantDir: DirLTR},
+			{name: "dir", options: " u:dir=rtl", wantDir: DirRTL},
+			{name: "id and dir", options: " u:id=amount u:dir=rtl", wantID: "amount", wantDir: DirRTL},
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				mf, err := Parse([]string{"en"}, "{$value :number"+tc.options+"}")
+				require.NoError(t, err)
+				parts, err := mf.FormatToParts(map[string]any{"value": 42})
+				require.NoError(t, err)
+				var number *messagevalue.NumberPart
+				for _, part := range parts {
+					if candidate, ok := part.(*messagevalue.NumberPart); ok {
+						number = candidate
+						break
+					}
+				}
+				require.NotNil(t, number, "parts: %T", parts)
+				require.NotEmpty(t, number.Parts())
+				assert.Equal(t, tc.wantID, number.ID())
+				assert.Equal(t, tc.wantDir, number.Dir())
+			})
+		}
+	})
+
+	t.Run("universal metadata preserves datetime part", func(t *testing.T) {
+		t.Parallel()
+
+		value := time.Date(2026, time.July, 30, 12, 0, 0, 0, time.UTC)
+		tests := []struct {
+			name    string
+			options string
+			wantID  string
+			wantDir Direction
+		}{
+			{name: "none", wantDir: DirAuto},
+			{name: "id", options: " u:id=when", wantID: "when", wantDir: DirAuto},
+			{name: "dir", options: " u:dir=ltr", wantDir: DirLTR},
+			{name: "id and dir", options: " u:id=when u:dir=ltr", wantID: "when", wantDir: DirLTR},
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				mf, err := Parse(
+					[]string{"en"},
+					"{$value :datetime"+tc.options+"}",
+					WithFunctions(functions.DraftFunctionMap()),
+				)
+				require.NoError(t, err)
+				parts, err := mf.FormatToParts(map[string]any{"value": value})
+				require.NoError(t, err)
+				require.Len(t, parts, 3)
+				datetime, ok := parts[1].(*messagevalue.DateTimePart)
+				require.True(t, ok, "got %T", parts[1])
+				assert.NotEmpty(t, datetime.Calendar())
+				assert.Equal(t, "UTC", datetime.TimeZone())
+				require.NotEmpty(t, datetime.Parts())
+				assert.Equal(t, tc.wantID, datetime.ID())
+				assert.Equal(t, tc.wantDir, datetime.Dir())
+			})
+		}
+	})
+
+	t.Run("universal metadata preserves string part", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name    string
+			options string
+			wantID  string
+			wantDir Direction
+		}{
+			{name: "none", wantDir: DirAuto},
+			{name: "id", options: " u:id=item", wantID: "item", wantDir: DirAuto},
+			{name: "dir", options: " u:dir=rtl", wantDir: DirRTL},
+			{name: "id and dir", options: " u:id=item u:dir=rtl", wantID: "item", wantDir: DirRTL},
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				mf, err := Parse([]string{"en"}, "{$value :string"+tc.options+"}")
+				require.NoError(t, err)
+
+				parts, err := mf.FormatToParts(map[string]any{"value": "hello"})
+				require.NoError(t, err)
+				require.Len(t, parts, 3)
+				value, ok := parts[1].(*messagevalue.StringPart)
+				require.True(t, ok, "got %T", parts[1])
+				assert.Equal(t, "hello", value.Text())
+				assert.Equal(t, tc.wantDir, value.Dir())
+				assert.Equal(t, tc.wantID, value.ID())
+			})
+		}
+	})
+
+	t.Run("direction override preserves existing part ID", func(t *testing.T) {
+		t.Parallel()
+
+		value := messagevalue.NewStringValue("hello", "en", ":test")
+		parts, err := value.ToParts()
+		require.NoError(t, err)
+		require.Len(t, parts, 1)
+		part := messagevalue.WithPartMetadata(parts[0], "owned-id", "")
+		custom := func(functions.MessageFunctionContext, functions.Options, any) messagevalue.MessageValue {
+			return partsValue{parts: []messagevalue.MessagePart{part}}
+		}
+
+		mf, err := Parse(
+			[]string{"en"},
+			`{:test u:dir=rtl}`,
+			WithFunction("test", custom),
+			WithBidiIsolation(BidiNone),
+		)
+		require.NoError(t, err)
+
+		got, err := mf.FormatToParts(nil)
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		stringPart, ok := got[0].(*messagevalue.StringPart)
+		require.True(t, ok, "got %T", got[0])
+		assert.Equal(t, "owned-id", stringPart.ID())
+		assert.Equal(t, DirRTL, stringPart.Dir())
+	})
+
+	t.Run("nil-like custom part returns diagnostic", func(t *testing.T) {
+		t.Parallel()
+
+		custom := func(functions.MessageFunctionContext, functions.Options, any) messagevalue.MessageValue {
+			return partsValue{parts: []messagevalue.MessagePart{(*messagevalue.StringPart)(nil)}}
+		}
+		mf, err := Parse(
+			[]string{"en"},
+			`{:test u:dir=rtl}`,
+			WithFunction("test", custom),
+			WithBidiIsolation(BidiNone),
+		)
+		require.NoError(t, err)
+
+		parts, err := mf.FormatToParts(nil)
+		require.Error(t, err)
+		require.Len(t, parts, 1)
+		assert.Equal(t, "fallback", parts[0].Type())
+		var resolutionErr *pkgerrors.MessageResolutionError
+		require.ErrorAs(t, err, &resolutionErr)
+		assert.Equal(t, pkgerrors.ErrorTypeBadFunctionResult, resolutionErr.ErrorType())
+	})
+
+	t.Run("universal metadata preserves fallback part", func(t *testing.T) {
+		t.Parallel()
+
+		fallback := func(ctx functions.MessageFunctionContext, _ functions.Options, _ any) messagevalue.MessageValue {
+			return messagevalue.NewFallbackValue(ctx.Source(), "en")
+		}
+		tests := []struct {
+			name    string
+			options string
+			wantID  string
+			wantDir Direction
+		}{
+			{name: "none", wantDir: DirAuto},
+			{name: "id", options: " u:id=item", wantID: "item", wantDir: DirAuto},
+			{name: "dir", options: " u:dir=rtl", wantDir: DirRTL},
+			{name: "id and dir", options: " u:id=item u:dir=rtl", wantID: "item", wantDir: DirRTL},
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				mf, err := Parse(
+					[]string{"en"},
+					"{:test"+tc.options+"}",
+					WithFunction("test", fallback),
+				)
+				require.NoError(t, err)
+
+				parts, err := mf.FormatToParts(nil)
+				require.NoError(t, err)
+				require.Len(t, parts, 3)
+				value, ok := parts[1].(*messagevalue.FallbackPart)
+				require.True(t, ok, "got %T", parts[1])
+				assert.NotEmpty(t, value.Text())
+				assert.Equal(t, tc.wantDir, value.Dir())
+				assert.Equal(t, tc.wantID, value.ID())
+			})
+		}
+	})
+
+	t.Run("universal metadata preserves unknown part", func(t *testing.T) {
+		t.Parallel()
+
+		unknown := func(ctx functions.MessageFunctionContext, _ functions.Options, _ any) messagevalue.MessageValue {
+			return messagevalue.NewUnknownValue(ctx.Source(), []string{"unknown"}, "en")
+		}
+		mf, err := Parse(
+			[]string{"en"},
+			`{:test u:id=item u:dir=rtl}`,
+			WithFunction("test", unknown),
+		)
+		require.NoError(t, err)
+
+		parts, err := mf.FormatToParts(nil)
+		require.NoError(t, err)
+		require.Len(t, parts, 3)
+		value, ok := parts[1].(*messagevalue.UnknownPart)
+		require.True(t, ok, "got %T", parts[1])
+		assert.Equal(t, []string{"unknown"}, value.Any())
+		assert.Equal(t, "item", value.ID())
+		assert.Equal(t, DirRTL, value.Dir())
+	})
+
+	t.Run("markup metadata preserves markup part", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name      string
+			options   string
+			wantID    string
+			wantError bool
+		}{
+			{name: "none"},
+			{name: "id", options: " u:id=tag-id", wantID: "tag-id"},
+			{name: "dir", options: " u:dir=rtl", wantError: true},
+			{name: "id and dir", options: " u:id=tag-id u:dir=rtl", wantID: "tag-id", wantError: true},
+		}
+
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				mf, err := Parse([]string{"en"}, "{#tag"+tc.options+"}content{/tag}")
+				require.NoError(t, err)
+				parts, err := mf.FormatToParts(nil)
+				if tc.wantError {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
+				require.Len(t, parts, 3)
+				markup, ok := parts[0].(*messagevalue.MarkupPart)
+				require.True(t, ok, "got %T", parts[0])
+				assert.Equal(t, "open", markup.Kind())
+				assert.Equal(t, "tag", markup.Name())
+				assert.Equal(t, tc.wantID, markup.ID())
+			})
+		}
+	})
+
+	t.Run("universal metadata leaves custom part untouched", func(t *testing.T) {
+		t.Parallel()
+
+		part := &testPart{typ: "custom", value: "value"}
+		custom := func(functions.MessageFunctionContext, functions.Options, any) messagevalue.MessageValue {
+			return customValue{part: part}
+		}
+		mf, err := Parse(
+			[]string{"en"},
+			`{:test u:id=item u:dir=rtl}`,
+			WithFunction("test", custom),
+		)
+		require.NoError(t, err)
+
+		parts, err := mf.FormatToParts(nil)
+		require.NoError(t, err)
+		require.Len(t, parts, 3)
+		assert.Same(t, part, parts[1])
+		_, hasID := parts[1].(interface{ ID() string })
+		assert.False(t, hasID)
+		assert.Equal(t, DirAuto, parts[1].Dir())
 	})
 }
 

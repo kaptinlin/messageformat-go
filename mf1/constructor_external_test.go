@@ -1,7 +1,9 @@
-package v1_test
+package mf1_test
 
 import (
 	"errors"
+	"fmt"
+	"math"
 	"sync"
 	"testing"
 	"time"
@@ -9,8 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	v1 "github.com/kaptinlin/messageformat-go/mf1"
+	"github.com/kaptinlin/messageformat-go/mf1"
 )
+
+var errPluralSelectorTest = errors.New("plural selector failure")
 
 // TestCompiledMessageTypedProjections proves one immutable compiled message owns both terminal projections.
 // TypeScript original code:
@@ -18,8 +22,8 @@ import (
 func TestCompiledMessageTypedProjections(t *testing.T) {
 	t.Parallel()
 
-	options := &v1.MessageFormatOptions{}
-	compiler, err := v1.New("en", options)
+	options := &mf1.MessageFormatOptions{}
+	compiler, err := mf1.New("en", options)
 	require.NoError(t, err)
 	options.RequireAllArguments = true
 
@@ -52,13 +56,123 @@ func TestCompiledMessageTypedProjections(t *testing.T) {
 	wg.Wait()
 }
 
+// TestBiDiSupportMarksPlainArguments covers
+// .reference/messageformat/mf1/packages/core/src/messages.test.ts, "Bi-directional text".
+func TestBiDiSupportMarksPlainArguments(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		locale string
+		mark   string
+	}{
+		{name: "English uses LRM", locale: "en", mark: "\u200e"},
+		{name: "Arabic uses RLM", locale: "ar-EG", mark: "\u200f"},
+		{name: "explicit Arabic script uses RLM", locale: "en-Arab", mark: "\u200f"},
+		{name: "explicit Latin script uses LRM", locale: "ar-Latn", mark: "\u200e"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			compiler, err := mf1.New(tc.locale, &mf1.MessageFormatOptions{BiDiSupport: true})
+			require.NoError(t, err)
+			message, err := compiler.Compile("{first} >> {second}")
+			require.NoError(t, err)
+
+			values := map[string]any{
+				"first":  "Hello! English",
+				"second": "Hello هلا؍",
+			}
+			text, err := message.Format(values)
+			require.NoError(t, err)
+			assert.Equal(t,
+				tc.mark+"Hello! English"+tc.mark+" >> "+tc.mark+"Hello هلا؍"+tc.mark,
+				text,
+			)
+
+			terminals, err := message.FormatValues(values)
+			require.NoError(t, err)
+			assert.Equal(t, []any{
+				tc.mark + "Hello! English" + tc.mark,
+				" >> ",
+				tc.mark + "Hello هلا؍" + tc.mark,
+			}, terminals)
+		})
+	}
+}
+
+// TestBiDiSupportOnlyMarksPlainArguments covers the token boundary defined by
+// .reference/messageformat/mf1/packages/core/src/compiler.ts:139-155.
+func TestBiDiSupportOnlyMarksPlainArguments(t *testing.T) {
+	t.Parallel()
+
+	const source = "A {plain} B {choice, select, yes {selected} other {other}} C {number, number}"
+	values := map[string]any{"plain": "value", "choice": "yes", "number": 12}
+
+	for _, enabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("enabled=%t", enabled), func(t *testing.T) {
+			t.Parallel()
+
+			compiler, err := mf1.New("en", &mf1.MessageFormatOptions{BiDiSupport: enabled})
+			require.NoError(t, err)
+			message, err := compiler.Compile(source)
+			require.NoError(t, err)
+
+			plain := "value"
+			if enabled {
+				plain = "\u200evalue\u200e"
+			}
+			text, err := message.Format(values)
+			require.NoError(t, err)
+			assert.Equal(t, "A "+plain+" B selected C 12", text)
+
+			terminals, err := message.FormatValues(values)
+			require.NoError(t, err)
+			assert.Equal(t, []any{"A ", plain, " B ", "selected", " C ", "12"}, terminals)
+		})
+	}
+}
+
+func TestBiDiSupportMissingAndEmptyPlainArguments(t *testing.T) {
+	t.Parallel()
+
+	compiler, err := mf1.New("ar", &mf1.MessageFormatOptions{BiDiSupport: true})
+	require.NoError(t, err)
+	message, err := compiler.Compile("{value}")
+	require.NoError(t, err)
+
+	for _, values := range []map[string]any{nil, {"value": ""}} {
+		text, err := message.Format(values)
+		require.NoError(t, err)
+		assert.Equal(t, "\u200f\u200f", text)
+
+		terminals, err := message.FormatValues(values)
+		require.NoError(t, err)
+		assert.Equal(t, []any{"\u200f\u200f"}, terminals)
+	}
+
+	required, err := mf1.New("ar", &mf1.MessageFormatOptions{
+		BiDiSupport:         true,
+		RequireAllArguments: true,
+	})
+	require.NoError(t, err)
+	requiredMessage, err := required.Compile("{value}")
+	require.NoError(t, err)
+	_, err = requiredMessage.Format(nil)
+	require.ErrorIs(t, err, mf1.ErrMissingArgument)
+	_, err = requiredMessage.FormatValues(nil)
+	require.ErrorIs(t, err, mf1.ErrMissingArgument)
+}
+
 // TestCompiledMessageEvaluatorMatrix proves message shape does not choose hidden evaluation semantics.
 // TypeScript original code:
 // const message = mf.compile(source); message(values);
 func TestCompiledMessageEvaluatorMatrix(t *testing.T) {
 	t.Parallel()
 
-	compiler, err := v1.New("en", nil)
+	compiler, err := mf1.New("en", nil)
 	require.NoError(t, err)
 	tests := []struct {
 		name   string
@@ -139,7 +253,7 @@ func TestCompiledMessageEvaluatorMatrix(t *testing.T) {
 func TestCompiledMessageEvaluatorErrorIdentity(t *testing.T) {
 	t.Parallel()
 
-	compiler, err := v1.New("en", &v1.MessageFormatOptions{RequireAllArguments: true})
+	compiler, err := mf1.New("en", &mf1.MessageFormatOptions{RequireAllArguments: true})
 	require.NoError(t, err)
 	tests := []struct {
 		name   string
@@ -162,9 +276,9 @@ func TestCompiledMessageEvaluatorErrorIdentity(t *testing.T) {
 			require.NoError(t, err)
 
 			_, err = message.Format(tc.input)
-			require.ErrorIs(t, err, v1.ErrMissingArgument)
+			require.ErrorIs(t, err, mf1.ErrMissingArgument)
 			_, err = message.FormatValues(tc.input)
-			require.ErrorIs(t, err, v1.ErrMissingArgument)
+			require.ErrorIs(t, err, mf1.ErrMissingArgument)
 		})
 	}
 }
@@ -172,13 +286,13 @@ func TestCompiledMessageEvaluatorErrorIdentity(t *testing.T) {
 func TestCompileSyntaxErrorOwnsSourceContext(t *testing.T) {
 	t.Parallel()
 
-	compiler, err := v1.New("en", &v1.MessageFormatOptions{Strict: true})
+	compiler, err := mf1.New("en", &mf1.MessageFormatOptions{Strict: true})
 	require.NoError(t, err)
 
 	_, err = compiler.Compile("before\n{value, unknown}")
 	require.Error(t, err)
 
-	var parseErr *v1.ParseError
+	var parseErr *mf1.ParseError
 	require.ErrorAs(t, err, &parseErr)
 	require.NotNil(t, parseErr.Token)
 	assert.Equal(t, 2, parseErr.Token.Line)
@@ -190,13 +304,13 @@ func TestCompileSyntaxErrorOwnsSourceContext(t *testing.T) {
 func TestCompileRejectsUnmatchedLexerInput(t *testing.T) {
 	t.Parallel()
 
-	compiler, err := v1.New("en", nil)
+	compiler, err := mf1.New("en", nil)
 	require.NoError(t, err)
 
 	_, err = compiler.Compile("prefix {name, ,} suffix")
 	require.Error(t, err)
 
-	var parseErr *v1.ParseError
+	var parseErr *mf1.ParseError
 	require.ErrorAs(t, err, &parseErr)
 	require.NotNil(t, parseErr.Token)
 	assert.Equal(t, 12, parseErr.Token.Offset)
@@ -208,14 +322,14 @@ func TestCompileRejectsUnmatchedLexerInput(t *testing.T) {
 func TestCompileUnexpectedEndReportsEndPosition(t *testing.T) {
 	t.Parallel()
 
-	compiler, err := v1.New("en", nil)
+	compiler, err := mf1.New("en", nil)
 	require.NoError(t, err)
 
 	const source = "first\n{name"
 	_, err = compiler.Compile(source)
 	require.Error(t, err)
 
-	var parseErr *v1.ParseError
+	var parseErr *mf1.ParseError
 	require.ErrorAs(t, err, &parseErr)
 	require.NotNil(t, parseErr.Token)
 	assert.Equal(t, len(source), parseErr.Token.Offset)
@@ -239,17 +353,17 @@ func TestTypedConstructors(t *testing.T) {
 		}{
 			{name: "supported", locale: "en", wantLocale: "en"},
 			{name: "valid unsupported", locale: "eo", wantLocale: "en"},
-			{name: "empty", locale: "", wantErr: v1.ErrInvalidLocale},
-			{name: "malformed", locale: "x", wantErr: v1.ErrInvalidLocale},
-			{name: "unknown language", locale: "xx", wantErr: v1.ErrInvalidLocale},
-			{name: "unknown malformed", locale: "lawlz", wantErr: v1.ErrInvalidLocale},
+			{name: "empty", locale: "", wantErr: mf1.ErrInvalidLocale},
+			{name: "malformed", locale: "x", wantErr: mf1.ErrInvalidLocale},
+			{name: "unknown language", locale: "xx", wantErr: mf1.ErrInvalidLocale},
+			{name: "unknown malformed", locale: "lawlz", wantErr: mf1.ErrInvalidLocale},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 
-				mf, err := v1.New(tt.locale, nil)
+				mf, err := mf1.New(tt.locale, nil)
 				if tt.wantErr != nil {
 					require.ErrorIs(t, err, tt.wantErr)
 					return
@@ -264,16 +378,16 @@ func TestTypedConstructors(t *testing.T) {
 		t.Parallel()
 
 		var formatterLocale string
-		profile := v1.PluralProfile{
+		profile := mf1.PluralProfile{
 			Locale: "fr",
-			Select: func(any, ...bool) (v1.PluralCategory, error) {
-				return v1.PluralMany, nil
+			Select: func(any, ...bool) (mf1.PluralCategory, error) {
+				return mf1.PluralMany, nil
 			},
-			Cardinals: []v1.PluralCategory{v1.PluralMany, v1.PluralOther},
-			Ordinals:  []v1.PluralCategory{v1.PluralOther},
+			Cardinals: []mf1.PluralCategory{mf1.PluralMany, mf1.PluralOther},
+			Ordinals:  []mf1.PluralCategory{mf1.PluralOther},
 		}
-		mf, err := v1.NewWithPlural(profile, &v1.MessageFormatOptions{
-			CustomFormatters: map[string]v1.Formatter{
+		mf, err := mf1.NewWithPlural(profile, &mf1.MessageFormatOptions{
+			CustomFormatters: map[string]mf1.Formatter{
 				"locale": func(_ any, locale, _ string) (string, error) {
 					formatterLocale = locale
 					return locale, nil
@@ -304,83 +418,83 @@ func TestTypedConstructors(t *testing.T) {
 func TestPluralProfileValidation(t *testing.T) {
 	t.Parallel()
 
-	selector := func(any, ...bool) (v1.PluralCategory, error) {
-		return v1.PluralOther, nil
+	selector := func(any, ...bool) (mf1.PluralCategory, error) {
+		return mf1.PluralOther, nil
 	}
 	tests := []struct {
 		name    string
-		profile v1.PluralProfile
+		profile mf1.PluralProfile
 		wantErr error
 	}{
 		{
 			name: "empty locale",
-			profile: v1.PluralProfile{
-				Select: selector, Cardinals: []v1.PluralCategory{v1.PluralOther},
-				Ordinals: []v1.PluralCategory{v1.PluralOther},
+			profile: mf1.PluralProfile{
+				Select: selector, Cardinals: []mf1.PluralCategory{mf1.PluralOther},
+				Ordinals: []mf1.PluralCategory{mf1.PluralOther},
 			},
-			wantErr: v1.ErrInvalidLocale,
+			wantErr: mf1.ErrInvalidLocale,
 		},
 		{
 			name: "malformed locale",
-			profile: v1.PluralProfile{
-				Locale: "x", Select: selector, Cardinals: []v1.PluralCategory{v1.PluralOther},
-				Ordinals: []v1.PluralCategory{v1.PluralOther},
+			profile: mf1.PluralProfile{
+				Locale: "x", Select: selector, Cardinals: []mf1.PluralCategory{mf1.PluralOther},
+				Ordinals: []mf1.PluralCategory{mf1.PluralOther},
 			},
-			wantErr: v1.ErrInvalidLocale,
+			wantErr: mf1.ErrInvalidLocale,
 		},
 		{
 			name: "nil selector",
-			profile: v1.PluralProfile{
-				Locale: "en", Cardinals: []v1.PluralCategory{v1.PluralOther},
-				Ordinals: []v1.PluralCategory{v1.PluralOther},
+			profile: mf1.PluralProfile{
+				Locale: "en", Cardinals: []mf1.PluralCategory{mf1.PluralOther},
+				Ordinals: []mf1.PluralCategory{mf1.PluralOther},
 			},
-			wantErr: v1.ErrInvalidPluralFunction,
+			wantErr: mf1.ErrInvalidPluralFunction,
 		},
 		{
 			name: "empty cardinals",
-			profile: v1.PluralProfile{
-				Locale: "en", Select: selector, Ordinals: []v1.PluralCategory{v1.PluralOther},
+			profile: mf1.PluralProfile{
+				Locale: "en", Select: selector, Ordinals: []mf1.PluralCategory{mf1.PluralOther},
 			},
-			wantErr: v1.ErrInvalidPluralCategories,
+			wantErr: mf1.ErrInvalidPluralCategories,
 		},
 		{
 			name: "empty ordinals",
-			profile: v1.PluralProfile{
-				Locale: "en", Select: selector, Cardinals: []v1.PluralCategory{v1.PluralOther},
+			profile: mf1.PluralProfile{
+				Locale: "en", Select: selector, Cardinals: []mf1.PluralCategory{mf1.PluralOther},
 			},
-			wantErr: v1.ErrInvalidPluralCategories,
+			wantErr: mf1.ErrInvalidPluralCategories,
 		},
 		{
 			name: "duplicate category",
-			profile: v1.PluralProfile{
+			profile: mf1.PluralProfile{
 				Locale: "en", Select: selector,
-				Cardinals: []v1.PluralCategory{v1.PluralOther, v1.PluralOther},
-				Ordinals:  []v1.PluralCategory{v1.PluralOther},
+				Cardinals: []mf1.PluralCategory{mf1.PluralOther, mf1.PluralOther},
+				Ordinals:  []mf1.PluralCategory{mf1.PluralOther},
 			},
-			wantErr: v1.ErrInvalidPluralCategories,
+			wantErr: mf1.ErrInvalidPluralCategories,
 		},
 		{
 			name: "missing other",
-			profile: v1.PluralProfile{
-				Locale: "en", Select: selector, Cardinals: []v1.PluralCategory{v1.PluralOne},
-				Ordinals: []v1.PluralCategory{v1.PluralOther},
+			profile: mf1.PluralProfile{
+				Locale: "en", Select: selector, Cardinals: []mf1.PluralCategory{mf1.PluralOne},
+				Ordinals: []mf1.PluralCategory{mf1.PluralOther},
 			},
-			wantErr: v1.ErrInvalidPluralCategories,
+			wantErr: mf1.ErrInvalidPluralCategories,
 		},
 		{
 			name: "unknown category",
-			profile: v1.PluralProfile{
+			profile: mf1.PluralProfile{
 				Locale: "en", Select: selector,
-				Cardinals: []v1.PluralCategory{"invalid", v1.PluralOther},
-				Ordinals:  []v1.PluralCategory{v1.PluralOther},
+				Cardinals: []mf1.PluralCategory{"invalid", mf1.PluralOther},
+				Ordinals:  []mf1.PluralCategory{mf1.PluralOther},
 			},
-			wantErr: v1.ErrInvalidPluralCategories,
+			wantErr: mf1.ErrInvalidPluralCategories,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := v1.NewWithPlural(tc.profile, nil)
+			_, err := mf1.NewWithPlural(tc.profile, nil)
 			require.ErrorIs(t, err, tc.wantErr)
 		})
 	}
@@ -392,22 +506,22 @@ func TestPluralProfileValidation(t *testing.T) {
 func TestPluralProfileSnapshotsCategories(t *testing.T) {
 	t.Parallel()
 
-	profile := v1.PluralProfile{
+	profile := mf1.PluralProfile{
 		Locale: "fr",
-		Select: func(any, ...bool) (v1.PluralCategory, error) {
-			return v1.PluralMany, nil
+		Select: func(any, ...bool) (mf1.PluralCategory, error) {
+			return mf1.PluralMany, nil
 		},
-		Cardinals: []v1.PluralCategory{v1.PluralMany, v1.PluralOther},
-		Ordinals:  []v1.PluralCategory{v1.PluralOther},
+		Cardinals: []mf1.PluralCategory{mf1.PluralMany, mf1.PluralOther},
+		Ordinals:  []mf1.PluralCategory{mf1.PluralOther},
 	}
-	compiler, err := v1.NewWithPlural(profile, nil)
+	compiler, err := mf1.NewWithPlural(profile, nil)
 	require.NoError(t, err)
-	profile.Cardinals[0] = v1.PluralOne
-	profile.Ordinals[0] = v1.PluralOne
+	profile.Cardinals[0] = mf1.PluralOne
+	profile.Ordinals[0] = mf1.PluralOne
 
 	resolved := compiler.ResolvedOptions()
-	assert.Equal(t, []v1.PluralCategory{v1.PluralMany, v1.PluralOther}, resolved.Plurals[0].Cardinals)
-	assert.Equal(t, []v1.PluralCategory{v1.PluralOther}, resolved.Plurals[0].Ordinals)
+	assert.Equal(t, []mf1.PluralCategory{mf1.PluralMany, mf1.PluralOther}, resolved.Plurals[0].Cardinals)
+	assert.Equal(t, []mf1.PluralCategory{mf1.PluralOther}, resolved.Plurals[0].Ordinals)
 	message, err := compiler.Compile("{count, plural, many {many} other {other}}")
 	require.NoError(t, err)
 	text, err := message.Format(map[string]any{"count": 2})
@@ -450,7 +564,7 @@ func TestCompiledMessageNumberFormatting(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			compiler, err := v1.New(tc.locale, &v1.MessageFormatOptions{Currency: tc.currency})
+			compiler, err := mf1.New(tc.locale, &mf1.MessageFormatOptions{Currency: tc.currency})
 			require.NoError(t, err)
 			assert.Equal(t, tc.locale, compiler.ResolvedOptions().Locale)
 			message, err := compiler.Compile(tc.source)
@@ -468,7 +582,7 @@ func TestCompiledMessageNumberFormatting(t *testing.T) {
 func TestCompiledMessageNumberFormattingErrors(t *testing.T) {
 	t.Parallel()
 
-	compiler, err := v1.New("en", nil)
+	compiler, err := mf1.New("en", nil)
 	require.NoError(t, err)
 	tests := []struct {
 		name    string
@@ -476,8 +590,8 @@ func TestCompiledMessageNumberFormattingErrors(t *testing.T) {
 		value   any
 		wantErr error
 	}{
-		{name: "invalid operand", source: "{value, number}", value: "bad", wantErr: v1.ErrInvalidNumberValue},
-		{name: "invalid style", source: "{value, number, decimalish}", value: 1, wantErr: v1.ErrInvalidFormatterStyle},
+		{name: "invalid operand", source: "{value, number}", value: "bad", wantErr: mf1.ErrInvalidNumberValue},
+		{name: "invalid style", source: "{value, number, decimalish}", value: 1, wantErr: mf1.ErrInvalidFormatterStyle},
 	}
 
 	for _, tc := range tests {
@@ -490,6 +604,218 @@ func TestCompiledMessageNumberFormattingErrors(t *testing.T) {
 			require.ErrorIs(t, err, tc.wantErr)
 		})
 	}
+}
+
+func TestCompiledPluralRejectsInvalidNumericStrings(t *testing.T) {
+	t.Parallel()
+
+	compiler, err := mf1.New("en", nil)
+	require.NoError(t, err)
+	message, err := compiler.Compile("{value, plural, =0 {zero} other {other}}")
+	require.NoError(t, err)
+
+	for _, value := range []string{"not-a-number", "1e10000"} {
+		t.Run(value, func(t *testing.T) {
+			t.Parallel()
+
+			formatted, err := message.Format(map[string]any{"value": value})
+			assert.Empty(t, formatted)
+			require.ErrorIs(t, err, mf1.ErrInvalidNumberStr)
+
+			values, err := message.FormatValues(map[string]any{"value": value})
+			assert.Nil(t, values)
+			require.ErrorIs(t, err, mf1.ErrInvalidNumberStr)
+		})
+	}
+}
+
+func TestCompiledPluralAcceptsAllIntegerWidths(t *testing.T) {
+	t.Parallel()
+
+	compiler, err := mf1.New("en", nil)
+	require.NoError(t, err)
+	message, err := compiler.Compile("{value, plural, =2 {exact} other {other}}")
+	require.NoError(t, err)
+
+	values := []any{
+		int(2), int8(2), int16(2), int32(2), int64(2),
+		uint(2), uint8(2), uint16(2), uint32(2), uint64(2),
+	}
+	for _, value := range values {
+		t.Run(fmt.Sprintf("%T", value), func(t *testing.T) {
+			t.Parallel()
+
+			formatted, err := message.Format(map[string]any{"value": value})
+			require.NoError(t, err)
+			assert.Equal(t, "exact", formatted)
+		})
+	}
+}
+
+func TestCompiledPluralPreservesFractionalOperands(t *testing.T) {
+	t.Parallel()
+
+	compiler, err := mf1.New("en", nil)
+	require.NoError(t, err)
+	message, err := compiler.Compile("{value, plural, one {one #} other {other #}}")
+	require.NoError(t, err)
+
+	values := []any{float32(1.5), float64(1.5), "1.5"}
+	for _, value := range values {
+		t.Run(fmt.Sprintf("%T", value), func(t *testing.T) {
+			t.Parallel()
+
+			formatted, err := message.Format(map[string]any{"value": value})
+			require.NoError(t, err)
+			assert.Equal(t, "other 1.5", formatted)
+		})
+	}
+}
+
+func TestCompiledPluralRejectsNonFiniteOperands(t *testing.T) {
+	t.Parallel()
+
+	compiler, err := mf1.New("en", nil)
+	require.NoError(t, err)
+	message, err := compiler.Compile("{value, plural, other {#}}")
+	require.NoError(t, err)
+
+	values := []any{math.NaN(), math.Inf(1), math.Inf(-1), "NaN", "+Inf", "-Inf"}
+	for _, value := range values {
+		t.Run(fmt.Sprint(value), func(t *testing.T) {
+			t.Parallel()
+
+			formatted, err := message.Format(map[string]any{"value": value})
+			assert.Empty(t, formatted)
+			require.ErrorIs(t, err, mf1.ErrInvalidNumberValue)
+
+			values, err := message.FormatValues(map[string]any{"value": value})
+			assert.Nil(t, values)
+			require.ErrorIs(t, err, mf1.ErrInvalidNumberValue)
+		})
+	}
+}
+
+func TestCompiledPluralRejectsUnsupportedOperandTypes(t *testing.T) {
+	t.Parallel()
+
+	compiler, err := mf1.New("en", nil)
+	require.NoError(t, err)
+	message, err := compiler.Compile("{value, plural, =0 {zero} other {other}}")
+	require.NoError(t, err)
+
+	values := []any{nil, true, struct{}{}, []int{1}}
+	for _, value := range values {
+		t.Run(fmt.Sprintf("%T", value), func(t *testing.T) {
+			t.Parallel()
+
+			formatted, err := message.Format(map[string]any{"value": value})
+			assert.Empty(t, formatted)
+			require.ErrorIs(t, err, mf1.ErrInvalidType)
+
+			values, err := message.FormatValues(map[string]any{"value": value})
+			assert.Nil(t, values)
+			require.ErrorIs(t, err, mf1.ErrInvalidType)
+		})
+	}
+}
+
+func TestCompiledPluralPreservesIntegerBoundaries(t *testing.T) {
+	t.Parallel()
+
+	compiler, err := mf1.New("en", nil)
+	require.NoError(t, err)
+	message, err := compiler.Compile("{value, plural, other {#}}")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name  string
+		value any
+		want  string
+	}{
+		{name: "minimum int64", value: int64(math.MinInt64), want: "-9,223,372,036,854,775,808"},
+		{name: "maximum uint64", value: uint64(math.MaxUint64), want: "18,446,744,073,709,551,615"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			formatted, err := message.Format(map[string]any{"value": tt.value})
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, formatted)
+		})
+	}
+}
+
+func TestCompiledPluralPreservesLargeIntegerStrings(t *testing.T) {
+	t.Parallel()
+
+	compiler, err := mf1.New("en", nil)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{
+			name:   "exact selection",
+			source: "{value, plural, =9007199254740993 {exact} other {other}}",
+		},
+		{
+			name:   "category selection",
+			source: "{value, plural, one {one} other {other}}",
+		},
+		{
+			name:   "offset and octothorpe",
+			source: "{value, plural, offset:1 one {# item} other {# items}}",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			message, err := compiler.Compile(tc.source)
+			require.NoError(t, err)
+
+			integerText, err := message.Format(map[string]any{"value": int64(9007199254740993)})
+			require.NoError(t, err)
+			stringText, err := message.Format(map[string]any{"value": "9007199254740993"})
+			require.NoError(t, err)
+			assert.Equal(t, integerText, stringText)
+
+			integerValues, err := message.FormatValues(map[string]any{"value": int64(9007199254740993)})
+			require.NoError(t, err)
+			stringValues, err := message.FormatValues(map[string]any{"value": "9007199254740993"})
+			require.NoError(t, err)
+			assert.Equal(t, integerValues, stringValues)
+		})
+	}
+}
+
+func TestCompiledPluralPropagatesSelectorError(t *testing.T) {
+	t.Parallel()
+
+	compiler, err := mf1.NewWithPlural(mf1.PluralProfile{
+		Locale: "en",
+		Select: func(any, ...bool) (mf1.PluralCategory, error) {
+			return mf1.PluralOther, errPluralSelectorTest
+		},
+		Cardinals: []mf1.PluralCategory{mf1.PluralOther},
+		Ordinals:  []mf1.PluralCategory{mf1.PluralOther},
+	}, nil)
+	require.NoError(t, err)
+	message, err := compiler.Compile("{value, plural, other {other}}")
+	require.NoError(t, err)
+
+	formatted, err := message.Format(map[string]any{"value": 1})
+
+	assert.Empty(t, formatted)
+	require.ErrorIs(t, err, errPluralSelectorTest)
+
+	values, err := message.FormatValues(map[string]any{"value": 1})
+	assert.Nil(t, values)
+	require.ErrorIs(t, err, errPluralSelectorTest)
 }
 
 // TestCompiledMessageDateTimeFormatting proves date/time styles and timezone use Intl publicly.
@@ -528,7 +854,7 @@ func TestCompiledMessageDateTimeFormatting(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			compiler, err := v1.New("en", &v1.MessageFormatOptions{TimeZone: tc.timeZone})
+			compiler, err := mf1.New("en", &mf1.MessageFormatOptions{TimeZone: tc.timeZone})
 			require.NoError(t, err)
 			message, err := compiler.Compile(tc.source)
 			require.NoError(t, err)
@@ -550,7 +876,7 @@ func TestCompiledMessageDateTimeFormatting(t *testing.T) {
 func TestCompiledMessageDateTimeFormattingErrors(t *testing.T) {
 	t.Parallel()
 
-	compiler, err := v1.New("en", nil)
+	compiler, err := mf1.New("en", nil)
 	require.NoError(t, err)
 	tests := []struct {
 		name    string
@@ -558,10 +884,10 @@ func TestCompiledMessageDateTimeFormattingErrors(t *testing.T) {
 		value   any
 		wantErr error
 	}{
-		{name: "invalid date operand", source: "{value, date}", value: "bad", wantErr: v1.ErrInvalidDateValue},
-		{name: "invalid time operand", source: "{value, time}", value: "bad", wantErr: v1.ErrInvalidTimeValue},
-		{name: "invalid date style", source: "{value, date, wide}", value: time.Time{}, wantErr: v1.ErrInvalidFormatterStyle},
-		{name: "invalid time style", source: "{value, time, wide}", value: time.Time{}, wantErr: v1.ErrInvalidFormatterStyle},
+		{name: "invalid date operand", source: "{value, date}", value: "bad", wantErr: mf1.ErrInvalidDateValue},
+		{name: "invalid time operand", source: "{value, time}", value: "bad", wantErr: mf1.ErrInvalidTimeValue},
+		{name: "invalid date style", source: "{value, date, wide}", value: time.Time{}, wantErr: mf1.ErrInvalidFormatterStyle},
+		{name: "invalid time style", source: "{value, time, wide}", value: time.Time{}, wantErr: mf1.ErrInvalidFormatterStyle},
 	}
 
 	for _, tc := range tests {
@@ -585,8 +911,8 @@ func TestCustomFormatterContract(t *testing.T) {
 	formatterErr := errors.New("formatter failed")
 	var gotValue any
 	var gotLocale, gotStyle string
-	compiler, err := v1.New("fr", &v1.MessageFormatOptions{
-		CustomFormatters: map[string]v1.Formatter{
+	compiler, err := mf1.New("fr", &mf1.MessageFormatOptions{
+		CustomFormatters: map[string]mf1.Formatter{
 			"inspect": func(value any, locale, style string) (string, error) {
 				gotValue = value
 				gotLocale = locale
@@ -619,21 +945,21 @@ func TestCustomFormatterContract(t *testing.T) {
 func TestCustomFormatterValidation(t *testing.T) {
 	t.Parallel()
 
-	formatter := v1.Formatter(func(any, string, string) (string, error) { return "", nil })
+	formatter := mf1.Formatter(func(any, string, string) (string, error) { return "", nil })
 	tests := []struct {
 		name       string
-		formatters map[string]v1.Formatter
+		formatters map[string]mf1.Formatter
 	}{
-		{name: "empty name", formatters: map[string]v1.Formatter{"": formatter}},
-		{name: "whitespace name", formatters: map[string]v1.Formatter{"bad name": formatter}},
-		{name: "reserved built-in", formatters: map[string]v1.Formatter{"number": formatter}},
-		{name: "nil handler", formatters: map[string]v1.Formatter{"missing": nil}},
+		{name: "empty name", formatters: map[string]mf1.Formatter{"": formatter}},
+		{name: "whitespace name", formatters: map[string]mf1.Formatter{"bad name": formatter}},
+		{name: "reserved built-in", formatters: map[string]mf1.Formatter{"number": formatter}},
+		{name: "nil handler", formatters: map[string]mf1.Formatter{"missing": nil}},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := v1.New("en", &v1.MessageFormatOptions{CustomFormatters: tc.formatters})
-			require.ErrorIs(t, err, v1.ErrInvalidFormatter)
+			_, err := mf1.New("en", &mf1.MessageFormatOptions{CustomFormatters: tc.formatters})
+			require.ErrorIs(t, err, mf1.ErrInvalidFormatter)
 		})
 	}
 }

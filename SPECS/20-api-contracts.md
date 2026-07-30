@@ -76,6 +76,11 @@ Rules:
   variants so model-validation errors can identify their owning source range.
   Programmatically constructed roots and variants use the unknown `(-1, -1)`
   span.
+- `StringifyMessage` returns `(string, error)`. It rejects nil, semantically
+  invalid, or syntactically unrepresentable models instead of emitting partial
+  source or panicking.
+- Stringification sorts option and attribute names canonically. Repeated calls
+  over the same model produce identical source regardless of Go map iteration.
 - Parser failures return syntax errors; a well-formed parse result that violates data-model invariants returns a data-model error.
 - `Type()` may remain for debugging and JSON-like compatibility, but internal control flow should prefer type switches and small interfaces.
 
@@ -133,6 +138,9 @@ Function catalog and configuration rules:
 - `DraftFunctionMap()` contains draft functions: `:date`, `:datetime`, `:time`, and `:unit`; callers opt in with `WithFunctions`.
 - `WithFunction` and `WithFunctions` are the only custom-function configuration handoff. Constructors snapshot their input maps.
 - `:math` is an extension function, not an MF2 spec function; callers opt in with `WithFunction`.
+- A custom function returning nil or a typed-nil `MessageValue` produces a
+  `bad-function-result` diagnostic and fallback output. The runtime never calls
+  methods on a nil-like extension result.
 
 ## Message Values and Parts
 
@@ -144,6 +152,14 @@ Function catalog and configuration rules:
 - `OptionedValue` carries formatting options.
 
 Concrete part types must expose typed accessors where the value type is known, while keeping `Value() any` for compatibility.
+Package-owned expression parts expose `ID()` directly. Applying universal
+`u:id` / `u:dir` metadata returns an immutable concrete-part copy, so callers
+retain access to `Text()`, `Parts()`, `Calendar()`, `TimeZone()`, `Any()`, and
+other type-specific methods. Custom parts remain caller-owned and are not
+wrapped or mutated.
+An omitted metadata field preserves the value already present on the part.
+Nil-like package parts are invalid function output and become a
+`bad-function-result` diagnostic rather than causing a panic.
 `Parts()` accessors return detached shallow copies.
 
 `Options()` on package-owned values and parts returns a detached shallow copy.
@@ -192,6 +208,8 @@ func GetPlural(locale string) (PluralObject, error)
 
 Rules:
 
+- The default package identifier is `mf1`, matching the module path's final
+  segment; callers do not need an import alias.
 - Empty, wildcard, and tags rejected by strict locale parsing return `ErrInvalidLocale`.
 - A syntactically valid locale without plural data uses the package-private stable fallback locale.
 - `SupportedLocalesOf` filters the caller-owned candidate list in input order; the module does not publish a partial global locale catalog.
@@ -206,6 +224,17 @@ Rules:
 - Nil values maps are empty input. Missing plain arguments become empty strings
   unless `RequireAllArguments` is enabled, in which case both projections
   return `ErrMissingArgument`.
+- `BiDiSupport` defaults to false. When enabled, each plain argument terminal is
+  stringified and surrounded by the effective locale's LRM or RLM in both
+  projections. Message text, selected content, formatter results, and `#` are
+  not decorated.
+- Plural and selectordinal operands accept Go integer widths, finite floats,
+  and numeric strings. Base-10 integer strings retain exact integer identity;
+  exact keys use the original value before offset, while category selection and
+  `#` use the offset value. Invalid, non-finite, or unsupported operands return
+  stable wrapped errors.
+- Plural selector errors preserve their cause through `Format` and
+  `FormatValues`; failure never silently selects the `other` branch.
 - Built-in `number`, `date`, and `time` arguments format through `go-intl` on
   the compiled-message path. Number formatting uses no style or `integer`,
   `percent`, and `currency[:CODE]`; date/time styles are empty/default,
@@ -269,5 +298,9 @@ Rules:
 - Tests cover selector no-probe behavior and deterministic candidate order.
 - Tests cover missing, nil, typed nil, and unknown variable states.
 - Tests prove data-model constructor and accessor ownership through compiled formatting.
+- Tests prove canonical, fallible data-model stringification and extension
+  rejection for nil-like values and parts.
+- MF1 tests prove equivalent numeric inputs across exact selection, category
+  selection, offset, `#`, `Format`, and `FormatValues`.
 - Tests cover `errors.Is`, `errors.As`, and `Kind()`.
 - `task verify` passes after API changes.

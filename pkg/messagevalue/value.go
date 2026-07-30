@@ -5,6 +5,7 @@ package messagevalue
 import (
 	"errors"
 	"maps"
+	"reflect"
 
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
 )
@@ -85,6 +86,78 @@ type MessagePart interface {
 	Source() string      // Source text (optional)
 	Locale() string      // Locale (optional)
 	Dir() bidi.Direction // Text direction (optional)
+}
+
+// WithPartMetadata returns an immutable copy of a package-owned part with the
+// given metadata. Empty metadata fields preserve their existing values. Custom
+// parts are returned unchanged. Nil-like parts return nil.
+func WithPartMetadata(part MessagePart, id string, dir bidi.Direction) MessagePart {
+	if isNilPart(part) {
+		return nil
+	}
+
+	switch p := part.(type) {
+	case *NumberPart:
+		clone := *p
+		if id != "" {
+			clone.id = id
+		}
+		if dir != "" {
+			clone.dir = dir
+		}
+		return &clone
+	case *DateTimePart:
+		clone := *p
+		if id != "" {
+			clone.id = id
+		}
+		if dir != "" {
+			clone.dir = dir
+		}
+		return &clone
+	case *StringPart:
+		clone := *p
+		if id != "" {
+			clone.id = id
+		}
+		if dir != "" {
+			clone.dir = dir
+		}
+		return &clone
+	case *FallbackPart:
+		clone := *p
+		if id != "" {
+			clone.id = id
+		}
+		if dir != "" {
+			clone.dir = dir
+		}
+		return &clone
+	case *UnknownPart:
+		clone := *p
+		if id != "" {
+			clone.id = id
+		}
+		if dir != "" {
+			clone.dir = dir
+		}
+		return &clone
+	default:
+		return part
+	}
+}
+
+func isNilPart(part MessagePart) bool {
+	if part == nil {
+		return true
+	}
+	value := reflect.ValueOf(part)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return value.IsNil()
+	default:
+		return false
+	}
 }
 
 // TextPart represents literal text parts
@@ -168,6 +241,7 @@ type FallbackPart struct {
 	source string
 	locale string
 	dir    bidi.Direction
+	id     string
 }
 
 // NewFallbackPart creates a new fallback part
@@ -185,3 +259,6 @@ func (fp *FallbackPart) Text() string        { return "{" + fp.source + "}" }
 func (fp *FallbackPart) Source() string      { return fp.source }
 func (fp *FallbackPart) Locale() string      { return fp.locale }
 func (fp *FallbackPart) Dir() bidi.Direction { return fp.dir }
+
+// ID returns the universal identifier attached to this part.
+func (fp *FallbackPart) ID() string { return fp.id }

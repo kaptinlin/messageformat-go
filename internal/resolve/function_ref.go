@@ -6,6 +6,7 @@ import (
 	"cmp"
 	"fmt"
 	"maps"
+	"reflect"
 	"strings"
 
 	"github.com/kaptinlin/messageformat-go/pkg/bidi"
@@ -126,7 +127,7 @@ func resolveFunctionRefInternal(
 	res := rf(msgCtx, functions.NewOptions(opt), input)
 
 	// matches TypeScript: if (res === null || ...) { throw new MessageError('bad-function-result', ...); }
-	if res == nil {
+	if isNilMessageValue(res) {
 		return nil, errors.NewMessageResolutionError(
 			errors.ErrorTypeBadFunctionResult,
 			fmt.Sprintf("function :%s did not return a MessageValue", functionRef.Name()),
@@ -152,6 +153,20 @@ func resolveFunctionRefInternal(
 
 	// matches TypeScript: return res;
 	return res, nil
+}
+
+func isNilMessageValue(value messagevalue.MessageValue) bool {
+	if value == nil {
+		return true
+	}
+
+	reflected := reflect.ValueOf(value)
+	switch reflected.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return reflected.IsNil()
+	default:
+		return false
+	}
 }
 
 // createMessageFunctionContext creates a MessageFunctionContext with options
@@ -366,29 +381,21 @@ func (mv *messageValueWithOptions) ToParts() ([]messagevalue.MessagePart, error)
 
 	// Add ID and dir to all parts if specified - matches TypeScript: for (const part of parts) part.id = msgCtx.id;
 	if mv.id != "" || mv.dir != "" {
-		// Create new parts with ID and dir information
+		var dir bidi.Direction
+		if mv.dir != "" {
+			dir = bidi.ParseDirection(mv.dir)
+		}
 		newParts := make([]messagevalue.MessagePart, len(parts))
 		for i, part := range parts {
-			// Determine locale based on dir and id according to test expectations
-			var locale string
-			switch {
-			case mv.dir == "rtl" || mv.dir == "auto":
-				// For rtl and auto, include locale
-				locale = mv.wrapped.Locale()
-			case mv.dir == "ltr" && mv.id != "":
-				// For ltr with id, don't include locale (leave empty)
-				locale = ""
-			case mv.dir == "ltr" && mv.id == "":
-				// For ltr without id, include locale
-				locale = mv.wrapped.Locale()
+			decorated := messagevalue.WithPartMetadata(part, mv.id, dir)
+			if decorated == nil {
+				return nil, errors.NewMessageResolutionError(
+					errors.ErrorTypeBadFunctionResult,
+					"function result contains a nil message part",
+					mv.Source(),
+				)
 			}
-
-			newParts[i] = &partWithOptions{
-				wrapped: part,
-				id:      mv.id,
-				dir:     mv.dir,
-				locale:  locale,
-			}
+			newParts[i] = decorated
 		}
 		return newParts, nil
 	}
@@ -431,39 +438,4 @@ func (mv *selectableMessageValueWithOptions) SelectKeys(keys []string) ([]string
 		return nil, messagevalue.ErrNotSelectable
 	}
 	return selector.SelectKeys(keys)
-}
-
-// partWithOptions wraps a MessagePart to add ID and dir information
-type partWithOptions struct {
-	wrapped messagevalue.MessagePart
-	id      string
-	dir     string
-	locale  string
-}
-
-func (p *partWithOptions) Type() string   { return p.wrapped.Type() }
-func (p *partWithOptions) Value() any     { return p.wrapped.Value() }
-func (p *partWithOptions) Source() string { return p.wrapped.Source() }
-func (p *partWithOptions) Locale() string { return p.wrapped.Locale() }
-
-func (p *partWithOptions) Dir() bidi.Direction {
-	if p.dir != "" {
-		return bidi.ParseDirection(p.dir)
-	}
-	return p.wrapped.Dir()
-}
-
-// ID returns the ID for this part.
-func (p *partWithOptions) ID() string {
-	return p.id
-}
-
-// PartDir returns the dir for this part.
-func (p *partWithOptions) PartDir() string {
-	return p.dir
-}
-
-// PartLocale returns the locale for this part.
-func (p *partWithOptions) PartLocale() string {
-	return p.locale
 }

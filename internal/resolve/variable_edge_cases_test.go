@@ -574,8 +574,8 @@ func TestResolveVariableRef_PointerTypes(t *testing.T) {
 	})
 }
 
-// TestResolveVariableRef_LocalVarsTracking tests local variable tracking
-func TestResolveVariableRef_LocalVarsTracking(t *testing.T) {
+// TestResolveVariableRef_DeclarationTracking tests resolved declaration tracking.
+func TestResolveVariableRef_DeclarationTracking(t *testing.T) {
 	expr := mustExpression(t,
 		datamodel.NewLiteral("test"),
 		nil,
@@ -589,14 +589,12 @@ func TestResolveVariableRef_LocalVarsTracking(t *testing.T) {
 		},
 		nil, "best fit")
 
-	// Initially, LocalVars should be empty
-	assert.Empty(t, ctx.LocalVars)
+	assert.Empty(t, ctx.ResolvedDeclarations)
 
 	ref := datamodel.NewVariableRef("local")
 	result := ResolveVariableRef(ctx, ref)
 
-	// After resolution, the result should be tracked in LocalVars
-	assert.True(t, ctx.LocalVars[result])
+	assert.True(t, ctx.ResolvedDeclarations["local"])
 
 	// Resolving again should return the tracked value
 	result2 := ResolveVariableRef(ctx, ref)

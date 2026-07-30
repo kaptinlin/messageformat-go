@@ -12,6 +12,7 @@ import (
 var (
 	ErrInvalidExpression       = errors.New("invalid expression")
 	ErrInvalidInputDeclaration = errors.New("invalid input declaration")
+	ErrInvalidLocalDeclaration = errors.New("invalid local declaration")
 	ErrInvalidMarkupKind       = errors.New("invalid markup kind")
 	ErrNilMember               = errors.New("nil data model member")
 )
@@ -94,9 +95,19 @@ func validateDeclarations(declarations []Declaration) error {
 			if value == nil {
 				return fmt.Errorf("%w: declaration %d", ErrNilMember, i)
 			}
+			if value.value == nil {
+				return fmt.Errorf("%w: declaration %d", ErrInvalidInputDeclaration, i)
+			}
+			variable, ok := value.value.arg.(*VariableRef)
+			if !ok || variable == nil {
+				return fmt.Errorf("%w: declaration %d", ErrInvalidInputDeclaration, i)
+			}
 		case *LocalDeclaration:
 			if value == nil {
 				return fmt.Errorf("%w: declaration %d", ErrNilMember, i)
+			}
+			if value.name == "" || value.value == nil {
+				return fmt.Errorf("%w: declaration %d", ErrInvalidLocalDeclaration, i)
 			}
 		}
 	}
@@ -542,13 +553,17 @@ type LocalDeclaration struct {
 	span  sourceSpan // Source position from [cstKey]?: CST.Declaration
 }
 
-// NewLocalDeclaration creates a new local declaration
-func NewLocalDeclaration(name string, value *Expression) *LocalDeclaration {
+// NewLocalDeclaration creates a new local declaration.
+func NewLocalDeclaration(name string, value *Expression) (*LocalDeclaration, error) {
+	if name == "" || value == nil {
+		return nil, ErrInvalidLocalDeclaration
+	}
+
 	return &LocalDeclaration{
 		name:  name,
 		value: value,
 		span:  unknownSourceSpan(),
-	}
+	}, nil
 }
 
 // newLocalDeclarationWithCST creates a new local declaration with source position from CST.

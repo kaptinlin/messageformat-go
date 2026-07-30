@@ -36,6 +36,14 @@ func mustInputDeclaration(t *testing.T, value *Expression) *InputDeclaration {
 	return declaration
 }
 
+func mustLocalDeclaration(t *testing.T, name string, value *Expression) *LocalDeclaration {
+	t.Helper()
+
+	declaration, err := NewLocalDeclaration(name, value)
+	require.NoError(t, err)
+	return declaration
+}
+
 // mustPattern constructs a valid pattern for behavior tests.
 // TypeScript original code:
 // const pattern: Pattern = elements;
@@ -78,6 +86,14 @@ func mustSelectMessage(t *testing.T, declarations []Declaration, selectors []Var
 	message, err := NewSelectMessage(declarations, selectors, variants, comment)
 	require.NoError(t, err)
 	return message
+}
+
+func mustStringifyMessage(t *testing.T, message Message) string {
+	t.Helper()
+
+	source, err := StringifyMessage(message)
+	require.NoError(t, err)
+	return source
 }
 
 // mustFunctionRef constructs a valid function reference for behavior tests.

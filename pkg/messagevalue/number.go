@@ -411,6 +411,7 @@ type NumberPart struct {
 	source string
 	locale string
 	dir    bidi.Direction
+	id     string
 	parts  []MessagePart
 }
 
@@ -436,6 +437,11 @@ func (np *NumberPart) Locale() string {
 
 func (np *NumberPart) Dir() bidi.Direction {
 	return np.dir
+}
+
+// ID returns the universal identifier attached to this part.
+func (np *NumberPart) ID() string {
+	return np.id
 }
 
 func (np *NumberPart) Parts() []MessagePart {

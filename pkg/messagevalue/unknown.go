@@ -88,6 +88,7 @@ func (uv *UnknownValue) ToParts() ([]MessagePart, error) {
 			source: uv.source,
 			value:  uv.value,
 			locale: uv.locale,
+			dir:    bidi.DirAuto,
 		},
 	}, nil
 }
@@ -107,6 +108,8 @@ type UnknownPart struct {
 	source string
 	value  any
 	locale string
+	dir    bidi.Direction
+	id     string
 }
 
 // NewUnknownPart creates a new unknown part
@@ -115,6 +118,7 @@ func NewUnknownPart(source string, value any, locale string) *UnknownPart {
 		source: source,
 		value:  value,
 		locale: locale,
+		dir:    bidi.DirAuto,
 	}
 }
 
@@ -139,5 +143,8 @@ func (up *UnknownPart) Locale() string {
 }
 
 func (up *UnknownPart) Dir() bidi.Direction {
-	return bidi.DirAuto
+	return up.dir
 }
+
+// ID returns the universal identifier attached to this part.
+func (up *UnknownPart) ID() string { return up.id }

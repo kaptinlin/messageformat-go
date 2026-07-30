@@ -27,7 +27,7 @@ func TestNewContext(t *testing.T) {
 	assert.Equal(t, "best fit", ctx.LocaleMatcher)
 	assert.Equal(t, "Alice", ctx.Scope["name"])
 	assert.NotNil(t, ctx.Functions["test"])
-	assert.NotNil(t, ctx.LocalVars)
+	assert.NotNil(t, ctx.ResolvedDeclarations)
 }
 
 func TestNewContext_LocalesDefensiveCopy(t *testing.T) {
@@ -44,7 +44,7 @@ func TestNewContextWithNils(t *testing.T) {
 	assert.NotNil(t, ctx)
 	assert.NotNil(t, ctx.Functions)
 	assert.NotNil(t, ctx.Scope)
-	assert.NotNil(t, ctx.LocalVars)
+	assert.NotNil(t, ctx.ResolvedDeclarations)
 }
 
 func TestContextClone(t *testing.T) {
@@ -56,15 +56,13 @@ func TestContextClone(t *testing.T) {
 		map[string]any{"name": "Alice"},
 		nil, "best fit")
 
-	// Add a local var
-	mv := messagevalue.NewStringValue("test", "en", "test")
-	original.LocalVars[mv] = true
+	original.ResolvedDeclarations["local"] = true
 
 	cloned := original.Clone()
 
-	// Should have separate scope and local vars
+	// Should have separate scope and resolved declaration sets.
 	assert.Equal(t, original.Scope, cloned.Scope)
-	assert.Equal(t, original.LocalVars, cloned.LocalVars)
+	assert.Equal(t, original.ResolvedDeclarations, cloned.ResolvedDeclarations)
 
 	// Modify original - should not affect clone
 	original.Scope["age"] = 30

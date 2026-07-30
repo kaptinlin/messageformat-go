@@ -200,9 +200,9 @@ func lookupVariableRef(ctx *Context, ref *datamodel.VariableRef) (any, bool) {
 		// Resolve the expression
 		local := ResolveExpression(newCtx, unresolvedExpr.Expression)
 
-		// Cache the resolved value - matches TypeScript: ctx.scope[name] = local; ctx.localVars.add(local);
+		// Cache the resolved value and remember its declaration identity.
 		ctx.Scope[name] = local
-		ctx.LocalVars[local] = true
+		ctx.ResolvedDeclarations[name] = true
 
 		return local, true
 	}
@@ -281,8 +281,8 @@ func ResolveVariableRef(ctx *Context, ref *datamodel.VariableRef) messagevalue.M
 			if mv.Type() == "fallback" {
 				return messagevalue.NewFallbackValue(source, functions.GetFirstLocale(ctx.Locales))
 			}
-			// Check if it's a local variable - matches TypeScript: if (ctx.localVars.has(mv)) return mv;
-			if ctx.LocalVars[mv] {
+			// Resolved declarations already contain their final MessageValue.
+			if ctx.ResolvedDeclarations[ref.Name()] {
 				return mv
 			}
 		}

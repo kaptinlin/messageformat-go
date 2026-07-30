@@ -112,9 +112,9 @@ func TestSelectPatternPassesCandidateKeysInVariantOrder(t *testing.T) {
 
 func newSelectorBacktrackingContext(scope map[string]any, onError func(error)) *resolve.Context {
 	ctx := newSelectorCoverageContext(scope, onError)
-	for _, value := range scope {
-		if mv, ok := value.(messagevalue.MessageValue); ok {
-			ctx.LocalVars[mv] = true
+	for name, value := range scope {
+		if _, ok := value.(messagevalue.MessageValue); ok {
+			ctx.ResolvedDeclarations[name] = true
 		}
 	}
 	return ctx

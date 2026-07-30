@@ -87,6 +87,15 @@ Rules:
 - `FormatToParts` uses message value parts.
 - Shared facts are selection, fallback source, bidi isolation, locale, and error reporting.
 - Public parts must not become the internal string-rendering representation.
+- Function results are validated before method dispatch, and structured parts
+  are validated at their fallible projection boundary. Nil-like extension
+  values and parts become diagnostics and fallback output, never panics.
+- Universal metadata decorates package-owned concrete parts by immutable copy;
+  custom parts remain caller-owned.
+
+Local declaration evaluation tracks resolution state by declaration identity,
+not by resolved interface values. Custom `MessageValue` implementations may be
+non-comparable and must never become map keys.
 
 ## Intl Boundary
 
@@ -97,6 +106,9 @@ Rules:
 - Keep dependency-specific adaptation in a narrow package or function boundary.
 - Do not rely on helper APIs that are not part of the dependency surface.
 - Let the dependency own CLDR and timezone validation where it already provides that behavior.
+- Derive text direction from Unicode bidi classes and canonical locale/script
+  data through `golang.org/x/text`; do not maintain local language or script
+  direction catalogs.
 
 > **Why**: ECMA-402 behavior changes with locale data and runtime semantics. A narrow bridge keeps those changes from spreading through parser and data model code.
 
@@ -107,6 +119,10 @@ The test suite has three layers:
 - Package tests for local invariants and edge cases.
 - Root and examples tests for public usage.
 - Official MessageFormat Working Group tests under `tests/`.
+
+Only the pinned MF2 corpus is called official. MF1 vectors derived from
+`.reference/messageformat` are ordinary unit tests and cite exact source paths;
+the reference checkout is evidence, not a runtime or CI fixture.
 
 Use `testify/assert` and `testify/require` in tests. Prefer table-driven subtests for option matrices, function behavior, and parse/format cases.
 

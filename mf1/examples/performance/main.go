@@ -18,31 +18,31 @@ import (
 	"sync"
 	"time"
 
-	mf "github.com/kaptinlin/messageformat-go/mf1"
+	"github.com/kaptinlin/messageformat-go/mf1"
 )
 
 // MessageCache demonstrates compiled message caching for performance
 type MessageCache struct {
-	messageFormat *mf.MessageFormat
-	cache         map[string]*mf.CompiledMessage
+	messageFormat *mf1.MessageFormat
+	cache         map[string]*mf1.CompiledMessage
 	mu            sync.RWMutex
 }
 
 // NewMessageCache creates a new thread-safe message cache
-func NewMessageCache(locale string, options *mf.MessageFormatOptions) (*MessageCache, error) {
-	messageFormat, err := mf.New(locale, options)
+func NewMessageCache(locale string, options *mf1.MessageFormatOptions) (*MessageCache, error) {
+	messageFormat, err := mf1.New(locale, options)
 	if err != nil {
 		return nil, err
 	}
 
 	return &MessageCache{
 		messageFormat: messageFormat,
-		cache:         make(map[string]*mf.CompiledMessage),
+		cache:         make(map[string]*mf1.CompiledMessage),
 	}, nil
 }
 
 // GetCompiledMessage returns a compiled message, using cache when possible
-func (mc *MessageCache) GetCompiledMessage(template string) (*mf.CompiledMessage, error) {
+func (mc *MessageCache) GetCompiledMessage(template string) (*mf1.CompiledMessage, error) {
 	// Try to get from cache first (read lock)
 	mc.mu.RLock()
 	if msg, exists := mc.cache[template]; exists {
@@ -100,7 +100,7 @@ func demonstrateBasicPerformance() {
 	fmt.Println("=== Basic Performance Demonstration ===")
 
 	// Create MessageFormat instance
-	messageFormat, err := mf.New("en", nil)
+	messageFormat, err := mf1.New("en", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -180,7 +180,7 @@ func demonstrateCaching() {
 	}
 
 	// Create non-cached formatter for comparison
-	messageFormat, err := mf.New("en", nil)
+	messageFormat, err := mf1.New("en", nil)
 	if err != nil {
 		log.Fatal(err)
 	}

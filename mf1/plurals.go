@@ -1,10 +1,10 @@
-package v1
+package mf1
 
 import (
 	"fmt"
+	"math/big"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/agentable/go-intl/locale"
@@ -211,9 +211,8 @@ func HasPlural(locale string) bool {
 // normalized to BCP 47 (POSIX underscores accepted) and falls back to English
 // when go-intl cannot parse the tag.
 //
-// v1 historically truncates fractional values to integers before category
-// selection: tests assert that float32(1.9) resolves to PluralOne, mirroring
-// the legacy toNumber(int64) coercion. That semantics is preserved here.
+// Values retain their integer or fractional representation through the
+// go-intl operand boundary.
 func getPluralRules(loc string) (PluralFunction, []PluralCategory, []PluralCategory, bool) {
 	parsed := intlbridge.ParseLocale(loc)
 	cardinalType := string(pluralrules.Cardinal)
@@ -222,12 +221,9 @@ func getPluralRules(loc string) (PluralFunction, []PluralCategory, []PluralCateg
 	ordinal, _ := pluralrules.New(parsed, pluralrules.Options{Type: &ordinalType})
 
 	pluralFunc := func(value any, ord ...bool) (PluralCategory, error) {
-		num, err := toNumber(value)
+		num, err := pluralRuleValue(value)
 		if err != nil {
 			return PluralOther, err
-		}
-		if num < 0 {
-			num = -num
 		}
 
 		rules := cardinal
@@ -237,7 +233,7 @@ func getPluralRules(loc string) (PluralFunction, []PluralCategory, []PluralCateg
 		if rules == nil {
 			return PluralOther, nil
 		}
-		category := rules.Select(pluralrules.Int(num))
+		category := rules.Select(num)
 		return mapPluralCategory(category), nil
 	}
 
@@ -315,26 +311,41 @@ func parseStrictLocale(tag string) (locale.Locale, error) {
 	return locale.Parse(strings.ReplaceAll(tag, "_", "-"))
 }
 
-// toNumber converts various types to int64
-func toNumber(value any) (int64, error) {
+func pluralRuleValue(value any) (pluralrules.Value, error) {
 	switch v := value.(type) {
 	case int:
-		return int64(v), nil
+		return pluralrules.Int(int64(v)), nil
+	case int8:
+		return pluralrules.Int(int64(v)), nil
+	case int16:
+		return pluralrules.Int(int64(v)), nil
 	case int32:
-		return int64(v), nil
+		return pluralrules.Int(int64(v)), nil
 	case int64:
-		return v, nil
+		return pluralrules.Int(v), nil
+	case uint:
+		return pluralrules.Uint(uint64(v)), nil
+	case uint8:
+		return pluralrules.Uint(uint64(v)), nil
+	case uint16:
+		return pluralrules.Uint(uint64(v)), nil
+	case uint32:
+		return pluralrules.Uint(uint64(v)), nil
+	case uint64:
+		return pluralrules.Uint(v), nil
+	case *big.Int:
+		return pluralrules.BigInt(v), nil
 	case float32:
-		return int64(v), nil
+		return pluralrules.Float(float64(v)), nil
 	case float64:
-		return int64(v), nil
+		return pluralrules.Float(v), nil
 	case string:
-		num, err := strconv.ParseFloat(v, 64)
+		num, err := parseNumericString(v)
 		if err != nil {
-			return 0, WrapInvalidNumberStr(v)
+			return pluralrules.Value{}, err
 		}
-		return int64(num), nil
+		return pluralRuleValue(num)
 	default:
-		return 0, WrapInvalidType(fmt.Sprintf("%T", value))
+		return pluralrules.Value{}, WrapInvalidType(fmt.Sprintf("%T", value))
 	}
 }

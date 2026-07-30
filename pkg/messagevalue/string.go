@@ -110,6 +110,7 @@ type StringPart struct {
 	source string
 	locale string
 	dir    bidi.Direction
+	id     string
 }
 
 func (sp *StringPart) Type() string {
@@ -134,4 +135,9 @@ func (sp *StringPart) Locale() string {
 
 func (sp *StringPart) Dir() bidi.Direction {
 	return sp.dir
+}
+
+// ID returns the universal identifier attached to this part.
+func (sp *StringPart) ID() string {
+	return sp.id
 }

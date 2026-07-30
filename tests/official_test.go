@@ -159,11 +159,7 @@ func projectMessagePart(shape map[string]any, part messagevalue.MessagePart) map
 		case "source":
 			projected[field] = part.Source()
 		case "locale":
-			if withLocale, ok := part.(interface{ PartLocale() string }); ok {
-				projected[field] = withLocale.PartLocale()
-			} else {
-				projected[field] = part.Locale()
-			}
+			projected[field] = part.Locale()
 		case "dir":
 			projected[field] = string(part.Dir())
 		case "id":

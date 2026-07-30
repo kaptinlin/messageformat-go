@@ -17,14 +17,13 @@ func TestResolveFunctionRefAppliesUniversalOptions(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name           string
-		dir            string
-		wantDir        bidi.Direction
-		wantPartLocale string
+		name    string
+		dir     string
+		wantDir bidi.Direction
 	}{
-		{name: "ltr", dir: "ltr", wantDir: bidi.DirLTR, wantPartLocale: ""},
-		{name: "rtl", dir: "rtl", wantDir: bidi.DirRTL, wantPartLocale: "en"},
-		{name: "auto", dir: "auto", wantDir: bidi.DirAuto, wantPartLocale: "en"},
+		{name: "ltr", dir: "ltr", wantDir: bidi.DirLTR},
+		{name: "rtl", dir: "rtl", wantDir: bidi.DirRTL},
+		{name: "auto", dir: "auto", wantDir: bidi.DirAuto},
 	}
 
 	for _, tc := range tests {
@@ -66,14 +65,13 @@ func TestResolveFunctionRefAppliesUniversalOptions(t *testing.T) {
 			parts, err := result.ToParts()
 			require.NoError(t, err)
 			require.Len(t, parts, 1)
-			assert.Equal(t, "string", parts[0].Type())
-			assert.Equal(t, "hello", parts[0].Value())
-			assert.Equal(t, `|hello|`, parts[0].Source())
-			assert.Equal(t, "en", parts[0].Locale())
-			assert.Equal(t, tc.wantDir, parts[0].Dir())
-			assert.Equal(t, "part-id", parts[0].(interface{ ID() string }).ID())
-			assert.Equal(t, tc.dir, parts[0].(interface{ PartDir() string }).PartDir())
-			assert.Equal(t, tc.wantPartLocale, parts[0].(interface{ PartLocale() string }).PartLocale())
+			part, ok := parts[0].(*messagevalue.StringPart)
+			require.True(t, ok, "got %T", parts[0])
+			assert.Equal(t, "hello", part.Text())
+			assert.Equal(t, `|hello|`, part.Source())
+			assert.Equal(t, "en", part.Locale())
+			assert.Equal(t, tc.wantDir, part.Dir())
+			assert.Equal(t, "part-id", part.ID())
 		})
 	}
 }

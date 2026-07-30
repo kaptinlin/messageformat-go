@@ -13,7 +13,7 @@ func TestPatternMessage(t *testing.T) {
 	// Create test data
 	literal := NewLiteral("hello")
 	expr := mustExpression(t, literal, nil, nil)
-	decl := NewLocalDeclaration("test", expr)
+	decl := mustLocalDeclaration(t, "test", expr)
 	textElem := NewTextElement("Hello ")
 	exprElem := expr
 	pattern := mustPattern(t, []PatternElement{textElem, exprElem})
@@ -58,7 +58,7 @@ func TestDeclarations(t *testing.T) {
 	})
 
 	t.Run("LocalDeclaration", func(t *testing.T) {
-		decl := NewLocalDeclaration("local1", expr)
+		decl := mustLocalDeclaration(t, "local1", expr)
 
 		assert.Equal(t, "local", decl.Type())
 		assert.Equal(t, "local1", decl.Name())
@@ -171,8 +171,8 @@ func TestVariant(t *testing.T) {
 }
 
 func TestConstructorsCloneInputCollections(t *testing.T) {
-	firstDecl := NewLocalDeclaration("first", mustExpression(t, NewLiteral("one"), nil, nil))
-	secondDecl := NewLocalDeclaration("second", mustExpression(t, NewLiteral("two"), nil, nil))
+	firstDecl := mustLocalDeclaration(t, "first", mustExpression(t, NewLiteral("one"), nil, nil))
+	secondDecl := mustLocalDeclaration(t, "second", mustExpression(t, NewLiteral("two"), nil, nil))
 	declarations := []Declaration{firstDecl}
 	pattern := mustPattern(t, []PatternElement{NewTextElement("initial")})
 	message := mustPatternMessage(t, declarations, pattern, "")
@@ -230,8 +230,8 @@ func TestConstructorsCloneInputCollections(t *testing.T) {
 }
 
 func TestAccessorsReturnCollectionSnapshots(t *testing.T) {
-	firstDecl := NewLocalDeclaration("first", mustExpression(t, NewLiteral("one"), nil, nil))
-	secondDecl := NewLocalDeclaration("second", mustExpression(t, NewLiteral("two"), nil, nil))
+	firstDecl := mustLocalDeclaration(t, "first", mustExpression(t, NewLiteral("one"), nil, nil))
+	secondDecl := mustLocalDeclaration(t, "second", mustExpression(t, NewLiteral("two"), nil, nil))
 	patternMessage := mustPatternMessage(t,
 		[]Declaration{firstDecl},
 		mustPattern(t, []PatternElement{NewTextElement("before")}),

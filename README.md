@@ -14,6 +14,7 @@ A Go implementation of Unicode MessageFormat 2.0 for parsing, validating, and fo
 - **Locale-aware functions**: Format numbers, dates, currencies, percentages, offsets, strings, and units through [`github.com/agentable/go-intl`](https://github.com/agentable/go-intl).
 - **Custom formatters**: Register application functions with `WithFunction` or `WithFunctions`.
 - **Structured rendering**: Use `FormatToParts` for rich text, markup-aware rendering, and post-processing.
+- **Safe data-model tooling**: Construct and serialize the public model with explicit errors and deterministic source output.
 - **Migration path**: Keep existing ICU MessageFormat v1 code on the supported `github.com/kaptinlin/messageformat-go/mf1` module.
 - **Pinned corpus verification**: Reproduce behavior against the checked-in Unicode MessageFormat Working Group corpus with `task test-official` or `task test-v2`.
 
@@ -34,7 +35,7 @@ go get github.com/kaptinlin/messageformat-go/mf1@latest
 Then import:
 
 ```go
-import mf1 "github.com/kaptinlin/messageformat-go/mf1"
+import "github.com/kaptinlin/messageformat-go/mf1"
 ```
 
 ## Quick Start
@@ -73,7 +74,7 @@ func main() {
 | `(*MessageFormat).Format(values)` | Format to a string and return runtime diagnostics |
 | `(*MessageFormat).FormatToParts(values)` | Format to structured parts and return runtime diagnostics |
 | `datamodel.ParseMessage(source)` | Parse source into the public data model |
-| `datamodel.StringifyMessage(message)` | Convert the data model back to source |
+| `datamodel.StringifyMessage(message)` | Convert the data model back to source or return an error |
 | `datamodel.ValidateMessage(message, onError)` | Validate a parsed message |
 
 Full API details are available on [pkg.go.dev](https://pkg.go.dev/github.com/kaptinlin/messageformat-go) and in [`docs/api-reference.md`](docs/api-reference.md).
@@ -132,6 +133,9 @@ Stable default functions include `:number`, `:integer`, `:string`, `:offset`, `:
 ### Structured Parts
 
 Use `FormatToParts` when a UI needs structured output instead of one string. `Format` follows the documented string conversion path; `FormatToParts` keeps the resolved part values for rich rendering.
+Package-owned expression parts retain their concrete Go types when universal
+`u:id` or `u:dir` metadata is applied, so type-specific accessors remain
+available.
 
 ```go
 parts, err := mf.FormatToParts(map[string]any{"amount": 29.99})
@@ -201,6 +205,10 @@ fmt.Println(out) // Hello, World!
 Use `mf1.NewWithPlural` with a `mf1.PluralProfile` for caller-supplied plural
 behavior. Malformed locale tags return an error; syntactically valid locales
 without plural data use the module's stable fallback locale.
+Plural operands preserve exact Go integers and base-10 integer strings through
+exact matching, offset calculation, category selection, and `#` formatting.
+Selector failures are returned by both output projections rather than silently
+choosing `other`.
 
 ## Configuration
 
