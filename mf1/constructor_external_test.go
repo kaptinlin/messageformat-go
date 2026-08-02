@@ -103,6 +103,31 @@ func TestBiDiSupportMarksPlainArguments(t *testing.T) {
 	}
 }
 
+func TestBiDiSupportUnknownDirectionUsesLRM(t *testing.T) {
+	t.Parallel()
+
+	profile := mf1.PluralProfile{
+		Locale: "und-Brai",
+		Select: func(any, ...bool) (mf1.PluralCategory, error) {
+			return mf1.PluralOther, nil
+		},
+		Cardinals: []mf1.PluralCategory{mf1.PluralOther},
+		Ordinals:  []mf1.PluralCategory{mf1.PluralOther},
+	}
+	compiler, err := mf1.NewWithPlural(profile, &mf1.MessageFormatOptions{BiDiSupport: true})
+	require.NoError(t, err)
+	message, err := compiler.Compile("{value}")
+	require.NoError(t, err)
+
+	text, err := message.Format(map[string]any{"value": "hello"})
+	require.NoError(t, err)
+	assert.Equal(t, "\u200ehello\u200e", text)
+
+	values, err := message.FormatValues(map[string]any{"value": "hello"})
+	require.NoError(t, err)
+	assert.Equal(t, []any{"\u200ehello\u200e"}, values)
+}
+
 // TestBiDiSupportOnlyMarksPlainArguments covers the token boundary defined by
 // .reference/messageformat/mf1/packages/core/src/compiler.ts:139-155.
 func TestBiDiSupportOnlyMarksPlainArguments(t *testing.T) {

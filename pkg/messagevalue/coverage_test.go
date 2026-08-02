@@ -482,7 +482,7 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 		assert.Equal(t, bidi.DirRTL, subParts[0].Dir())
 	})
 
-	t.Run("currency formatting supports code and accounting name display", func(t *testing.T) {
+	t.Run("currency formatting supports code and signed name display", func(t *testing.T) {
 		t.Parallel()
 
 		codeValue := mustNumberValue(t, 42, "en", "money-source", map[string]any{
@@ -506,8 +506,9 @@ func TestNumberValueFormattingAndParts(t *testing.T) {
 		nameFormatted, err := nameValue.ToString()
 		require.NoError(t, err)
 		assert.Contains(t, nameFormatted, "US dollars")
-		assert.Contains(t, nameFormatted, "(")
-		assert.Contains(t, nameFormatted, ")")
+		assert.Contains(t, nameFormatted, "-")
+		assert.NotContains(t, nameFormatted, "(")
+		assert.NotContains(t, nameFormatted, ")")
 		assert.NotContains(t, nameFormatted, "$")
 	})
 

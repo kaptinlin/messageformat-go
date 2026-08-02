@@ -66,7 +66,11 @@ func GetLocaleDirection(localeID string) Direction {
 	if confidence == language.No || script.String() == "Zzzz" {
 		return DirAuto
 	}
-	return ParseDirection(loc.GetTextInfo().Direction)
+	direction := loc.GetTextInfo().Direction
+	if direction == nil {
+		return DirAuto
+	}
+	return ParseDirection(*direction)
 }
 
 // WrapWithIsolation wraps text with isolation characters for dir.

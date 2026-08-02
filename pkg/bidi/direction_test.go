@@ -312,6 +312,11 @@ func TestGetLocaleDirection(t *testing.T) {
 			locale:   "und-Zzzz",
 			expected: DirAuto,
 		},
+		{
+			name:     "Script with unknown direction",
+			locale:   "und-Brai",
+			expected: DirAuto,
+		},
 	}
 
 	for _, tt := range tests {

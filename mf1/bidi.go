@@ -10,7 +10,8 @@ func bidiMarkForLocale(localeID string) (string, error) {
 	if err != nil {
 		return "", WrapInvalidLocale(localeID)
 	}
-	if loc.GetTextInfo().Direction == "rtl" {
+	direction := loc.GetTextInfo().Direction
+	if direction != nil && *direction == "rtl" {
 		return rightToLeftMark, nil
 	}
 	return leftToRightMark, nil
